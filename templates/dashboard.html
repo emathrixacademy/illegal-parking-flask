@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="header-container">
+    <div class="main-title">🚗 Smart Parking Enforcement</div>
+    <div class="subtitle">AI-Powered Illegal Parking Detection System</div>
+    <div class="subtitle">Barangay Tagapo, City of Santa Rosa, Laguna</div>
+  </div>
+
+  <div class="status-row">
+    <div class="status-card">
+      <div class="status-icon">📊</div>
+      <div class="status-label">Dashboard</div>
+      <div class="status-value"><span class="status-dot status-online"></span></div>
+      <div class="status-text">ONLINE</div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon">🗄️</div>
+      <div class="status-label">Database</div>
+      <div class="status-value"><span class="status-dot status-online"></span></div>
+      <div class="status-text">CONNECTED</div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon">📹</div>
+      <div class="status-label">Active Cameras</div>
+      <div class="status-value">1</div>
+      <div class="status-text">Brgy. Tagapo</div>
+    </div>
+  </div>
+
+  <br>
+
+  <div class="clean-card">
+    <div class="section-header">📊 Today's Overview</div>
+    <div class="metrics">
+      <div class="metric-container">
+        <div class="metric-value">{{ total }}</div>
+        <div class="metric-label">Total Violations</div>
+        <div class="metric-delta">+{{ total }} today</div>
+      </div>
+      <div class="metric-container">
+        <div class="metric-value">{{ active }}</div>
+        <div class="metric-label">Active Now</div>
+        <div class="metric-delta">Monitoring</div>
+      </div>
+      <div class="metric-container">
+        <div class="metric-value">{{ resolved }}</div>
+        <div class="metric-label">Resolved</div>
+        <div class="metric-delta">Completed</div>
+      </div>
+      <div class="metric-container">
+        <div class="metric-value">{{ avg_duration|round(1) }}</div>
+        <div class="metric-label">Avg Duration (min)</div>
+      </div>
+    </div>
+  </div>
+
+  <br>
+
+  <div class="clean-card">
+    <div class="section-header">🚨 Recent Violations</div>
+    {% if recent %}
+      {% for v in recent %}
+        <div class="violation-row">
+          <div class="violation-image">
+            {% if v.image_url %}
+              <img src="{{ v.image_url }}" alt="violation image" />
+            {% else %}
+              <div class="no-image">📷</div>
+            {% endif %}
+          </div>
+          <div class="violation-body">
+            <div class="violation-title">🚗 {{ v.vehicle_type or 'Unknown' }} - {{ v.plate_number or 'N/A' }}</div>
+            <div class="violation-sub">⏱ Duration: {{ v.duration or 0 }} minutes</div>
+            <div class="violation-sub">📍 {{ v.location or 'N/A' }}</div>
+          </div>
+          <div class="violation-meta">
+            <div class="violation-time">🕐 {{ v.timestamp.strftime('%H:%M:%S') }}</div>
+            <div class="violation-status">
+              {% if v.status == 'active' %}
+                <span class="badge badge-active">🔴 Active</span>
+              {% else %}
+                <span class="badge badge-resolved">🟢 Resolved</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <hr />
+      {% endfor %}
+    {% else %}
+      <div style="text-align:center;padding:2rem;color:#9ca3af;">
+        <div style="font-size:3rem;margin-bottom:1rem;">✅</div>
+        <div style="font-weight:600;color:#10b981;">No violations recorded yet</div>
+        <div style="margin-top:0.5rem;color:#6b7280;">System is ready to monitor!</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <br>
+  <footer style="text-align:center;color:#6b7280;padding:2rem 0;">
+    © 2025 Ma. Ymelda C. Batalla • Technological University of the Philippines
+  </footer>
+{% endblock %}
