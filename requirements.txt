@@ -1,6 +1,58 @@
-Flask==3.0.0
+Flask==3.1.0
 Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.30
 psycopg2-binary==2.9.9
 gunicorn==21.2.0
-python-dotenv==1.0.0
-SQLAlchemy==2.0.23
+python-dotenv==1.0.1
+```
+
+5. Click **"Commit changes"**
+6. Click **"Commit changes"** again in the popup
+
+---
+
+### **Step 4: Wait for Render to Auto-Deploy**
+
+1. Go back to your **Render Dashboard**: https://dashboard.render.com
+2. Click on **"illegal-parking-flask"**
+3. Click **"Events"** tab
+4. You should see: "Deploy started for..." (this happens automatically when you push to GitHub)
+5. Wait 2-3 minutes for the build to complete
+
+---
+
+## **Visual Guide - What You Should See**
+
+### **In GitHub After Creating `.python-version`:**
+
+Your repository should have these files:
+```
+illegal-parking-flask/
+├── .python-version          ← NEW FILE (contains: 3.11.10)
+├── requirements.txt         ← UPDATED
+├── app.py
+├── models.py
+├── templates/
+└── static/
+```
+
+### **In Render Logs After Deployment:**
+
+You should see:
+```
+✅ Using Python version 3.11.10
+✅ Installing dependencies from requirements.txt
+✅ Successfully installed Flask-3.1.0 Flask-SQLAlchemy-3.1.1
+✅ Database initialized successfully
+✅ Listening at: http://0.0.0.0:10000
+```
+
+---
+
+## **Summary - Just 2 Files to Change:**
+
+### **File 1: Create `.python-version`**
+- **Location:** Root of your repository
+- **Content:** 
+```
+  3.11.10
