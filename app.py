@@ -10,10 +10,13 @@ load_dotenv()
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# DATABASE_URL must be set in environment (Render provides this after you create DB)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable not set. See README.")
+
+# 🔥 Fix Render's old-style Postgres URLs
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
