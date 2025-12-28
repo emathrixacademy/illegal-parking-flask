@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings - Violation Configuration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: #181c23;
+            color: #f8f9fa;
+            min-height: 100vh;
+        }
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 220px;
+            background: #232733;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            padding: 0;
+            border-right: 1px solid #232733;
+        }
+        .sidebar .nav-link {
+            color: #bfc7d5;
+            font-weight: 500;
+            padding: 1.1rem 1.5rem;
+            border-radius: 0;
+            transition: background 0.2s;
+        }
+        .sidebar .nav-link.active, .sidebar .nav-link:hover {
+            background: #2d3342;
+            color: #fff;
+        }
+        .sidebar .sidebar-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 2rem 1.5rem 1rem 1.5rem;
+            letter-spacing: 1px;
+            color: #ff9800;
+            border-bottom: 1px solid #232733;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .header-bar {
+            background: #232733;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #232733;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-bar h1 {
+            color: #ff9800;
+            font-size: 1.6rem;
+            margin: 0;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .settings-section {
+            background: #232733;
+            border-radius: 16px;
+            margin: 2rem 2rem 2rem 2rem;
+            padding: 2rem 2rem 1.5rem 2rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+            max-width: 600px;
+        }
+        .settings-section h2 {
+            color: #ff9800;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1.2rem;
+        }
+        .form-label, .form-select, .form-control, .badge, .btn {
+            font-size: 1rem;
+        }
+        .badge.bg-info {
+            background: #17a2b8 !important;
+            color: #181c23 !important;
+        }
+        .badge.bg-secondary {
+            background: #444 !important;
+            color: #fff !important;
+        }
+        @media (max-width: 900px) {
+            .settings-section { margin: 1rem; padding: 1rem; }
+        }
+        @media (max-width: 600px) {
+            .sidebar { flex-direction: column; width: 100%; }
+            .main-content { padding: 0; }
+            .settings-section { margin: 0.5rem; padding: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <i class="bi bi-camera-video-fill"></i> CCTV Monitor
+        </div>
+        <a class="nav-link" href="/"><i class="bi bi-house-door-fill"></i> Home</a>
+        <a class="nav-link" href="/violations"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
+        <a class="nav-link active" href="/settings"><i class="bi bi-gear-fill"></i> Settings</a>
+    </nav>
+    <div class="main-content">
+        <div class="header-bar">
+            <h1><i class="bi bi-gear-fill"></i> Configuration Settings</h1>
+        </div>
+        <div class="settings-section mx-auto">
+            <form id="settingsForm">
+                <div class="mb-3">
+                    <label for="violation_time" class="form-label">Violation Time Threshold (seconds)</label>
+                    <input type="number" class="form-control" id="violation_time" name="violation_time" min="1" required>
+                    <small class="text-muted">Time before a parked vehicle is flagged as a violation</small>
+                </div>
+                <div class="mb-3">
+                    <label for="repeat_capture" class="form-label">Repeat Capture Interval (seconds)</label>
+                    <input type="number" class="form-control" id="repeat_capture" name="repeat_capture" min="1" required>
+                    <small class="text-muted">Cooldown between logging the same vehicle</small>
+                </div>
+                <div class="mb-3">
+                    <label for="cameraSelect" class="form-label">Select Camera for Zone Configuration</label>
+                    <select class="form-select" id="cameraSelect" name="cameraSelect">
+                        <option value="Camera_1">Camera 1</option>
+                        <option value="Camera_2">Camera 2</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-primary mt-2" id="selectZoneBtn">
+                        <i class="bi bi-vector-pen"></i> Select Zone Area
+                    </button>
+                    <div id="zoneDisplay" class="mt-2"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <a href="/" class="btn btn-secondary">Back to Home</a>
+            </form>
+            <div id="status" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let lastZone = null;
+    let piPublicUrl = "";
+
+    // Fetch Pi public URL on load
+    function fetchPiUrl() {
+        return fetch('/api/get_pi_url')
+            .then(r => r.json())
+            .then(data => {
+                piPublicUrl = data.public_url || "";
+            });
+    }
+
+    function updateZoneDisplay(zone) {
+        lastZone = zone;
+        document.getElementById('zoneDisplay').innerHTML = zone
+            ? `<span class="badge bg-info text-dark">Selected Zone: ${JSON.stringify(zone)}</span>`
+            : `<span class="badge bg-secondary">No zone selected</span>`;
+    }
+
+    function injectSettingsToForm(data) {
+        // Set placeholder only, not value
+        document.getElementById('violation_time').value = "";
+        document.getElementById('violation_time').placeholder = data.VIOLATION_TIME_THRESHOLD;
+        document.getElementById('repeat_capture').value = "";
+        document.getElementById('repeat_capture').placeholder = data.REPEAT_CAPTURE_INTERVAL;
+        const cam = document.getElementById('cameraSelect').value;
+        if (data.PARKING_ZONES && data.PARKING_ZONES[cam]) {
+            updateZoneDisplay(data.PARKING_ZONES[cam]);
+        } else {
+            updateZoneDisplay(null);
+        }
+    }
+
+    function loadSettings() {
+        fetch('/api/settings')
+            .then(async r => {
+                if (!r.ok) {
+                    throw new Error("HTTP " + r.status + " " + r.statusText);
+                }
+                try {
+                    const data = await r.json();
+                    injectSettingsToForm(data);
+                    return;
+                } catch (err) {
+                    // Try to get raw text for debugging
+                    const text = await r.text();
+                    document.getElementById('status').innerHTML =
+                        '<div class="alert alert-danger">Failed to parse settings JSON.<br><small>' +
+                        text.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                        '</small></div>';
+                    console.error("Failed to parse JSON from /api/settings:", text);
+                    throw err;
+                }
+            })
+            .catch((err) => {
+                document.getElementById('status').innerHTML =
+                    '<div class="alert alert-danger">Failed to load settings from server.<br><small>' +
+                    (err && err.message ? err.message : err) +
+                    '</small></div>';
+                console.error("Failed to load settings:", err);
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchPiUrl().then(loadSettings);
+    });
+
+    document.getElementById('cameraSelect').addEventListener('change', loadSettings);
+
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const status = document.getElementById('status');
+        const cam = document.getElementById('cameraSelect').value;
+        let body = {
+            VIOLATION_TIME_THRESHOLD: parseInt(document.getElementById('violation_time').value) || parseInt(document.getElementById('violation_time').placeholder),
+            REPEAT_CAPTURE_INTERVAL: parseInt(document.getElementById('repeat_capture').value) || parseInt(document.getElementById('repeat_capture').placeholder)
+        };
+        if (lastZone && Array.isArray(lastZone) && lastZone.length > 2) {
+            body.PARKING_ZONES = { [cam]: lastZone };
+        }
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(r => r.json())
+        .then(result => {
+            if (result.success) {
+                document.getElementById('status').innerHTML = '<div class="alert alert-success">Settings saved successfully!</div>';
+                setTimeout(() => {
+                    loadSettings();
+                    document.getElementById('status').innerHTML = '';
+                }, 1000);
+            } else {
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Error saving settings</div>';
+            }
+        })
+        .catch(err => {
+            document.getElementById('status').innerHTML = '<div class="alert alert-danger">Error saving settings</div>';
+        });
+    });
+
+    // Listen for zone data from popup
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'zone_selected') {
+            const zone = event.data.zone;
+            if (!Array.isArray(zone) || zone.length < 3) {
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Invalid zone received from selector.</div>';
+                return;
+            }
+            const cam = document.getElementById('cameraSelect').value;
+            updateZoneDisplay(zone);
+            document.getElementById('status').innerHTML = '<div class="alert alert-info">Saving zone to server...</div>';
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ PARKING_ZONES: { [cam]: zone } })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('status').innerHTML = '<div class="alert alert-success">Zone updated! Now active for ' + cam + '.</div>';
+                    loadSettings();
+                } else {
+                    document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone.</div>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone to server.</div>';
+            });
+        }
+    });
+
+    // Launch zone selector for the selected camera
+    document.getElementById('selectZoneBtn').addEventListener('click', async function() {
+        const status = document.getElementById('status');
+        const cam = document.getElementById('cameraSelect').value;
+        status.innerHTML = '<div class="alert alert-info">Launching zone selector... Please complete selection in the popup window.</div>';
+        // Always send to Pi hardware, not local API
+        if (!piPublicUrl) {
+            status.innerHTML = '<div class="alert alert-danger">Raspberry Pi not connected.</div>';
+            return;
+        }
+        // Open popup for zone selection
+        const popupUrl = `${piPublicUrl}/zone_selector?camera=${encodeURIComponent(cam)}`;
+        const popup = window.open(popupUrl, 'ZoneSelector', 'width=900,height=700');
+        if (!popup) {
+            status.innerHTML = '<div class="alert alert-danger">Popup blocked. Please allow popups for this site.</div>';
+            return;
+        }
+        // The popup will postMessage the zone data back to this window
+    });
+</script>
+</body>
+</html>

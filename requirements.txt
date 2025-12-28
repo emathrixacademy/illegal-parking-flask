@@ -1,6 +1,8 @@
-  Flask==3.1.0
-  Flask-SQLAlchemy==3.1.1
-  SQLAlchemy==2.0.30
-  psycopg2-binary==2.9.9
-  gunicorn==21.2.0
-  python-dotenv==1.0.1
+flask
+opencv-python-headless
+numpy
+gunicorn
+requests
+# ...add any other dependencies your app uses...
+# e.g. hailo_platform, etc.
+# web-production-787ca.up.railway.app
