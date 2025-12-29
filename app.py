@@ -17,7 +17,7 @@ from datetime import datetime
 DEFAULT_PORT = int(os.environ.get("PORT", 5000))
 DEFAULT_RASPI_IP = os.environ.get("RASPI_IP", "192.168.18.32")
 DEFAULT_RASPI_PORT = os.environ.get("RASPI_PORT", "5000")
-DEFAULT_RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-787ca.up.railway.app")
+DEFAULT_RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-flask.onrender.com")
 CLOUDFLARE_TUNNEL_CMD = ["cloudflared", "tunnel", "--url", f"http://localhost:{DEFAULT_PORT}"]
 CAMERA_FRAME_SIZE = (640, 360)
 BLANK_FRAME_PATH = "blank.jpg"
