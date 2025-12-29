@@ -124,12 +124,14 @@ def start_cloudflared(port=DEFAULT_PORT):
 
 # --- Store latest Pi public URL in memory ---
 PI_PUBLIC_URL = ""
+PI_URL_NOT_SET_LOGGED = False  # Add this flag
 
 @app.route('/api/set_pi_url', methods=['POST'])
 def set_pi_url():
-    global PI_PUBLIC_URL
+    global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
     data = request.get_json(force=True)
     PI_PUBLIC_URL = data.get("public_url", "")
+    PI_URL_NOT_SET_LOGGED = False  # Reset error log flag when new URL is set
     logger.info(f"Received new Pi public URL: {PI_PUBLIC_URL}")
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
@@ -236,8 +238,11 @@ def api_events():
     return jsonify(EVENTS)
 
 def get_pi_base():
-    # Returns the current Pi public URL, or raises if not set
+    global PI_URL_NOT_SET_LOGGED
     if not PI_PUBLIC_URL:
+        if not PI_URL_NOT_SET_LOGGED:
+            logger.error("Proxy request error: Pi public URL not set")
+            PI_URL_NOT_SET_LOGGED = True
         raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip('/')
 

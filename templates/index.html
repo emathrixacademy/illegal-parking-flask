@@ -822,8 +822,8 @@ window.onload = fetchRaspiBaseAndInit;
 </script>
 <script>
 let RASPI_BASE = "{{ public_url }}";
+let feedsStarted = false;
 
-// Poll the relay for the latest Pi public URL every 3 seconds
 function updateRaspiBase() {
     fetch('/api/get_pi_url')
         .then(resp => resp.json())
@@ -831,13 +831,38 @@ function updateRaspiBase() {
             if (data.public_url && data.public_url !== RASPI_BASE) {
                 RASPI_BASE = data.public_url;
                 console.log("Updated RASPI_BASE:", RASPI_BASE);
-                // Optionally, trigger UI updates or reload video feeds here
+                if (!feedsStarted && RASPI_BASE) {
+                    startFeeds();
+                    feedsStarted = true;
+                }
+            }
+            // If not started and now have a URL, start feeds
+            if (!feedsStarted && RASPI_BASE) {
+                startFeeds();
+                feedsStarted = true;
             }
         })
         .catch(() => {});
 }
 setInterval(updateRaspiBase, 3000);
+
+function startFeeds() {
+    // Set video feed sources
+    const c1 = document.getElementById('video_feed_c1');
+    const c2 = document.getElementById('video_feed_c2');
+    if (c1) c1.src = RASPI_BASE + '/video_feed_c1';
+    if (c2) c2.src = RASPI_BASE + '/video_feed_c2';
+    // Start any other polling here, e.g. camera status
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (RASPI_BASE) {
+        startFeeds();
+        feedsStarted = true;
+    }
+});
 </script>
+
 <!--
 NOTE: All /api/* endpoints and video feeds are served by the Raspberry Pi server via the cloud link.
 This interface communicates with the Pi using the public URL set in RASPI_BASE.
