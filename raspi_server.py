@@ -445,7 +445,7 @@ if __name__ == '__main__':
 
         # --- Notify Railway app of the public URL ---
         import time
-        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-flask-production.up.railway.app")
+        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
         post_url = f"{RAILWAY_API_URL}/api/set_pi_url"
         payload = {"public_url": public_url}
         max_retries = 5
