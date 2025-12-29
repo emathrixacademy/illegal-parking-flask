@@ -415,17 +415,6 @@ def api_settings():
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     })
 
-@app.route('/api/get_pi_url')
-def get_pi_url():
-    """Return the current public URL of this Pi server (if available)."""
-    public_url = app.config.get("PUBLIC_URL", "")
-    return jsonify({"public_url": public_url})
-
-@app.route('/api/events')
-def api_events():
-    """Stub: Pi does not store events, return empty list."""
-    return jsonify([])
-
 # --- Graceful shutdown ---
 def shutdown(sig, frame):
     print("Shutting down...")
@@ -444,23 +433,16 @@ if __name__ == '__main__':
         app.config["PUBLIC_URL"] = public_url
 
         # --- Notify Railway app of the public URL ---
-        import time
         RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
-        post_url = f"{RAILWAY_API_URL}/api/set_pi_url"
-        payload = {"public_url": public_url}
-        max_retries = 5
-        for attempt in range(max_retries):
-            try:
-                print(f"Posting public URL to Railway: {post_url} (attempt {attempt+1})")
-                resp = requests.post(post_url, json=payload, timeout=5)
-                print("Posted public URL to Railway:", resp.status_code, resp.text)
-                if resp.ok:
-                    break
-                else:
-                    print(f"Warning: Non-2xx response from Railway: {resp.status_code}")
-            except Exception as e:
-                print(f"Failed to notify Railway app (attempt {attempt+1}):", e)
-            time.sleep(2)
+        try:
+            resp = requests.post(
+                f"{RAILWAY_API_URL}/api/set_pi_url",
+                json={"public_url": public_url},
+                timeout=5
+            )
+            print("Posted public URL to Railway:", resp.status_code, resp.text)
+        except Exception as e:
+            print("Failed to notify Railway app:", e)
 
     except Exception as e:
         print("Failed to start Cloudflare Tunnel:", e)
