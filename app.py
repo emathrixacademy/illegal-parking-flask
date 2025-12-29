@@ -81,8 +81,16 @@ def update_config_py(new_settings):
     importlib.reload(config)
 
 # --- Camera setup ---
-camera_1 = cv2.VideoCapture(0)
-camera_2 = cv2.VideoCapture(1)
+def is_railway():
+    # Railway sets this env var in all containers
+    return os.environ.get("RAILWAY_STATIC_URL") is not None
+
+if not is_railway():
+    camera_1 = cv2.VideoCapture(0)
+    camera_2 = cv2.VideoCapture(1)
+else:
+    camera_1 = None
+    camera_2 = None
 
 # Fallback blank frame if camera fails
 if not os.path.exists(BLANK_FRAME_PATH):
@@ -92,11 +100,14 @@ if not os.path.exists(BLANK_FRAME_PATH):
 def gen(camera):
     blank_frame = cv2.imread(BLANK_FRAME_PATH)
     while True:
-        ret, frame = camera.read()
-        if not ret:
+        if camera is None:
             frame = blank_frame
         else:
-            frame = cv2.resize(frame, CAMERA_FRAME_SIZE)
+            ret, frame = camera.read()
+            if not ret:
+                frame = blank_frame
+            else:
+                frame = cv2.resize(frame, CAMERA_FRAME_SIZE)
         ret, jpeg = cv2.imencode('.jpg', frame)
         if not ret:
             continue
