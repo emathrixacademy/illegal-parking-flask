@@ -434,15 +434,23 @@ if __name__ == '__main__':
 
         # --- Notify Railway app of the public URL ---
         RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
-        try:
-            resp = requests.post(
-                f"{RAILWAY_API_URL}/api/set_pi_url",
-                json={"public_url": public_url},
-                timeout=5
-            )
-            print("Posted public URL to Railway:", resp.status_code, resp.text)
-        except Exception as e:
-            print("Failed to notify Railway app:", e)
+        import time
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(
+                    f"{RAILWAY_API_URL}/api/set_pi_url",
+                    json={"public_url": public_url},
+                    timeout=5
+                )
+                print("Posted public URL to Railway:", resp.status_code, resp.text)
+                if resp.status_code == 200:
+                    break
+            except Exception as e:
+                print(f"Failed to notify Railway app (attempt {attempt+1}):", e)
+            time.sleep(2)
+        else:
+            print("Failed to notify Railway app after retries.")
 
     except Exception as e:
         print("Failed to start Cloudflare Tunnel:", e)

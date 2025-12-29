@@ -130,6 +130,7 @@ def set_pi_url():
     global PI_PUBLIC_URL
     data = request.get_json(force=True)
     PI_PUBLIC_URL = data.get("public_url", "")
+    logger.info(f"Received new Pi public URL: {PI_PUBLIC_URL}")
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
 @app.route('/api/get_pi_url')
