@@ -235,17 +235,19 @@ def api_events():
     return jsonify(EVENTS)
 
 def get_pi_base():
-    # Returns the current Pi public URL, or raises if not set
+    # Returns the current Pi public URL, or None if not set
     if not PI_PUBLIC_URL:
-        raise RuntimeError("Pi public URL not set")
+        return None
     return PI_PUBLIC_URL.rstrip('/')
 
 @app.route('/api/<path:path>', methods=['GET', 'POST', 'OPTIONS'])
 def proxy_api(path):
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
+    pi_base = get_pi_base()
+    if not pi_base:
+        return add_cors_headers(jsonify({"success": False, "error": "Pi public URL not set. Please wait for the Pi to connect."})), 503
     try:
-        pi_base = get_pi_base()
         url = f"{pi_base}/api/{path}"
         if request.method == 'GET':
             resp = requests.get(url, params=request.args, timeout=10)
@@ -259,8 +261,10 @@ def proxy_api(path):
 
 @app.route('/video_feed_c1')
 def proxy_video_feed_c1():
+    pi_base = get_pi_base()
+    if not pi_base:
+        return add_cors_headers(Response("Camera feed unavailable: Pi public URL not set. Please wait for the Pi to connect.", 503))
     try:
-        pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c1"
         resp = requests.get(url, stream=True, timeout=10)
         proxy_response = Response(stream_with_context(resp.iter_content(chunk_size=4096)),
@@ -272,8 +276,10 @@ def proxy_video_feed_c1():
 
 @app.route('/video_feed_c2')
 def proxy_video_feed_c2():
+    pi_base = get_pi_base()
+    if not pi_base:
+        return add_cors_headers(Response("Camera feed unavailable: Pi public URL not set. Please wait for the Pi to connect.", 503))
     try:
-        pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c2"
         resp = requests.get(url, stream=True, timeout=10)
         proxy_response = Response(stream_with_context(resp.iter_content(chunk_size=4096)),
@@ -287,8 +293,10 @@ def proxy_video_feed_c2():
 def api_camera_status():
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
+    pi_base = get_pi_base()
+    if not pi_base:
+        return add_cors_headers(jsonify({"success": False, "error": "Pi public URL not set. Please wait for the Pi to connect."})), 503
     try:
-        pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
         try:
