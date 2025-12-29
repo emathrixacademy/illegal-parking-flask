@@ -444,7 +444,7 @@ if __name__ == '__main__':
         app.config["PUBLIC_URL"] = public_url
 
         # --- Notify Railway app of the public URL ---
-        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-flask.onrender.com")
+        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-flask-production.up.railway.app")
         try:
             resp = requests.post(
                 f"{RAILWAY_API_URL}/api/set_pi_url",

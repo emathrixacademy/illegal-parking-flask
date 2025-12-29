@@ -9,6 +9,7 @@ import requests
 import socket
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
+from werkzeug.exceptions import NotFound
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -18,7 +19,7 @@ from datetime import datetime
 DEFAULT_PORT = int(os.environ.get("PORT", 5000))
 DEFAULT_RASPI_IP = os.environ.get("RASPI_IP", "192.168.18.32")
 DEFAULT_RASPI_PORT = os.environ.get("RASPI_PORT", "5000")
-DEFAULT_RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-flask.onrender.com")
+DEFAULT_RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-flask-production.up.railway.app")
 CLOUDFLARE_TUNNEL_CMD = ["cloudflared", "tunnel", "--url", f"http://localhost:{DEFAULT_PORT}"]
 CAMERA_FRAME_SIZE = (640, 360)
 BLANK_FRAME_PATH = "blank.jpg"
@@ -428,6 +429,12 @@ def zone_selector():
 # --- Error handler ---
 @app.errorhandler(Exception)
 def handle_exception(e):
+    # Handle 404 Not Found separately (don't log as error)
+    if isinstance(e, NotFound):
+        if request.path.startswith('/api/'):
+            return jsonify({"success": False, "error": "Not found"}), 404
+        return make_response("Not Found", 404)
+    # Log all other exceptions
     logger.error("Unhandled Exception: %s\n%s", e, traceback.format_exc())
     if request.path.startswith('/api/'):
         return jsonify({"success": False, "error": str(e)}), 500
