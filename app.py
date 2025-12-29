@@ -250,7 +250,10 @@ def api_events():
     return jsonify(EVENTS)
 
 def get_pi_base():
-    # Returns the current Pi public URL, or raises if not set
+    # Returns the current Pi public URL, or fetches it if not set
+    global PI_PUBLIC_URL
+    if not PI_PUBLIC_URL:
+        fetch_pi_public_url()
     if not PI_PUBLIC_URL:
         raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip('/')

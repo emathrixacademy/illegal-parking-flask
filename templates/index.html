@@ -473,6 +473,10 @@
                 left: 0.4rem;
                 border-radius: 6px;
             }
+            .video-frame {
+                border: 2px solid #111;
+                border-radius: 0 0 10px 10px;
+            }
             .violations-section {
                 margin: 0.5rem;
                 padding: 0.8rem;
@@ -661,8 +665,8 @@ function setRaspiBase(url) {
         RASPI_BASE = url;
         console.log("Using Pi public URL for feeds:", RASPI_BASE);
     } else {
-        RASPI_BASE = "";
-        console.warn("WARNING: Pi public URL not set. Video feeds will not work.");
+        RASPI_BASE = window.location.origin;
+        console.warn("WARNING: Pi public URL not set. Using Railway origin for feeds. This will NOT work for /video_feed_c1, /video_feed_c2, /api/camera_status.");
     }
 }
 
@@ -682,7 +686,7 @@ function fetchRaspiBaseAndInit() {
 function startApp() {
     reloadVideo(liveVideoC1, "/video_feed_c1");
     reloadVideo(liveVideoC2, "/video_feed_c2");
-    checkCameraStatus();
+    checkCameraStatus; // Call immediately on startup
     setInterval(checkCameraStatus, 5000);
     setInterval(checkServerHealth, 10000);
     loadViolationEvents();
@@ -695,18 +699,12 @@ const liveVideoC2 = document.getElementById('liveVideoC2');
 const overlayC1 = document.getElementById('reconnectingOverlayC1');
 const overlayC2 = document.getElementById('reconnectingOverlayC2');
 
-// Use RASPI_BASE for video feeds
+// Only reload the image, do not touch overlay here
 function reloadVideo(imgElement, feedPath){
     let retry = 0;
     function tryLoad(){
         const ts = Date.now();
-        let url = "";
-        if (RASPI_BASE && RASPI_BASE !== window.location.origin) {
-            url = RASPI_BASE.replace(/\/$/, '') + feedPath;
-        } else {
-            url = feedPath;
-        }
-        imgElement.src = `${url}?t=${ts}`;
+        imgElement.src = `${feedPath}?t=${ts}`;
         imgElement.onerror = () => {
             retry++;
             setTimeout(tryLoad, Math.min(500*(retry**1.5), 5000));
@@ -719,13 +717,9 @@ function reloadVideo(imgElement, feedPath){
     tryLoad();
 }
 
-// Use RASPI_BASE for camera status API
+// Only toggle overlays based on camera status API
 function checkCameraStatus() {
-    let url = "/api/camera_status";
-    if (RASPI_BASE && RASPI_BASE !== window.location.origin) {
-        url = RASPI_BASE.replace(/\/$/, '') + "/api/camera_status";
-    }
-    fetch(url)
+    fetch('/api/camera_status')
         .then(async r => {
             let status;
             try {
@@ -829,10 +823,6 @@ function startClock() {
 }
 
 window.onload = fetchRaspiBaseAndInit;
-/*
-NOTE: All /api/* endpoints and video feeds are served by the Raspberry Pi server via the cloud link.
-This interface communicates with the Pi using the public URL set in RASPI_BASE.
-*/
 </script>
 <!--
 NOTE: All /api/* endpoints and video feeds are served by the Raspberry Pi server via the cloud link.
