@@ -6,10 +6,8 @@ import traceback
 import subprocess
 import re
 import requests
-import socket
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
-from werkzeug.exceptions import NotFound
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -81,16 +79,8 @@ def update_config_py(new_settings):
     importlib.reload(config)
 
 # --- Camera setup ---
-def is_railway():
-    # Railway sets this env var in all containers
-    return os.environ.get("RAILWAY_STATIC_URL") is not None
-
-if not is_railway():
-    camera_1 = cv2.VideoCapture(0)
-    camera_2 = cv2.VideoCapture(1)
-else:
-    camera_1 = None
-    camera_2 = None
+camera_1 = cv2.VideoCapture(0)
+camera_2 = cv2.VideoCapture(1)
 
 # Fallback blank frame if camera fails
 if not os.path.exists(BLANK_FRAME_PATH):
@@ -100,14 +90,11 @@ if not os.path.exists(BLANK_FRAME_PATH):
 def gen(camera):
     blank_frame = cv2.imread(BLANK_FRAME_PATH)
     while True:
-        if camera is None:
+        ret, frame = camera.read()
+        if not ret:
             frame = blank_frame
         else:
-            ret, frame = camera.read()
-            if not ret:
-                frame = blank_frame
-            else:
-                frame = cv2.resize(frame, CAMERA_FRAME_SIZE)
+            frame = cv2.resize(frame, CAMERA_FRAME_SIZE)
         ret, jpeg = cv2.imencode('.jpg', frame)
         if not ret:
             continue
@@ -248,19 +235,17 @@ def api_events():
     return jsonify(EVENTS)
 
 def get_pi_base():
-    # Returns the current Pi public URL, or None if not set
+    # Returns the current Pi public URL, or raises if not set
     if not PI_PUBLIC_URL:
-        return None
+        raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip('/')
 
 @app.route('/api/<path:path>', methods=['GET', 'POST', 'OPTIONS'])
 def proxy_api(path):
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
-    pi_base = get_pi_base()
-    if not pi_base:
-        return add_cors_headers(jsonify({"success": False, "error": "Pi public URL not set. Please wait for the Pi to connect."})), 503
     try:
+        pi_base = get_pi_base()
         url = f"{pi_base}/api/{path}"
         if request.method == 'GET':
             resp = requests.get(url, params=request.args, timeout=10)
@@ -268,51 +253,33 @@ def proxy_api(path):
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
         proxy_response = Response(resp.content, resp.status_code, resp.headers.items())
         return add_cors_headers(proxy_response)
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"Proxy API connection error: {e}")
-        return add_cors_headers(jsonify({
-            "success": False,
-            "error": "Unable to connect to Pi server. The Pi may be offline or the tunnel is not active."
-        })), 502
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         logger.error(f"Proxy API error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
 @app.route('/video_feed_c1')
 def proxy_video_feed_c1():
-    pi_base = get_pi_base()
-    if not pi_base:
-        return add_cors_headers(Response("Camera feed unavailable: Pi public URL not set. Please wait for the Pi to connect.", 503))
     try:
+        pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c1"
         resp = requests.get(url, stream=True, timeout=10)
         proxy_response = Response(stream_with_context(resp.iter_content(chunk_size=4096)),
                                   content_type=resp.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame'))
         return add_cors_headers(proxy_response)
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"Proxy video_feed_c1 connection error: {e}")
-        return add_cors_headers(Response(
-            "Camera feed unavailable: Unable to connect to Pi server. The Pi may be offline or the tunnel is not active.", 502))
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         logger.error(f"Proxy video_feed_c1 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
 
 @app.route('/video_feed_c2')
 def proxy_video_feed_c2():
-    pi_base = get_pi_base()
-    if not pi_base:
-        return add_cors_headers(Response("Camera feed unavailable: Pi public URL not set. Please wait for the Pi to connect.", 503))
     try:
+        pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c2"
         resp = requests.get(url, stream=True, timeout=10)
         proxy_response = Response(stream_with_context(resp.iter_content(chunk_size=4096)),
                                   content_type=resp.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame'))
         return add_cors_headers(proxy_response)
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"Proxy video_feed_c2 connection error: {e}")
-        return add_cors_headers(Response(
-            "Camera feed unavailable: Unable to connect to Pi server. The Pi may be offline or the tunnel is not active.", 502))
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         logger.error(f"Proxy video_feed_c2 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
 
@@ -320,10 +287,8 @@ def proxy_video_feed_c2():
 def api_camera_status():
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
-    pi_base = get_pi_base()
-    if not pi_base:
-        return add_cors_headers(jsonify({"success": False, "error": "Pi public URL not set. Please wait for the Pi to connect."})), 503
     try:
+        pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
         try:
@@ -332,13 +297,7 @@ def api_camera_status():
             logger.error(f"Invalid JSON from Pi camera_status: {resp.text[:200]}")
             return add_cors_headers(jsonify({"success": False, "error": "Invalid response from Pi server"})), 502
         return add_cors_headers(jsonify(data))
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"Proxy camera_status connection error: {e}")
-        return add_cors_headers(jsonify({
-            "success": False,
-            "error": "Unable to connect to Pi server. The Pi may be offline or the tunnel is not active."
-        })), 502
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         logger.error(f"Proxy camera_status error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
@@ -440,12 +399,6 @@ def zone_selector():
 # --- Error handler ---
 @app.errorhandler(Exception)
 def handle_exception(e):
-    # Handle 404 Not Found separately (don't log as error)
-    if isinstance(e, NotFound):
-        if request.path.startswith('/api/'):
-            return jsonify({"success": False, "error": "Not found"}), 404
-        return make_response("Not Found", 404)
-    # Log all other exceptions
     logger.error("Unhandled Exception: %s\n%s", e, traceback.format_exc())
     if request.path.startswith('/api/'):
         return jsonify({"success": False, "error": str(e)}), 500
