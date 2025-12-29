@@ -415,6 +415,10 @@ def api_settings():
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     })
 
+@app.route('/api/public_url')
+def api_public_url():
+    return jsonify({"public_url": app.config.get("PUBLIC_URL", "")})
+
 # --- Graceful shutdown ---
 def shutdown(sig, frame):
     print("Shutting down...")

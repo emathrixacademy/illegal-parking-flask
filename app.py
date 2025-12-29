@@ -125,6 +125,21 @@ def start_cloudflared(port=DEFAULT_PORT):
 # --- Store latest Pi public URL in memory ---
 PI_PUBLIC_URL = ""
 
+def fetch_pi_public_url():
+    """Fetch the Pi's public URL from the Pi server and update PI_PUBLIC_URL."""
+    global PI_PUBLIC_URL
+    try:
+        # Use the configured Pi IP and port to fetch the public URL
+        pi_url = f"http://{DEFAULT_RASPI_IP}:{DEFAULT_RASPI_PORT}/api/public_url"
+        resp = requests.get(pi_url, timeout=5)
+        if resp.ok:
+            data = resp.json()
+            if data.get("public_url"):
+                PI_PUBLIC_URL = data["public_url"]
+                logger.info(f"Fetched Pi public URL: {PI_PUBLIC_URL}")
+    except Exception as e:
+        logger.warning(f"Could not fetch Pi public URL: {e}")
+
 @app.route('/api/set_pi_url', methods=['POST'])
 def set_pi_url():
     global PI_PUBLIC_URL
@@ -415,5 +430,9 @@ if __name__=="__main__":
     except Exception as e:
         print("Failed to start Cloudflare Tunnel:", e)
         app.config["PUBLIC_URL"] = ""
+
+    # Try to fetch the Pi's public URL from the Pi server if not set
+    if not PI_PUBLIC_URL:
+        fetch_pi_public_url()
 
     app.run(host='0.0.0.0', port=port, threaded=True)
