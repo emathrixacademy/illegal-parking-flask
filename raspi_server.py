@@ -415,6 +415,17 @@ def api_settings():
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     })
 
+@app.route('/api/get_pi_url')
+def get_pi_url():
+    """Return the current public URL of this Pi server (if available)."""
+    public_url = app.config.get("PUBLIC_URL", "")
+    return jsonify({"public_url": public_url})
+
+@app.route('/api/events')
+def api_events():
+    """Stub: Pi does not store events, return empty list."""
+    return jsonify([])
+
 # --- Graceful shutdown ---
 def shutdown(sig, frame):
     print("Shutting down...")

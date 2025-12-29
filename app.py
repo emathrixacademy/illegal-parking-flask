@@ -6,6 +6,7 @@ import traceback
 import subprocess
 import re
 import requests
+import socket
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
 
@@ -255,7 +256,13 @@ def proxy_api(path):
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
         proxy_response = Response(resp.content, resp.status_code, resp.headers.items())
         return add_cors_headers(proxy_response)
-    except Exception as e:
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Proxy API connection error: {e}")
+        return add_cors_headers(jsonify({
+            "success": False,
+            "error": "Unable to connect to Pi server. The Pi may be offline or the tunnel is not active."
+        })), 502
+    except requests.exceptions.RequestException as e:
         logger.error(f"Proxy API error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
@@ -270,7 +277,11 @@ def proxy_video_feed_c1():
         proxy_response = Response(stream_with_context(resp.iter_content(chunk_size=4096)),
                                   content_type=resp.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame'))
         return add_cors_headers(proxy_response)
-    except Exception as e:
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Proxy video_feed_c1 connection error: {e}")
+        return add_cors_headers(Response(
+            "Camera feed unavailable: Unable to connect to Pi server. The Pi may be offline or the tunnel is not active.", 502))
+    except requests.exceptions.RequestException as e:
         logger.error(f"Proxy video_feed_c1 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
 
@@ -285,7 +296,11 @@ def proxy_video_feed_c2():
         proxy_response = Response(stream_with_context(resp.iter_content(chunk_size=4096)),
                                   content_type=resp.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame'))
         return add_cors_headers(proxy_response)
-    except Exception as e:
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Proxy video_feed_c2 connection error: {e}")
+        return add_cors_headers(Response(
+            "Camera feed unavailable: Unable to connect to Pi server. The Pi may be offline or the tunnel is not active.", 502))
+    except requests.exceptions.RequestException as e:
         logger.error(f"Proxy video_feed_c2 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
 
@@ -305,7 +320,13 @@ def api_camera_status():
             logger.error(f"Invalid JSON from Pi camera_status: {resp.text[:200]}")
             return add_cors_headers(jsonify({"success": False, "error": "Invalid response from Pi server"})), 502
         return add_cors_headers(jsonify(data))
-    except Exception as e:
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Proxy camera_status connection error: {e}")
+        return add_cors_headers(jsonify({
+            "success": False,
+            "error": "Unable to connect to Pi server. The Pi may be offline or the tunnel is not active."
+        })), 502
+    except requests.exceptions.RequestException as e:
         logger.error(f"Proxy camera_status error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
