@@ -641,6 +641,7 @@ sidebar.querySelectorAll('.nav-link').forEach(link => {
 });
 
 let RASPI_BASE = "{{ public_url }}";
+let cloudLinkActive = false; // Track cloud link status
 
 // Set video feed src to use the cloud link directly
 function updateVideoFeeds() {
@@ -649,6 +650,10 @@ function updateVideoFeeds() {
     if (c1 && RASPI_BASE) c1.src = RASPI_BASE + '/video_feed_c1';
     if (c2 && RASPI_BASE) c2.src = RASPI_BASE + '/video_feed_c2';
 }
+
+// --- Reconnecting overlays per camera ---
+const overlayC1 = document.getElementById('reconnectingOverlayC1');
+const overlayC2 = document.getElementById('reconnectingOverlayC2');
 
 // Poll for the latest Pi public URL every 3 seconds and update feeds if changed
 function pollRaspiBase() {
@@ -666,6 +671,8 @@ setInterval(pollRaspiBase, 3000);
 
 document.addEventListener('DOMContentLoaded', function() {
     updateVideoFeeds();
+    checkServerHealth();
+    setInterval(checkServerHealth, 2000); // Poll health and camera status every 2s
 });
 
 // --- Patch all API calls to use the latest RASPI_BASE ---
@@ -676,8 +683,13 @@ function apiFetch(path, options = {}) {
 }
 
 // Update all fetch('/api/...') and fetch('/video_feed_c1') to use apiFetch
-// Example for camera status:
 function checkCameraStatus() {
+    // If cloud link is not active, show both overlays as reconnecting
+    if (!cloudLinkActive) {
+        overlayC1.classList.add('active');
+        overlayC2.classList.add('active');
+        return;
+    }
     apiFetch('/api/camera_status')
         .then(async r => {
             let status;
@@ -687,7 +699,6 @@ function checkCameraStatus() {
                 // Do NOT force overlays to active on JSON error, just leave as-is
                 return;
             }
-            // Only show overlay if camera is explicitly offline
             overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
             overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
         })
@@ -696,7 +707,6 @@ function checkCameraStatus() {
         });
 }
 
-// Similarly, update other fetch('/api/...') calls to apiFetch('/api/...')
 function checkServerHealth() {
     const banner = document.getElementById('serverStatusBanner');
     const icon = document.getElementById('serverStatusIcon');
@@ -705,12 +715,16 @@ function checkServerHealth() {
     apiFetch('/api/cloud_link_status')
         .then(res => res.json())
         .then(linkStatus => {
-            if (!linkStatus.cloud_link_active) {
+            cloudLinkActive = !!linkStatus.cloud_link_active;
+            if (!cloudLinkActive) {
                 banner.classList.remove('alert-success', 'alert-danger');
                 banner.classList.add('alert-warning');
                 icon.innerHTML = '<i class="bi bi-cloud-slash-fill"></i>';
                 text.textContent = ' Cloud Link Not Connected';
                 banner.style.display = '';
+                // Show reconnecting overlays for both cameras
+                overlayC1.classList.add('active');
+                overlayC2.classList.add('active');
                 return;
             }
             apiFetch('/api/camera_status')
@@ -738,13 +752,19 @@ function checkServerHealth() {
                     text.textContent = ' Server Error: Unable to get camera status';
                     banner.style.display = '';
                 });
+            // After health check, update reconnecting overlays based on camera status
+            checkCameraStatus();
         })
         .catch(() => {
+            cloudLinkActive = false;
             banner.classList.remove('alert-success', 'alert-warning');
             banner.classList.add('alert-danger');
             icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i>';
             text.textContent = ' Server Offline: Unable to connect';
             banner.style.display = '';
+            // Show reconnecting overlays for both cameras
+            overlayC1.classList.add('active');
+            overlayC2.classList.add('active');
         });
 }
 
