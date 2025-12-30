@@ -380,11 +380,12 @@ def api_settings():
             for i, line in enumerate(lines):
                 if pattern.match(line):
                     if key == "PARKING_ZONES":
-                        lines[i] = f"{key} = {pyjson.dumps(value)}\n"
+                        # Write as single line, no indentation, no trailing comma
+                        lines[i] = f"{key} = {pyjson.dumps(value, separators=(',', ':'))}\n"
                     else:
                         lines[i] = f"{key} = {value}\n"
                     return
-            lines.append(f"{key} = {pyjson.dumps(value) if key=='PARKING_ZONES' else value}\n")
+            lines.append(f"{key} = {pyjson.dumps(value, separators=(',', ':'))}\n" if key == "PARKING_ZONES" else f"{key} = {value}\n")
 
         # Update config values
         if "VIOLATION_TIME_THRESHOLD" in data:
