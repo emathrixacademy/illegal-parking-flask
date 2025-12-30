@@ -394,8 +394,18 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         })
-        .then(r => r.json())
-        .then(result => {
+        .then(async r => {
+            let result;
+            let text = await r.text();
+            try {
+                result = JSON.parse(text);
+            } catch (err) {
+                // Not JSON, probably HTML error page
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Server error: <br><small>' +
+                    text.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                    '</small></div>';
+                return;
+            }
             if (result.success) {
                 document.getElementById('status').innerHTML = '<div class="alert alert-success">Settings saved successfully!</div>';
                 setTimeout(() => {
