@@ -114,7 +114,11 @@ def set_pi_url():
 @app.route('/api/get_pi_url')
 def get_pi_url():
     # Always return the latest public URL
-    return jsonify({"public_url": PI_PUBLIC_URL})
+    resp = jsonify({"public_url": PI_PUBLIC_URL})
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    return resp
 
 @app.route('/api/pi_public_url')
 def pi_public_url():
