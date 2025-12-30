@@ -831,14 +831,10 @@ function updateRaspiBase() {
             if (data.public_url && data.public_url !== RASPI_BASE) {
                 RASPI_BASE = data.public_url;
                 console.log("Updated RASPI_BASE:", RASPI_BASE);
-                if (!feedsStarted && RASPI_BASE) {
-                    startFeeds();
-                    feedsStarted = true;
-                }
+                updateVideoFeeds();
             }
-            // If not started and now have a URL, start feeds
             if (!feedsStarted && RASPI_BASE) {
-                startFeeds();
+                updateVideoFeeds();
                 feedsStarted = true;
             }
         })
@@ -846,18 +842,16 @@ function updateRaspiBase() {
 }
 setInterval(updateRaspiBase, 3000);
 
-function startFeeds() {
-    // Set video feed sources
+function updateVideoFeeds() {
     const c1 = document.getElementById('video_feed_c1');
     const c2 = document.getElementById('video_feed_c2');
     if (c1) c1.src = RASPI_BASE + '/video_feed_c1';
     if (c2) c2.src = RASPI_BASE + '/video_feed_c2';
-    // Start any other polling here, e.g. camera status
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     if (RASPI_BASE) {
-        startFeeds();
+        updateVideoFeeds();
         feedsStarted = true;
     }
 });
