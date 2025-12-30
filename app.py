@@ -326,6 +326,14 @@ def handle_exception(e):
         return jsonify({"success": False, "error": str(e)}), 500
     return make_response("Internal Server Error", 500)
 
+@app.errorhandler(404)
+def not_found(e):
+    # For API routes, return JSON
+    if request.path.startswith('/api/'):
+        return jsonify({"success": False, "error": "Not Found"}), 404
+    # For others, show a simple HTML page or message
+    return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
+
 # --- Main ---
 if __name__=="__main__": 
     port = DEFAULT_PORT
