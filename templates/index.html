@@ -677,6 +677,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // --- Patch all API calls to use the latest RASPI_BASE ---
 function apiFetch(path, options = {}) {
+    // If path starts with '/api', always use the local server (not RASPI_BASE)
+    if (path.startsWith('/api')) {
+        return fetch(path, options);
+    }
     // If path starts with '/', use RASPI_BASE, else use as is
     let url = path.startsWith('/') ? (RASPI_BASE + path) : path;
     return fetch(url, options);
