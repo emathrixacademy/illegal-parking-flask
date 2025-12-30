@@ -1,6 +1,5 @@
 import os
 import logging
-import cv2
 import importlib
 import traceback
 import subprocess
@@ -77,29 +76,6 @@ def update_config_py(new_settings):
     with open(config_path, "w") as f:
         f.writelines(lines)
     importlib.reload(config)
-
-# --- Camera setup ---
-camera_1 = cv2.VideoCapture(0)
-camera_2 = cv2.VideoCapture(1)
-
-# Fallback blank frame if camera fails
-if not os.path.exists(BLANK_FRAME_PATH):
-    import numpy as np
-    cv2.imwrite(BLANK_FRAME_PATH, np.zeros((CAMERA_FRAME_SIZE[1], CAMERA_FRAME_SIZE[0], 3), dtype=np.uint8))
-
-def gen(camera):
-    blank_frame = cv2.imread(BLANK_FRAME_PATH)
-    while True:
-        ret, frame = camera.read()
-        if not ret:
-            frame = blank_frame
-        else:
-            frame = cv2.resize(frame, CAMERA_FRAME_SIZE)
-        ret, jpeg = cv2.imencode('.jpg', frame)
-        if not ret:
-            continue
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
 
 # --- Start Cloudflare Tunnel ---
 def start_cloudflared(port=DEFAULT_PORT):
