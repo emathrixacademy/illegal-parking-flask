@@ -668,61 +668,17 @@ document.addEventListener('DOMContentLoaded', function() {
     updateVideoFeeds();
 });
 
-function ensureRaspiBase(cb) {
-    if (!RASPI_BASE || RASPI_BASE === "{{ public_url }}") {
-        fetch('/api/get_pi_url')
-            .then(r => r.json())
-            .then(data => {
-                if (data.public_url) {
-                    RASPI_BASE = data.public_url;
-                }
-                if (cb) cb();
-            });
-    } else {
-        if (cb) cb();
-    }
+// --- Patch all API calls to use the latest RASPI_BASE ---
+function apiFetch(path, options = {}) {
+    // If path starts with '/', use RASPI_BASE, else use as is
+    let url = path.startsWith('/') ? (RASPI_BASE + path) : path;
+    return fetch(url, options);
 }
 
-function setRaspiBase(url) {
-    if (url && url.trim() !== "") {
-        RASPI_BASE = url;
-        console.log("Using Pi public URL for feeds:", RASPI_BASE);
-    } else {
-        RASPI_BASE = window.location.origin;
-        console.warn("WARNING: Pi public URL not set. Using Railway origin for feeds. This will NOT work for /video_feed_c1, /video_feed_c2, /api/camera_status.");
-    }
-}
-
-function fetchRaspiBaseAndInit() {
-    fetch('/api/get_pi_url')
-        .then(r => r.json())
-        .then(data => {
-            setRaspiBase(data.public_url);
-            startApp();
-        })
-        .catch(() => {
-            setRaspiBase("");
-            startApp();
-        });
-}
-
-function startApp() {
-    checkCameraStatus; // Call immediately on startup
-    setInterval(checkCameraStatus, 5000);
-    setInterval(checkServerHealth, 10000);
-    loadViolationEvents();
-    setInterval(loadViolationEvents, 10000);
-    startClock();
-}
-
-const liveVideoC1 = document.getElementById('liveVideoC1');
-const liveVideoC2 = document.getElementById('liveVideoC2');
-const overlayC1 = document.getElementById('reconnectingOverlayC1');
-const overlayC2 = document.getElementById('reconnectingOverlayC2');
-
-// Only toggle overlays based on camera status API
+// Update all fetch('/api/...') and fetch('/video_feed_c1') to use apiFetch
+// Example for camera status:
 function checkCameraStatus() {
-    fetch('/api/camera_status')
+    apiFetch('/api/camera_status')
         .then(async r => {
             let status;
             try {
@@ -740,12 +696,13 @@ function checkCameraStatus() {
         });
 }
 
+// Similarly, update other fetch('/api/...') calls to apiFetch('/api/...')
 function checkServerHealth() {
     const banner = document.getElementById('serverStatusBanner');
     const icon = document.getElementById('serverStatusIcon');
     const text = document.getElementById('serverStatusText');
 
-    fetch('/api/cloud_link_status')
+    apiFetch('/api/cloud_link_status')
         .then(res => res.json())
         .then(linkStatus => {
             if (!linkStatus.cloud_link_active) {
@@ -756,7 +713,7 @@ function checkServerHealth() {
                 banner.style.display = '';
                 return;
             }
-            fetch('/api/camera_status')
+            apiFetch('/api/camera_status')
                 .then(r => r.json())
                 .then(status => {
                     const cam1 = status.Camera_1 && status.Camera_1.online;
@@ -793,7 +750,7 @@ function checkServerHealth() {
 
 async function loadViolationEvents(){
     try{
-        const res=await fetch('/api/events'); const events=await res.json();
+        const res=await apiFetch('/api/events'); const events=await res.json();
         const container=document.getElementById('violationEvents');
         if(!events.length){
             container.innerHTML="<div class='alert alert-info'>No violations detected</div>";
