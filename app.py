@@ -321,6 +321,9 @@ def api_camera_status():
         pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            logger.error(f"Pi camera_status returned HTTP {resp.status_code}: {resp.text[:200]}")
+            return add_cors_headers(jsonify({"success": False, "error": f"Pi server returned HTTP {resp.status_code}"})), 502
         try:
             data = resp.json()
         except Exception:
