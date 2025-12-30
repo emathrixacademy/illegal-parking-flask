@@ -707,8 +707,8 @@ function fetchRaspiBaseAndInit() {
 }
 
 function startApp() {
-    checkCameraStatus; // Call immediately on startup
-    setInterval(checkCameraStatus, 5000);
+    checkCameraStatus(); // Call immediately on startup
+    setInterval(checkCameraStatus, 2000); // Poll every 2 seconds for more responsive monitoring
     setInterval(checkServerHealth, 10000);
     loadViolationEvents();
     setInterval(loadViolationEvents, 10000);
@@ -733,9 +733,10 @@ function checkCameraStatus() {
                 return;
             }
             if (!linkStatus.cloud_link_active) {
-                // Cloud link not reachable, show reconnecting overlays
                 overlayC1.classList.add('active');
                 overlayC2.classList.add('active');
+                liveVideoC1.src = ""; // Stop video feed if not connected
+                liveVideoC2.src = "";
                 return;
             }
             // Cloud link is reachable, check camera status
@@ -747,19 +748,36 @@ function checkCameraStatus() {
                     } catch (e) {
                         overlayC1.classList.add('active');
                         overlayC2.classList.add('active');
+                        liveVideoC1.src = "";
+                        liveVideoC2.src = "";
                         return;
                     }
                     overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
                     overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
+                    // Only show video feed if online
+                    if (status.Camera_1 && status.Camera_1.online === true) {
+                        liveVideoC1.src = RASPI_BASE + '/video_feed_c1';
+                    } else {
+                        liveVideoC1.src = "";
+                    }
+                    if (status.Camera_2 && status.Camera_2.online === true) {
+                        liveVideoC2.src = RASPI_BASE + '/video_feed_c2';
+                    } else {
+                        liveVideoC2.src = "";
+                    }
                 })
                 .catch(() => {
                     overlayC1.classList.add('active');
                     overlayC2.classList.add('active');
+                    liveVideoC1.src = "";
+                    liveVideoC2.src = "";
                 });
         })
         .catch(() => {
             overlayC1.classList.add('active');
             overlayC2.classList.add('active');
+            liveVideoC1.src = "";
+            liveVideoC2.src = "";
         });
 }
 
