@@ -668,53 +668,6 @@ document.addEventListener('DOMContentLoaded', function() {
     updateVideoFeeds();
 });
 
-function ensureRaspiBase(cb) {
-    if (!RASPI_BASE || RASPI_BASE === "{{ public_url }}") {
-        fetch('/api/get_pi_url')
-            .then(r => r.json())
-            .then(data => {
-                if (data.public_url) {
-                    RASPI_BASE = data.public_url;
-                }
-                if (cb) cb();
-            });
-    } else {
-        if (cb) cb();
-    }
-}
-
-function setRaspiBase(url) {
-    if (url && url.trim() !== "") {
-        RASPI_BASE = url;
-        console.log("Using Pi public URL for feeds:", RASPI_BASE);
-    } else {
-        RASPI_BASE = window.location.origin;
-        console.warn("WARNING: Pi public URL not set. Using Railway origin for feeds. This will NOT work for /video_feed_c1, /video_feed_c2, /api/camera_status.");
-    }
-}
-
-function fetchRaspiBaseAndInit() {
-    fetch('/api/get_pi_url')
-        .then(r => r.json())
-        .then(data => {
-            setRaspiBase(data.public_url);
-            startApp();
-        })
-        .catch(() => {
-            setRaspiBase("");
-            startApp();
-        });
-}
-
-function startApp() {
-    checkCameraStatus; // Call immediately on startup
-    setInterval(checkCameraStatus, 5000);
-    setInterval(checkServerHealth, 10000);
-    loadViolationEvents();
-    setInterval(loadViolationEvents, 10000);
-    startClock();
-}
-
 const liveVideoC1 = document.getElementById('liveVideoC1');
 const liveVideoC2 = document.getElementById('liveVideoC2');
 const overlayC1 = document.getElementById('reconnectingOverlayC1');
@@ -825,7 +778,7 @@ function startClock() {
     setInterval(updateClock, 1000);
 }
 
-window.onload = fetchRaspiBaseAndInit;
+window.onload = updateVideoFeeds;
 </script>
 
 <!--
