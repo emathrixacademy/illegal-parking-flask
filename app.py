@@ -283,16 +283,31 @@ def api_camera_status():
         resp = requests.get(url, timeout=10)
         try:
             data = resp.json()
+            # Defensive: ensure both cameras are present
+            cam1 = data.get("Camera_1", {})
+            cam2 = data.get("Camera_2", {})
+            return add_cors_headers(jsonify({
+                "Camera_1": {
+                    "reconnecting": cam1.get("reconnecting", False),
+                    "online": cam1.get("online", False)
+                },
+                "Camera_2": {
+                    "reconnecting": cam2.get("reconnecting", False),
+                    "online": cam2.get("online", False)
+                }
+            }))
         except Exception:
-            logger.error(f"Invalid JSON from Pi camera_status: {resp.text[:200]}")
-            return add_cors_headers(jsonify({"success": False, "error": "Invalid response from Pi server"})), 502
-        return add_cors_headers(jsonify(data))
+            # Pi server returned invalid JSON (likely restarting)
+            return add_cors_headers(jsonify({
+                "Camera_1": {"reconnecting": True, "online": False},
+                "Camera_2": {"reconnecting": True, "online": False}
+            })), 200
     except Exception as e:
-        if str(e) == "Pi public URL not set":
-            # Do not log this error
-            return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
-        logger.error(f"Proxy camera_status error: {e}")
-        return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
+        # Pi server unreachable (likely restarting)
+        return add_cors_headers(jsonify({
+            "Camera_1": {"reconnecting": True, "online": False},
+            "Camera_2": {"reconnecting": True, "online": False}
+        })), 200
 
 # --- Error handler ---
 @app.errorhandler(Exception)
