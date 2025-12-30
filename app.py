@@ -123,9 +123,10 @@ def pi_public_url():
     logger.info(f"Pi public URL requested: {PI_PUBLIC_URL}")
     return jsonify({"public_url": PI_PUBLIC_URL})
 
-@app.route('/api/cloud_link_status')
+@app.route('/api/cloud_link_status', methods=['GET'])
 def cloud_link_status():
-    """Return whether the cloud link (Pi public URL) is set."""
+    global PI_PUBLIC_URL
+    # Always use the latest PI_PUBLIC_URL
     return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
 
 # --- CORS support ---
