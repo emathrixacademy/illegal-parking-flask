@@ -106,9 +106,13 @@ PI_URL_NOT_SET_LOGGED = False  # Add this flag
 def set_pi_url():
     global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
     data = request.get_json(force=True)
-    PI_PUBLIC_URL = data.get("public_url", "")
+    new_url = data.get("public_url", "")
+    if new_url and new_url != PI_PUBLIC_URL:
+        logger.info(f"Received new Pi public URL: {new_url} (old was: {PI_PUBLIC_URL})")
+        PI_PUBLIC_URL = new_url  # Overwrite with latest only
+    elif new_url:
+        logger.info(f"Received Pi public URL (unchanged): {new_url}")
     PI_URL_NOT_SET_LOGGED = False  # Reset error log flag when new URL is set
-    logger.info(f"Received new Pi public URL: {PI_PUBLIC_URL}")
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
 @app.route('/api/get_pi_url')
