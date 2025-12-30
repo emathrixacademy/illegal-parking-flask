@@ -240,9 +240,8 @@ def api_events():
 def get_pi_base():
     global PI_URL_NOT_SET_LOGGED
     if not PI_PUBLIC_URL:
-        if not PI_URL_NOT_SET_LOGGED:
-            logger.error("Proxy request error: Pi public URL not set")
-            PI_URL_NOT_SET_LOGGED = True
+        # Do not log error here
+        PI_URL_NOT_SET_LOGGED = True
         raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip('/')
 
@@ -260,6 +259,9 @@ def proxy_api(path):
         proxy_response = Response(resp.content, resp.status_code, resp.headers.items())
         return add_cors_headers(proxy_response)
     except Exception as e:
+        if str(e) == "Pi public URL not set":
+            # Do not log this error
+            return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
         logger.error(f"Proxy API error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
@@ -273,6 +275,9 @@ def proxy_video_feed_c1():
                                   content_type=resp.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame'))
         return add_cors_headers(proxy_response)
     except Exception as e:
+        if str(e) == "Pi public URL not set":
+            # Do not log this error
+            return add_cors_headers(Response("Camera feed unavailable", 502))
         logger.error(f"Proxy video_feed_c1 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
 
@@ -286,6 +291,9 @@ def proxy_video_feed_c2():
                                   content_type=resp.headers.get('Content-Type', 'multipart/x-mixed-replace; boundary=frame'))
         return add_cors_headers(proxy_response)
     except Exception as e:
+        if str(e) == "Pi public URL not set":
+            # Do not log this error
+            return add_cors_headers(Response("Camera feed unavailable", 502))
         logger.error(f"Proxy video_feed_c2 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
 
@@ -304,6 +312,9 @@ def api_camera_status():
             return add_cors_headers(jsonify({"success": False, "error": "Invalid response from Pi server"})), 502
         return add_cors_headers(jsonify(data))
     except Exception as e:
+        if str(e) == "Pi public URL not set":
+            # Do not log this error
+            return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
         logger.error(f"Proxy camera_status error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 

@@ -641,6 +641,7 @@ sidebar.querySelectorAll('.nav-link').forEach(link => {
 });
 
 let RASPI_BASE = "{{ public_url }}";
+
 // Set video feed src to use the cloud link directly
 function updateVideoFeeds() {
     const c1 = document.getElementById('liveVideoC1');
@@ -706,8 +707,6 @@ function fetchRaspiBaseAndInit() {
 }
 
 function startApp() {
-    reloadVideo(liveVideoC1, "/video_feed_c1");
-    reloadVideo(liveVideoC2, "/video_feed_c2");
     checkCameraStatus; // Call immediately on startup
     setInterval(checkCameraStatus, 5000);
     setInterval(checkServerHealth, 10000);
@@ -720,24 +719,6 @@ const liveVideoC1 = document.getElementById('liveVideoC1');
 const liveVideoC2 = document.getElementById('liveVideoC2');
 const overlayC1 = document.getElementById('reconnectingOverlayC1');
 const overlayC2 = document.getElementById('reconnectingOverlayC2');
-
-// Only reload the image, do not touch overlay here
-function reloadVideo(imgElement, feedPath){
-    let retry = 0;
-    function tryLoad(){
-        const ts = Date.now();
-        imgElement.src = `${feedPath}?t=${ts}`;
-        imgElement.onerror = () => {
-            retry++;
-            setTimeout(tryLoad, Math.min(500*(retry**1.5), 5000));
-        };
-        imgElement.onload = () => {
-            retry = 0;
-            setTimeout(tryLoad, 15000); // reload every 15s
-        };
-    }
-    tryLoad();
-}
 
 // Only toggle overlays based on camera status API
 function checkCameraStatus() {
