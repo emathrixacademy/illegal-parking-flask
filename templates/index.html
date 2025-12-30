@@ -642,8 +642,18 @@ sidebar.querySelectorAll('.nav-link').forEach(link => {
 
 let RASPI_BASE = ""; // Will be set dynamically
 
-// Set video feed src to use the cloud link directly
-function updateVideoFeeds() {
+// Set video feed src to use the latest cloud link directly
+async function updateVideoFeeds() {
+    // Always fetch the latest cloud link before updating feeds
+    try {
+        const resp = await fetch('/api/get_pi_url');
+        const data = await resp.json();
+        if (data.public_url) {
+            RASPI_BASE = data.public_url;
+        }
+    } catch (e) {
+        // If fetch fails, keep previous RASPI_BASE
+    }
     const c1 = document.getElementById('liveVideoC1');
     const c2 = document.getElementById('liveVideoC2');
     if (c1 && RASPI_BASE) c1.src = RASPI_BASE + '/video_feed_c1';
