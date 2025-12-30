@@ -730,12 +730,14 @@ function checkCameraStatus() {
             } catch (e) {
                 overlayC1.classList.add('active');
                 overlayC2.classList.add('active');
+                liveVideoC1.src = "";
+                liveVideoC2.src = "";
                 return;
             }
             if (!linkStatus.cloud_link_active) {
                 overlayC1.classList.add('active');
                 overlayC2.classList.add('active');
-                liveVideoC1.src = ""; // Stop video feed if not connected
+                liveVideoC1.src = "";
                 liveVideoC2.src = "";
                 return;
             }
@@ -752,18 +754,24 @@ function checkCameraStatus() {
                         liveVideoC2.src = "";
                         return;
                     }
-                    overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
-                    overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
-                    // Only show video feed if online
+                    // Always set video feed src if online, else clear
                     if (status.Camera_1 && status.Camera_1.online === true) {
-                        liveVideoC1.src = RASPI_BASE + '/video_feed_c1';
+                        if (!liveVideoC1.src || !liveVideoC1.src.includes('/video_feed_c1')) {
+                            liveVideoC1.src = RASPI_BASE + '/video_feed_c1';
+                        }
+                        overlayC1.classList.remove('active');
                     } else {
                         liveVideoC1.src = "";
+                        overlayC1.classList.add('active');
                     }
                     if (status.Camera_2 && status.Camera_2.online === true) {
-                        liveVideoC2.src = RASPI_BASE + '/video_feed_c2';
+                        if (!liveVideoC2.src || !liveVideoC2.src.includes('/video_feed_c2')) {
+                            liveVideoC2.src = RASPI_BASE + '/video_feed_c2';
+                        }
+                        overlayC2.classList.remove('active');
                     } else {
                         liveVideoC2.src = "";
+                        overlayC2.classList.add('active');
                     }
                 })
                 .catch(() => {
