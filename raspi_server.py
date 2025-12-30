@@ -378,15 +378,13 @@ def api_settings():
 
             def replace_line(key, value):
                 pattern = re.compile(rf"^{key}\s*=\s*.*$")
-                for i, line in enumerate(lines):
-                    if pattern.match(line):
-                        if key == "PARKING_ZONES":
-                            lines[i] = f"{key} = {pyjson.dumps(value, separators=(',', ':'))}\n"
-                        else:
-                            lines[i] = f"{key} = {value}\n"
-                        return
-                # Do not append if not found
-               
+                # Remove all previous lines for this key
+                lines[:] = [line for line in lines if not pattern.match(line)]
+                # Add the new line at the end (or you can insert at the original position if you want)
+                if key == "PARKING_ZONES":
+                    lines.append(f"{key} = {pyjson.dumps(value, separators=(',', ':'))}\n")
+                else:
+                    lines.append(f"{key} = {value}\n")
 
             # Update config values
             if "VIOLATION_TIME_THRESHOLD" in data:
