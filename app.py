@@ -203,6 +203,7 @@ def ping():
 @app.route('/api/settings', methods=['GET','POST'])
 def api_settings():
     try:
+        log_backend_event("Proxy /api/settings called", {"method": request.method})
         pi_base = get_pi_base()
         url = f"{pi_base}/api/settings"
         if request.method == 'GET':
@@ -212,17 +213,16 @@ def api_settings():
         else:
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
             logger.info("Proxy /api/settings POST: Pi returned %s %s", resp.status_code, resp.text)
-            # Try to forward the error message from the Pi server if not success
             try:
                 data = resp.json()
                 if not data.get("success", True):
                     return jsonify(data), resp.status_code
             except Exception:
-                # If not JSON, just forward the raw text
                 return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
     except Exception as e:
         logger.error(f"Proxy settings error: {e}")
+        log_backend_event("Proxy /api/settings error", str(e))
         return jsonify({"success": False, "error": str(e)}), 502
 
 @app.route('/api/raspi_ip')
@@ -396,6 +396,23 @@ def not_found(e):
         return jsonify({"success": False, "error": "Not Found"}), 404
     # For others, show a simple HTML page or message
     return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
+
+# --- Frontend logging ---
+@app.route('/api/frontend_log', methods=['POST'])
+def frontend_log():
+    """
+    Receives log messages from index.html and prints them to the Railway server log.
+    """
+    data = request.get_json(force=True)
+    msg = data.get("msg", "")
+    level = data.get("level", "info").lower()
+    if level == "error":
+        logger.error("[FRONTEND] %s", msg)
+    elif level == "warning":
+        logger.warning("[FRONTEND] %s", msg)
+    else:
+        logger.info("[FRONTEND] %s", msg)
+    return jsonify({"success": True})
 
 # --- Main ---
 if __name__=="__main__": 
