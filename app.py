@@ -8,6 +8,8 @@ import re
 import requests
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
+import threading
+import time
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -337,6 +339,26 @@ def api_camera_status():
         logger.error(f"Proxy camera_status error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
+# --- Cloudlink maintainer ---
+def cloudlink_maintainer():
+    global PI_PUBLIC_URL
+    last_url = None
+    while True:
+        try:
+            # Try to get the latest Pi public URL from the /api/get_pi_url endpoint (self)
+            resp = requests.get("http://localhost:5000/api/get_pi_url", timeout=5)
+            if resp.ok:
+                data = resp.json()
+                public_url = data.get("public_url", "")
+                if public_url and public_url != PI_PUBLIC_URL:
+                    logger.info(f"[Cloudlink Maintainer] Updating PI_PUBLIC_URL to: {public_url}")
+                    PI_PUBLIC_URL = public_url
+                    last_url = public_url
+            # Optionally: add more logic to check if the URL is still alive, etc.
+        except Exception as e:
+            logger.warning(f"[Cloudlink Maintainer] Failed to update PI_PUBLIC_URL: {e}")
+        time.sleep(10)
+
 # --- Error handler ---
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -356,6 +378,9 @@ def not_found(e):
 # --- Main ---
 if __name__=="__main__": 
     port = DEFAULT_PORT
+
+    # Start cloudlink maintainer thread
+    threading.Thread(target=cloudlink_maintainer, daemon=True).start()
 
     # Start cloudflared and get public URL
     try:

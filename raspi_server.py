@@ -431,53 +431,38 @@ def shutdown(sig, frame):
 signal.signal(signal.SIGINT, shutdown)
 signal.signal(signal.SIGTERM, shutdown)
 
-def cloudflared_maintainer():
-    """
-    Background thread to ensure Cloudflare tunnel is always running and public URL is posted.
-    """
-    import time
-    last_public_url = None
-    cf_proc = None
-    while True:
-        try:
-            # If no process or process has exited, start a new tunnel
-            if cf_proc is None or cf_proc.poll() is not None:
-                try:
-                    cf_proc, public_url = start_cloudflared(port=int(os.environ.get("PORT", 5000)))
-                    app.config["PUBLIC_URL"] = public_url
-                    last_public_url = public_url
-                except Exception as e:
-                    print("Failed to start Cloudflare Tunnel:", e)
-                    app.config["PUBLIC_URL"] = ""
-                    time.sleep(10)
-                    continue
-
-            # If public_url changed, notify Railway
-            public_url = app.config.get("PUBLIC_URL", "")
-            if public_url and public_url != last_public_url:
-                RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
-                try:
-                    resp = requests.post(
-                        f"{RAILWAY_API_URL}/api/set_pi_url",
-                        json={"public_url": public_url},
-                        timeout=5
-                    )
-                    print("Posted public URL to Railway:", resp.status_code, resp.text)
-                    if resp.status_code == 200:
-                        last_public_url = public_url
-                except Exception as e:
-                    print("Failed to notify Railway app:", e)
-            time.sleep(10)
-        except Exception as e:
-            print("Cloudflared maintainer error:", e)
-            time.sleep(10)
-
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on 0.0.0.0:{port}")
 
-    # Start the cloudflared maintainer thread
-    threading.Thread(target=cloudflared_maintainer, daemon=True).start()
+    # Start cloudflared automatically
+    try:
+        cf_proc, public_url = start_cloudflared(port)
+        app.config["PUBLIC_URL"] = public_url
+
+        # --- Notify Railway app of the public URL ---
+        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+        import time
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(
+                    f"{RAILWAY_API_URL}/api/set_pi_url",
+                    json={"public_url": public_url},
+                    timeout=5
+                )
+                print("Posted public URL to Railway:", resp.status_code, resp.text)
+                if resp.status_code == 200:
+                    break
+            except Exception as e:
+                print(f"Failed to notify Railway app (attempt {attempt+1}):", e)
+            time.sleep(2)
+        else:
+            print("Failed to notify Railway app after retries.")
+
+    except Exception as e:
+        print("Failed to start Cloudflare Tunnel:", e)
+        app.config["PUBLIC_URL"] = ""
 
     app.run(host='0.0.0.0', port=port, threaded=True)
 
