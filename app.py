@@ -160,12 +160,12 @@ def ping():
 @app.route('/api/settings', methods=['GET','POST'])
 def api_settings():
     try:
+        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/api/settings"
         if request.method == 'GET':
             resp = requests.get(url, timeout=10)
             logger.info("Proxy /api/settings GET: Pi returned %s %s", resp.status_code, resp.text)
-            # Ensure correct content type and pass-through
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
         else:
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
@@ -182,6 +182,7 @@ def raspi_ip():
 @app.route('/api/upload_event', methods=['POST'])
 def upload_event():
     try:
+        # Always use the latest PI_PUBLIC_URL if needed
         data = request.get_json(force=True)
         camera_id = data.get("camera_id")
         timestamp = data.get("timestamp", datetime.utcnow().isoformat())
@@ -213,12 +214,12 @@ def upload_event():
 
 @app.route('/api/events')
 def api_events():
+    # Always use the latest PI_PUBLIC_URL if needed
     return jsonify(EVENTS)
 
 def get_pi_base():
     global PI_URL_NOT_SET_LOGGED
     if not PI_PUBLIC_URL:
-        # Do not log error here
         PI_URL_NOT_SET_LOGGED = True
         raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip('/')
@@ -228,6 +229,7 @@ def proxy_api(path):
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
     try:
+        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/api/{path}"
         if request.method == 'GET':
@@ -238,7 +240,6 @@ def proxy_api(path):
         return add_cors_headers(proxy_response)
     except Exception as e:
         if str(e) == "Pi public URL not set":
-            # Do not log this error
             return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
         logger.error(f"Proxy API error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
@@ -246,6 +247,7 @@ def proxy_api(path):
 @app.route('/video_feed_c1')
 def proxy_video_feed_c1():
     try:
+        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c1"
         resp = requests.get(url, stream=True, timeout=10)
@@ -254,7 +256,6 @@ def proxy_video_feed_c1():
         return add_cors_headers(proxy_response)
     except Exception as e:
         if str(e) == "Pi public URL not set":
-            # Do not log this error
             return add_cors_headers(Response("Camera feed unavailable", 502))
         logger.error(f"Proxy video_feed_c1 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
@@ -262,6 +263,7 @@ def proxy_video_feed_c1():
 @app.route('/video_feed_c2')
 def proxy_video_feed_c2():
     try:
+        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c2"
         resp = requests.get(url, stream=True, timeout=10)
@@ -270,7 +272,6 @@ def proxy_video_feed_c2():
         return add_cors_headers(proxy_response)
     except Exception as e:
         if str(e) == "Pi public URL not set":
-            # Do not log this error
             return add_cors_headers(Response("Camera feed unavailable", 502))
         logger.error(f"Proxy video_feed_c2 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
@@ -280,20 +281,17 @@ def api_camera_status():
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
     try:
-        # --- SAMPLE LOGIC ---
+        # Always use the latest PI_PUBLIC_URL
         if not PI_PUBLIC_URL:
-            # Simulate: Camera_1 online, Camera_2 offline
             return add_cors_headers(jsonify({
                 "Camera_1": {"reconnecting": False, "online": True},
                 "Camera_2": {"reconnecting": True, "online": False}
             }))
-        # --- END SAMPLE LOGIC ---
         pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
         try:
             data = resp.json()
-            # Defensive: ensure both cameras are present
             cam1 = data.get("Camera_1", {})
             cam2 = data.get("Camera_2", {})
             return add_cors_headers(jsonify({
@@ -307,13 +305,11 @@ def api_camera_status():
                 }
             }))
         except Exception:
-            # Pi server returned invalid JSON (likely restarting)
             return add_cors_headers(jsonify({
                 "Camera_1": {"reconnecting": True, "online": False},
                 "Camera_2": {"reconnecting": True, "online": False}
             })), 200
     except Exception as e:
-        # Pi server unreachable (likely restarting)
         return add_cors_headers(jsonify({
             "Camera_1": {"reconnecting": True, "online": False},
             "Camera_2": {"reconnecting": True, "online": False}
@@ -321,10 +317,9 @@ def api_camera_status():
 
 @app.route('/api/health', methods=['GET'])
 def api_health():
-    # --- SAMPLE LOGIC ---
+    # Always use the latest PI_PUBLIC_URL
     if not PI_PUBLIC_URL:
         return jsonify({'status': 'sample', 'message': 'Demo mode: Pi not connected'})
-    # --- END SAMPLE LOGIC ---
     try:
         pi_base = get_pi_base()
         url = f"{pi_base}/api/health"
