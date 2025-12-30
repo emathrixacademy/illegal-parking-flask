@@ -7,6 +7,8 @@ import re
 import requests
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
+import threading
+import time
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -347,6 +349,25 @@ def not_found(e):
     # For others, show a simple HTML page or message
     return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
 
+# --- Polling function ---
+def poll_pi_cloudlink():
+    global PI_PUBLIC_URL
+    last_url = None
+    while True:
+        try:
+            resp = requests.get(DEFAULT_RAILWAY_API_URL + "/api/get_pi_url", timeout=5)
+            data = resp.json()
+            public_url = data.get("public_url", "")
+            if public_url != last_url:
+                logger.info(f"[CloudLink Poll] Pi public_url changed: {public_url}")
+                last_url = public_url
+            if public_url and public_url != PI_PUBLIC_URL:
+                logger.info(f"[CloudLink Poll] Updating PI_PUBLIC_URL to: {public_url}")
+                PI_PUBLIC_URL = public_url
+        except Exception as e:
+            logger.warning(f"[CloudLink Poll] Failed to get Pi public_url: {e}")
+        time.sleep(5)
+
 # --- Main ---
 if __name__=="__main__": 
     port = DEFAULT_PORT
@@ -358,5 +379,8 @@ if __name__=="__main__":
     except Exception as e:
         print("Failed to start Cloudflare Tunnel:", e)
         app.config["PUBLIC_URL"] = ""
+
+    # --- Start cloudlink polling thread ---
+    threading.Thread(target=poll_pi_cloudlink, daemon=True).start()
 
     app.run(host='0.0.0.0', port=port, threaded=True)
