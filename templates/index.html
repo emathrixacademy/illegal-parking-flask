@@ -640,7 +640,7 @@ sidebar.querySelectorAll('.nav-link').forEach(link => {
     });
 });
 
-let RASPI_BASE = "{{ public_url }}";
+let RASPI_BASE = ""; // Will be set dynamically
 
 // Set video feed src to use the cloud link directly
 function updateVideoFeeds() {
@@ -663,10 +663,6 @@ function pollRaspiBase() {
         .catch(() => {});
 }
 setInterval(pollRaspiBase, 3000);
-
-document.addEventListener('DOMContentLoaded', function() {
-    updateVideoFeeds();
-});
 
 // --- Patch all API calls to use the latest RASPI_BASE ---
 function apiFetch(path, options = {}) {
@@ -779,6 +775,30 @@ function startClock() {
     }
     updateClock();
     setInterval(updateClock, 1000);
+}
+
+// --- Initialization: Always get the latest cloud link before anything else ---
+function fetchRaspiBaseAndInit() {
+    fetch('/api/get_pi_url')
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.public_url) {
+                RASPI_BASE = data.public_url;
+                updateVideoFeeds();
+            }
+            // Now safe to start polling, loading events, etc.
+            pollRaspiBase();
+            checkCameraStatus();
+            checkServerHealth();
+            loadViolationEvents();
+            startClock();
+        })
+        .catch(() => {
+            // If failed, still try to start polling and show error states
+            pollRaspiBase();
+            checkServerHealth();
+            startClock();
+        });
 }
 
 window.onload = fetchRaspiBaseAndInit;
