@@ -149,17 +149,27 @@ def pi_public_url():
 
 @app.route('/api/cloud_link_status')
 def cloud_link_status():
-    """Return whether the cloud link (Pi public URL) is set and reachable."""
+    """Return detailed cloud link status."""
+    status = {
+        "cloud_link_active": False,
+        "reason": "",
+        "public_url": PI_PUBLIC_URL
+    }
+    if not PI_PUBLIC_URL:
+        status["reason"] = "No Pi public URL set"
+        return jsonify(status)
     try:
         pi_base = get_pi_base()
         url = f"{pi_base}/api/health"
         resp = requests.get(url, timeout=5)
         if resp.status_code == 200:
-            return jsonify({"cloud_link_active": True})
+            status["cloud_link_active"] = True
+            status["reason"] = "Pi reachable"
         else:
-            return jsonify({"cloud_link_active": False})
-    except Exception:
-        return jsonify({"cloud_link_active": False})
+            status["reason"] = f"Pi server returned HTTP {resp.status_code}"
+    except Exception as e:
+        status["reason"] = f"Error: {str(e)}"
+    return jsonify(status)
 
 # --- CORS support ---
 def add_cors_headers(response):

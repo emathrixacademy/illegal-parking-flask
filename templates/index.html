@@ -722,18 +722,40 @@ const overlayC2 = document.getElementById('reconnectingOverlayC2');
 
 // Only toggle overlays based on camera status API
 function checkCameraStatus() {
-    fetch('/api/camera_status')
-        .then(async r => {
-            let status;
+    fetch('/api/cloud_link_status')
+        .then(async res => {
+            let linkStatus;
             try {
-                status = await r.json();
+                linkStatus = await res.json();
             } catch (e) {
                 overlayC1.classList.add('active');
                 overlayC2.classList.add('active');
                 return;
             }
-            overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
-            overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
+            if (!linkStatus.cloud_link_active) {
+                // Cloud link not reachable, show reconnecting overlays
+                overlayC1.classList.add('active');
+                overlayC2.classList.add('active');
+                return;
+            }
+            // Cloud link is reachable, check camera status
+            fetch('/api/camera_status')
+                .then(async r => {
+                    let status;
+                    try {
+                        status = await r.json();
+                    } catch (e) {
+                        overlayC1.classList.add('active');
+                        overlayC2.classList.add('active');
+                        return;
+                    }
+                    overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
+                    overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
+                })
+                .catch(() => {
+                    overlayC1.classList.add('active');
+                    overlayC2.classList.add('active');
+                });
         })
         .catch(() => {
             overlayC1.classList.add('active');
