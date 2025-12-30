@@ -8,8 +8,6 @@ import re
 import requests
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
-import threading
-import time
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -149,27 +147,8 @@ def pi_public_url():
 
 @app.route('/api/cloud_link_status')
 def cloud_link_status():
-    """Return detailed cloud link status."""
-    status = {
-        "cloud_link_active": False,
-        "reason": "",
-        "public_url": PI_PUBLIC_URL
-    }
-    if not PI_PUBLIC_URL:
-        status["reason"] = "No Pi public URL set"
-        return jsonify(status)
-    try:
-        pi_base = get_pi_base()
-        url = f"{pi_base}/api/health"
-        resp = requests.get(url, timeout=5)
-        if resp.status_code == 200:
-            status["cloud_link_active"] = True
-            status["reason"] = "Pi reachable"
-        else:
-            status["reason"] = f"Pi server returned HTTP {resp.status_code}"
-    except Exception as e:
-        status["reason"] = f"Error: {str(e)}"
-    return jsonify(status)
+    """Return whether the cloud link (Pi public URL) is set."""
+    return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
 
 # --- CORS support ---
 def add_cors_headers(response):
@@ -203,26 +182,19 @@ def ping():
 @app.route('/api/settings', methods=['GET','POST'])
 def api_settings():
     try:
-        log_backend_event("Proxy /api/settings called", {"method": request.method})
         pi_base = get_pi_base()
         url = f"{pi_base}/api/settings"
         if request.method == 'GET':
             resp = requests.get(url, timeout=10)
             logger.info("Proxy /api/settings GET: Pi returned %s %s", resp.status_code, resp.text)
+            # Ensure correct content type and pass-through
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
         else:
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
             logger.info("Proxy /api/settings POST: Pi returned %s %s", resp.status_code, resp.text)
-            try:
-                data = resp.json()
-                if not data.get("success", True):
-                    return jsonify(data), resp.status_code
-            except Exception:
-                return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
     except Exception as e:
         logger.error(f"Proxy settings error: {e}")
-        log_backend_event("Proxy /api/settings error", str(e))
         return jsonify({"success": False, "error": str(e)}), 502
 
 @app.route('/api/raspi_ip')
@@ -333,9 +305,6 @@ def api_camera_status():
         pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
-        if resp.status_code != 200:
-            logger.error(f"Pi camera_status returned HTTP {resp.status_code}: {resp.text[:200]}")
-            return add_cors_headers(jsonify({"success": False, "error": f"Pi server returned HTTP {resp.status_code}"})), 502
         try:
             data = resp.json()
         except Exception:
@@ -348,38 +317,6 @@ def api_camera_status():
             return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
         logger.error(f"Proxy camera_status error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
-
-# --- Cloudlink maintainer ---
-def fetch_cloudlink_from_pi():
-    """
-    Try to fetch the latest cloudlink from the Pi server's /api/get_pi_url endpoint.
-    """
-    try:
-        # You may want to set the Pi's local IP or fallback to the last known public URL
-        pi_ip = os.environ.get("RASPI_IP", "192.168.18.32")
-        pi_port = os.environ.get("RASPI_PORT", "5000")
-        url = f"http://{pi_ip}:{pi_port}/api/get_pi_url"
-        resp = requests.get(url, timeout=5)
-        if resp.ok:
-            data = resp.json()
-            public_url = data.get("public_url", "")
-            if public_url:
-                logger.info(f"[Auto Cloudlink] Got Pi public URL from raspi_server.py: {public_url}")
-                return public_url
-    except Exception as e:
-        logger.warning(f"[Auto Cloudlink] Failed to get Pi public URL from raspi_server.py: {e}")
-    return None
-
-def auto_update_cloudlink():
-    global PI_PUBLIC_URL
-    last_url = PI_PUBLIC_URL
-    while True:
-        # Try to get cloudlink from raspi_server.py
-        public_url = fetch_cloudlink_from_pi()
-        if public_url and public_url != PI_PUBLIC_URL:
-            PI_PUBLIC_URL = public_url
-            logger.info(f"[Auto Cloudlink] Updated PI_PUBLIC_URL to: {public_url}")
-        time.sleep(10)
 
 # --- Error handler ---
 @app.errorhandler(Exception)
@@ -397,29 +334,9 @@ def not_found(e):
     # For others, show a simple HTML page or message
     return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
 
-# --- Frontend logging ---
-@app.route('/api/frontend_log', methods=['POST'])
-def frontend_log():
-    """
-    Receives log messages from index.html and prints them to the Railway server log.
-    """
-    data = request.get_json(force=True)
-    msg = data.get("msg", "")
-    level = data.get("level", "info").lower()
-    if level == "error":
-        logger.error("[FRONTEND] %s", msg)
-    elif level == "warning":
-        logger.warning("[FRONTEND] %s", msg)
-    else:
-        logger.info("[FRONTEND] %s", msg)
-    return jsonify({"success": True})
-
 # --- Main ---
 if __name__=="__main__": 
     port = DEFAULT_PORT
-
-    # Start auto cloudlink updater thread (this is correct for Railway)
-    threading.Thread(target=auto_update_cloudlink, daemon=True).start()
 
     # Start cloudflared and get public URL
     try:

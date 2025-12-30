@@ -617,18 +617,6 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function logStatus(msg, level="info") {
-    if (window.console && window.console.log) {
-        console.log("[UI]", msg);
-    }
-    // Send to backend for persistent logs
-    fetch('/api/frontend_log', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({msg, level})
-    }).catch(() => {});
-}
-
 // Hamburger menu functionality
 const hamburgerMenu = document.getElementById('hamburgerMenu');
 const sidebar = document.getElementById('sidebar');
@@ -658,14 +646,8 @@ let RASPI_BASE = "{{ public_url }}";
 function updateVideoFeeds() {
     const c1 = document.getElementById('liveVideoC1');
     const c2 = document.getElementById('liveVideoC2');
-    if (c1 && RASPI_BASE) {
-        c1.src = RASPI_BASE + '/video_feed_c1';
-        logStatus("Set CCTV 1 feed src: " + c1.src);
-    }
-    if (c2 && RASPI_BASE) {
-        c2.src = RASPI_BASE + '/video_feed_c2';
-        logStatus("Set CCTV 2 feed src: " + c2.src);
-    }
+    if (c1 && RASPI_BASE) c1.src = RASPI_BASE + '/video_feed_c1';
+    if (c2 && RASPI_BASE) c2.src = RASPI_BASE + '/video_feed_c2';
 }
 
 // Poll for the latest Pi public URL every 3 seconds and update feeds if changed
@@ -725,8 +707,8 @@ function fetchRaspiBaseAndInit() {
 }
 
 function startApp() {
-    checkCameraStatus(); // Call immediately on startup
-    setInterval(checkCameraStatus, 2000); // Poll every 2 seconds for more responsive monitoring
+    checkCameraStatus; // Call immediately on startup
+    setInterval(checkCameraStatus, 5000);
     setInterval(checkServerHealth, 10000);
     loadViolationEvents();
     setInterval(loadViolationEvents, 10000);
@@ -740,79 +722,22 @@ const overlayC2 = document.getElementById('reconnectingOverlayC2');
 
 // Only toggle overlays based on camera status API
 function checkCameraStatus() {
-    logStatus("Checking cloud link status...");
-    fetch('/api/cloud_link_status')
-        .then(async res => {
-            let linkStatus;
+    fetch('/api/camera_status')
+        .then(async r => {
+            let status;
             try {
-                linkStatus = await res.json();
+                status = await r.json();
             } catch (e) {
-                logStatus("Failed to parse cloud link status response.", "error");
                 overlayC1.classList.add('active');
                 overlayC2.classList.add('active');
-                liveVideoC1.src = "";
-                liveVideoC2.src = "";
                 return;
             }
-            if (!linkStatus.cloud_link_active) {
-                logStatus("Cloud link not active: " + (linkStatus.reason || ""), "warning");
-                overlayC1.classList.add('active');
-                overlayC2.classList.add('active');
-                liveVideoC1.src = "";
-                liveVideoC2.src = "";
-                return;
-            }
-            logStatus("Cloud link active, checking camera status...");
-            fetch('/api/camera_status')
-                .then(async r => {
-                    let status;
-                    try {
-                        status = await r.json();
-                    } catch (e) {
-                        logStatus("Failed to parse camera status response.", "error");
-                        overlayC1.classList.add('active');
-                        overlayC2.classList.add('active');
-                        liveVideoC1.src = "";
-                        liveVideoC2.src = "";
-                        return;
-                    }
-                    if (status.Camera_1 && status.Camera_1.online === true) {
-                        if (!liveVideoC1.src || !liveVideoC1.src.includes('/video_feed_c1')) {
-                            liveVideoC1.src = RASPI_BASE + '/video_feed_c1';
-                            logStatus("Camera 1 online, set video feed.");
-                        }
-                        overlayC1.classList.remove('active');
-                    } else {
-                        liveVideoC1.src = "";
-                        overlayC1.classList.add('active');
-                        logStatus("Camera 1 offline.", "warning");
-                    }
-                    if (status.Camera_2 && status.Camera_2.online === true) {
-                        if (!liveVideoC2.src || !liveVideoC2.src.includes('/video_feed_c2')) {
-                            liveVideoC2.src = RASPI_BASE + '/video_feed_c2';
-                            logStatus("Camera 2 online, set video feed.");
-                        }
-                        overlayC2.classList.remove('active');
-                    } else {
-                        liveVideoC2.src = "";
-                        overlayC2.classList.add('active');
-                        logStatus("Camera 2 offline.", "warning");
-                    }
-                })
-                .catch(() => {
-                    logStatus("Failed to fetch camera status.", "error");
-                    overlayC1.classList.add('active');
-                    overlayC2.classList.add('active');
-                    liveVideoC1.src = "";
-                    liveVideoC2.src = "";
-                });
+            overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
+            overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
         })
         .catch(() => {
-            logStatus("Failed to fetch cloud link status.", "error");
             overlayC1.classList.add('active');
             overlayC2.classList.add('active');
-            liveVideoC1.src = "";
-            liveVideoC2.src = "";
         });
 }
 

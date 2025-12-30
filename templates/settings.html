@@ -394,18 +394,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         })
-        .then(async r => {
-            let result;
-            let text = await r.text();
-            try {
-                result = JSON.parse(text);
-            } catch (err) {
-                // Not JSON, probably HTML error page
-                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Server error: <br><small>' +
-                    text.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
-                    '</small></div>';
-                return;
-            }
+        .then(r => r.json())
+        .then(result => {
             if (result.success) {
                 document.getElementById('status').innerHTML = '<div class="alert alert-success">Settings saved successfully!</div>';
                 setTimeout(() => {
@@ -413,13 +403,11 @@
                     document.getElementById('status').innerHTML = '';
                 }, 1000);
             } else {
-                let msg = result.error ? result.error : 'Error saving settings';
-                document.getElementById('status').innerHTML = '<div class="alert alert-danger">' + msg + '</div>';
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Error saving settings</div>';
             }
         })
         .catch(err => {
-            let msg = (err && err.message) ? err.message : 'Error saving settings';
-            document.getElementById('status').innerHTML = '<div class="alert alert-danger">' + msg + '</div>';
+            document.getElementById('status').innerHTML = '<div class="alert alert-danger">Error saving settings</div>';
         });
     });
 
