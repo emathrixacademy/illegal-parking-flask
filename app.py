@@ -350,23 +350,35 @@ def api_camera_status():
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
 
 # --- Cloudlink maintainer ---
-def cloudlink_maintainer():
+def fetch_cloudlink_from_pi():
+    """
+    Try to fetch the latest cloudlink from the Pi server's /api/get_pi_url endpoint.
+    """
+    try:
+        # You may want to set the Pi's local IP or fallback to the last known public URL
+        pi_ip = os.environ.get("RASPI_IP", "192.168.18.32")
+        pi_port = os.environ.get("RASPI_PORT", "5000")
+        url = f"http://{pi_ip}:{pi_port}/api/get_pi_url"
+        resp = requests.get(url, timeout=5)
+        if resp.ok:
+            data = resp.json()
+            public_url = data.get("public_url", "")
+            if public_url:
+                logger.info(f"[Auto Cloudlink] Got Pi public URL from raspi_server.py: {public_url}")
+                return public_url
+    except Exception as e:
+        logger.warning(f"[Auto Cloudlink] Failed to get Pi public URL from raspi_server.py: {e}")
+    return None
+
+def auto_update_cloudlink():
     global PI_PUBLIC_URL
-    last_url = None
+    last_url = PI_PUBLIC_URL
     while True:
-        try:
-            # Try to get the latest Pi public URL from the /api/get_pi_url endpoint (self)
-            resp = requests.get("http://localhost:5000/api/get_pi_url", timeout=5)
-            if resp.ok:
-                data = resp.json()
-                public_url = data.get("public_url", "")
-                if public_url and public_url != PI_PUBLIC_URL:
-                    logger.info(f"[Cloudlink Maintainer] Updating PI_PUBLIC_URL to: {public_url}")
-                    PI_PUBLIC_URL = public_url
-                    last_url = public_url
-            # Optionally: add more logic to check if the URL is still alive, etc.
-        except Exception as e:
-            logger.warning(f"[Cloudlink Maintainer] Failed to update PI_PUBLIC_URL: {e}")
+        # Try to get cloudlink from raspi_server.py
+        public_url = fetch_cloudlink_from_pi()
+        if public_url and public_url != PI_PUBLIC_URL:
+            PI_PUBLIC_URL = public_url
+            logger.info(f"[Auto Cloudlink] Updated PI_PUBLIC_URL to: {public_url}")
         time.sleep(10)
 
 # --- Error handler ---
@@ -389,8 +401,8 @@ def not_found(e):
 if __name__=="__main__": 
     port = DEFAULT_PORT
 
-    # Start cloudlink maintainer thread
-    threading.Thread(target=cloudlink_maintainer, daemon=True).start()
+    # Start auto cloudlink updater thread (this is correct for Railway)
+    threading.Thread(target=auto_update_cloudlink, daemon=True).start()
 
     # Start cloudflared and get public URL
     try:
