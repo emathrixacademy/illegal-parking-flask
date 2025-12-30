@@ -278,6 +278,14 @@ def api_camera_status():
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
     try:
+        # --- SAMPLE LOGIC ---
+        if not PI_PUBLIC_URL:
+            # Simulate: Camera_1 online, Camera_2 offline
+            return add_cors_headers(jsonify({
+                "Camera_1": {"reconnecting": False, "online": True},
+                "Camera_2": {"reconnecting": True, "online": False}
+            }))
+        # --- END SAMPLE LOGIC ---
         pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
@@ -308,6 +316,20 @@ def api_camera_status():
             "Camera_1": {"reconnecting": True, "online": False},
             "Camera_2": {"reconnecting": True, "online": False}
         })), 200
+
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    # --- SAMPLE LOGIC ---
+    if not PI_PUBLIC_URL:
+        return jsonify({'status': 'sample', 'message': 'Demo mode: Pi not connected'})
+    # --- END SAMPLE LOGIC ---
+    try:
+        pi_base = get_pi_base()
+        url = f"{pi_base}/api/health"
+        resp = requests.get(url, timeout=5)
+        return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 502
 
 # --- Error handler ---
 @app.errorhandler(Exception)

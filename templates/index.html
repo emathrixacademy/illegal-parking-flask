@@ -650,6 +650,10 @@ function updateVideoFeeds() {
     if (c2 && RASPI_BASE) c2.src = RASPI_BASE + '/video_feed_c2';
 }
 
+// --- Reconnecting overlays per camera ---
+const overlayC1 = document.getElementById('reconnectingOverlayC1');
+const overlayC2 = document.getElementById('reconnectingOverlayC2');
+
 // Poll for the latest Pi public URL every 3 seconds and update feeds if changed
 function pollRaspiBase() {
     fetch('/api/get_pi_url')
@@ -666,6 +670,8 @@ setInterval(pollRaspiBase, 3000);
 
 document.addEventListener('DOMContentLoaded', function() {
     updateVideoFeeds();
+    checkCameraStatus();
+    setInterval(checkCameraStatus, 2000); // Poll camera status every 2s
 });
 
 // --- Patch all API calls to use the latest RASPI_BASE ---
