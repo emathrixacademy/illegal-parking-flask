@@ -104,6 +104,17 @@ def start_cloudflared(port=DEFAULT_PORT):
 PI_PUBLIC_URL = ""
 PI_URL_NOT_SET_LOGGED = False  # Add this flag
 
+# --- Ensure these routes are registered before any catch-all or error handlers ---
+@app.route('/api/cloud_link_status', methods=['GET'])
+def cloud_link_status():
+    global PI_PUBLIC_URL
+    return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
+
+@app.route('/api/get_pi_url', methods=['GET'])
+def get_pi_url():
+    global PI_PUBLIC_URL
+    return jsonify({"public_url": PI_PUBLIC_URL})
+
 @app.route('/api/set_pi_url', methods=['POST'])
 def set_pi_url():
     global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
@@ -113,21 +124,10 @@ def set_pi_url():
     logger.info(f"Received new Pi public URL: {PI_PUBLIC_URL}")
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
-@app.route('/api/get_pi_url')
-def get_pi_url():
-    # Always return the latest public URL
-    return jsonify({"public_url": PI_PUBLIC_URL})
-
 @app.route('/api/pi_public_url')
 def pi_public_url():
     logger.info(f"Pi public URL requested: {PI_PUBLIC_URL}")
     return jsonify({"public_url": PI_PUBLIC_URL})
-
-@app.route('/api/cloud_link_status', methods=['GET'])
-def cloud_link_status():
-    global PI_PUBLIC_URL
-    # Always use the latest PI_PUBLIC_URL
-    return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
 
 # --- CORS support ---
 def add_cors_headers(response):
