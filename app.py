@@ -7,8 +7,6 @@ import re
 import requests
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
-import threading
-import time
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -104,17 +102,6 @@ def start_cloudflared(port=DEFAULT_PORT):
 PI_PUBLIC_URL = ""
 PI_URL_NOT_SET_LOGGED = False  # Add this flag
 
-# --- Ensure these routes are registered before any catch-all or error handlers ---
-@app.route('/api/cloud_link_status', methods=['GET'])
-def cloud_link_status():
-    global PI_PUBLIC_URL
-    return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
-
-@app.route('/api/get_pi_url', methods=['GET'])
-def get_pi_url():
-    global PI_PUBLIC_URL
-    return jsonify({"public_url": PI_PUBLIC_URL})
-
 @app.route('/api/set_pi_url', methods=['POST'])
 def set_pi_url():
     global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
@@ -124,10 +111,20 @@ def set_pi_url():
     logger.info(f"Received new Pi public URL: {PI_PUBLIC_URL}")
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
+@app.route('/api/get_pi_url')
+def get_pi_url():
+    # Always return the latest public URL
+    return jsonify({"public_url": PI_PUBLIC_URL})
+
 @app.route('/api/pi_public_url')
 def pi_public_url():
     logger.info(f"Pi public URL requested: {PI_PUBLIC_URL}")
     return jsonify({"public_url": PI_PUBLIC_URL})
+
+@app.route('/api/cloud_link_status')
+def cloud_link_status():
+    """Return whether the cloud link (Pi public URL) is set."""
+    return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
 
 # --- CORS support ---
 def add_cors_headers(response):
@@ -161,12 +158,12 @@ def ping():
 @app.route('/api/settings', methods=['GET','POST'])
 def api_settings():
     try:
-        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/api/settings"
         if request.method == 'GET':
             resp = requests.get(url, timeout=10)
             logger.info("Proxy /api/settings GET: Pi returned %s %s", resp.status_code, resp.text)
+            # Ensure correct content type and pass-through
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
         else:
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
@@ -183,7 +180,6 @@ def raspi_ip():
 @app.route('/api/upload_event', methods=['POST'])
 def upload_event():
     try:
-        # Always use the latest PI_PUBLIC_URL if needed
         data = request.get_json(force=True)
         camera_id = data.get("camera_id")
         timestamp = data.get("timestamp", datetime.utcnow().isoformat())
@@ -215,12 +211,12 @@ def upload_event():
 
 @app.route('/api/events')
 def api_events():
-    # Always use the latest PI_PUBLIC_URL if needed
     return jsonify(EVENTS)
 
 def get_pi_base():
     global PI_URL_NOT_SET_LOGGED
     if not PI_PUBLIC_URL:
+        # Do not log error here
         PI_URL_NOT_SET_LOGGED = True
         raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip('/')
@@ -230,7 +226,6 @@ def proxy_api(path):
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
     try:
-        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/api/{path}"
         if request.method == 'GET':
@@ -241,6 +236,7 @@ def proxy_api(path):
         return add_cors_headers(proxy_response)
     except Exception as e:
         if str(e) == "Pi public URL not set":
+            # Do not log this error
             return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
         logger.error(f"Proxy API error: {e}")
         return add_cors_headers(jsonify({"success": False, "error": str(e)})), 502
@@ -248,7 +244,6 @@ def proxy_api(path):
 @app.route('/video_feed_c1')
 def proxy_video_feed_c1():
     try:
-        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c1"
         resp = requests.get(url, stream=True, timeout=10)
@@ -257,6 +252,7 @@ def proxy_video_feed_c1():
         return add_cors_headers(proxy_response)
     except Exception as e:
         if str(e) == "Pi public URL not set":
+            # Do not log this error
             return add_cors_headers(Response("Camera feed unavailable", 502))
         logger.error(f"Proxy video_feed_c1 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
@@ -264,7 +260,6 @@ def proxy_video_feed_c1():
 @app.route('/video_feed_c2')
 def proxy_video_feed_c2():
     try:
-        # Always use the latest PI_PUBLIC_URL
         pi_base = get_pi_base()
         url = f"{pi_base}/video_feed_c2"
         resp = requests.get(url, stream=True, timeout=10)
@@ -273,6 +268,7 @@ def proxy_video_feed_c2():
         return add_cors_headers(proxy_response)
     except Exception as e:
         if str(e) == "Pi public URL not set":
+            # Do not log this error
             return add_cors_headers(Response("Camera feed unavailable", 502))
         logger.error(f"Proxy video_feed_c2 error: {e}")
         return add_cors_headers(Response("Camera feed unavailable", 502))
@@ -282,17 +278,12 @@ def api_camera_status():
     if request.method == 'OPTIONS':
         return add_cors_headers(jsonify({})), 200
     try:
-        # Always use the latest PI_PUBLIC_URL
-        if not PI_PUBLIC_URL:
-            return add_cors_headers(jsonify({
-                "Camera_1": {"reconnecting": False, "online": True},
-                "Camera_2": {"reconnecting": True, "online": False}
-            }))
         pi_base = get_pi_base()
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
         try:
             data = resp.json()
+            # Defensive: ensure both cameras are present
             cam1 = data.get("Camera_1", {})
             cam2 = data.get("Camera_2", {})
             return add_cors_headers(jsonify({
@@ -306,28 +297,17 @@ def api_camera_status():
                 }
             }))
         except Exception:
+            # Pi server returned invalid JSON (likely restarting)
             return add_cors_headers(jsonify({
                 "Camera_1": {"reconnecting": True, "online": False},
                 "Camera_2": {"reconnecting": True, "online": False}
             })), 200
     except Exception as e:
+        # Pi server unreachable (likely restarting)
         return add_cors_headers(jsonify({
             "Camera_1": {"reconnecting": True, "online": False},
             "Camera_2": {"reconnecting": True, "online": False}
         })), 200
-
-@app.route('/api/health', methods=['GET'])
-def api_health():
-    # Always use the latest PI_PUBLIC_URL
-    if not PI_PUBLIC_URL:
-        return jsonify({'status': 'sample', 'message': 'Demo mode: Pi not connected'})
-    try:
-        pi_base = get_pi_base()
-        url = f"{pi_base}/api/health"
-        resp = requests.get(url, timeout=5)
-        return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
-    except Exception as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 502
 
 # --- Error handler ---
 @app.errorhandler(Exception)
@@ -345,25 +325,6 @@ def not_found(e):
     # For others, show a simple HTML page or message
     return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
 
-# --- Polling function ---
-def poll_pi_cloudlink():
-    global PI_PUBLIC_URL
-    last_url = None
-    while True:
-        try:
-            resp = requests.get(DEFAULT_RAILWAY_API_URL + "/api/get_pi_url", timeout=5)
-            data = resp.json()
-            public_url = data.get("public_url", "")
-            if public_url != last_url:
-                logger.info(f"[CloudLink Poll] Pi public_url changed: {public_url}")
-                last_url = public_url
-            if public_url and public_url != PI_PUBLIC_URL:
-                logger.info(f"[CloudLink Poll] Updating PI_PUBLIC_URL to: {public_url}")
-                PI_PUBLIC_URL = public_url
-        except Exception as e:
-            logger.warning(f"[CloudLink Poll] Failed to get Pi public_url: {e}")
-        time.sleep(5)
-
 # --- Main ---
 if __name__=="__main__": 
     port = DEFAULT_PORT
@@ -375,8 +336,5 @@ if __name__=="__main__":
     except Exception as e:
         print("Failed to start Cloudflare Tunnel:", e)
         app.config["PUBLIC_URL"] = ""
-
-    # --- Start cloudlink polling thread ---
-    threading.Thread(target=poll_pi_cloudlink, daemon=True).start()
 
     app.run(host='0.0.0.0', port=port, threaded=True)
