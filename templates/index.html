@@ -728,16 +728,15 @@ function checkCameraStatus() {
             try {
                 status = await r.json();
             } catch (e) {
-                overlayC1.classList.add('active');
-                overlayC2.classList.add('active');
+                // Do NOT force overlays to active on JSON error, just leave as-is
                 return;
             }
+            // Only show overlay if camera is explicitly offline
             overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
             overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
         })
         .catch(() => {
-            overlayC1.classList.add('active');
-            overlayC2.classList.add('active');
+            // Do NOT force overlays to active on fetch error, just leave as-is
         });
 }
 
