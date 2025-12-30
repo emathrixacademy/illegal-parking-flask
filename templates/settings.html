@@ -403,11 +403,13 @@
                     document.getElementById('status').innerHTML = '';
                 }, 1000);
             } else {
-                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Error saving settings</div>';
+                let msg = result.error ? result.error : 'Error saving settings';
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">' + msg + '</div>';
             }
         })
         .catch(err => {
-            document.getElementById('status').innerHTML = '<div class="alert alert-danger">Error saving settings</div>';
+            let msg = (err && err.message) ? err.message : 'Error saving settings';
+            document.getElementById('status').innerHTML = '<div class="alert alert-danger">' + msg + '</div>';
         });
     });
 

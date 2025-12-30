@@ -187,11 +187,18 @@ def api_settings():
         if request.method == 'GET':
             resp = requests.get(url, timeout=10)
             logger.info("Proxy /api/settings GET: Pi returned %s %s", resp.status_code, resp.text)
-            # Ensure correct content type and pass-through
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
         else:
             resp = requests.post(url, json=request.get_json(force=True), timeout=10)
             logger.info("Proxy /api/settings POST: Pi returned %s %s", resp.status_code, resp.text)
+            # Try to forward the error message from the Pi server if not success
+            try:
+                data = resp.json()
+                if not data.get("success", True):
+                    return jsonify(data), resp.status_code
+            except Exception:
+                # If not JSON, just forward the raw text
+                return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
             return Response(resp.content, status=resp.status_code, content_type=resp.headers.get('Content-Type', 'application/json'))
     except Exception as e:
         logger.error(f"Proxy settings error: {e}")
