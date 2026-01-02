@@ -10,25 +10,16 @@ import subprocess
 import re
 import requests
 import signal
-import json
 from datetime import datetime
 from flask import Flask, request, jsonify, Response, render_template
 import config
-from app_detect import detect
+from app_detect import detect  # Your YOLO detection function
 
-# ===============================
-# Flask App
-# ===============================
-app = Flask(__name__)
-
-# ===============================
-# Logging & Directories
-# ===============================
-SAVE_DIR = getattr(config, "SAVE_DIR", "events")
+# --- Logging & directories ---
+SAVE_DIR = getattr(config, "SAVE_DIR", "static/violations")
+os.makedirs(SAVE_DIR, exist_ok=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PiCameraServer")
-if not os.path.exists(SAVE_DIR):
-    os.makedirs(SAVE_DIR)
 
 CLASS_NAMES = {
     0: "PERSON",
@@ -38,6 +29,7 @@ CLASS_NAMES = {
     7: "TRUCK"
 }
 
+# Railway cloud server
 RAILWAY_API_URL = os.environ.get(
     "RAILWAY_API_URL",
     "https://illegal-parking-detection-flask.up.railway.app"
@@ -69,37 +61,7 @@ def start_cloudflared(port=5000):
     return process, url
 
 # ===============================
-# Sync Config From Railway
-# ===============================
-def sync_config_from_railway():
-    try:
-        r = requests.get(f"{RAILWAY_API_URL}/api/settings", timeout=10)
-        data = r.json()
-
-        defaults = {
-            "CAM1_URL": "rtsp://localhost:8554/cam1",
-            "CAM2_URL": "rtsp://localhost:8554/cam2",
-            "VIOLATION_TIME_THRESHOLD": 10,
-            "REPEAT_CAPTURE_INTERVAL": 60,
-            "PARKING_ZONES": {},
-            "DETECTION_THRESHOLD": 0.5,
-            "SAVE_DIR": "events"
-        }
-        for k, v in defaults.items():
-            data.setdefault(k, v)
-
-        with open("config.py", "w") as f:
-            for k, v in data.items():
-                f.write(f"{k} = {repr(v)}\n")
-
-        import importlib
-        importlib.reload(config)
-        logger.info("Config synced from Railway")
-    except Exception as e:
-        logger.error("Failed to sync config: %s", e)
-
-# ===============================
-# Upload Violation to Railway
+# Upload violation to Railway
 # ===============================
 def upload_event_to_cloud(camera_id, frame, meta):
     try:
@@ -143,21 +105,25 @@ class ByteTrackLite:
     def update(self, boxes, scores, clss):
         self.frame_id += 1
         updated = {}
+
         for box, score, cls in zip(boxes, scores, clss):
             best, best_iou = None, 0.3
             for tid, t in self.tracked.items():
                 i = self.iou(box, t["box"])
                 if i > best_iou:
                     best, best_iou = tid, i
+
             if best is not None:
                 updated[best] = {"box": box, "cls": cls, "last": self.frame_id}
                 self.tracked.pop(best, None)
             elif score >= config.DETECTION_THRESHOLD:
                 updated[self.next_id] = {"box": box, "cls": cls, "last": self.frame_id}
                 self.next_id += 1
+
         for tid, t in self.tracked.items():
             if self.frame_id - t["last"] < self.buffer:
                 updated[tid] = t
+
         self.tracked = updated
         return {k: v for k, v in updated.items() if v["last"] == self.frame_id}
 
@@ -180,6 +146,7 @@ class ParkingMonitor:
     def process(self, cam, res, frame):
         if cam not in self.zones:
             return
+
         fh, fw = frame.shape[:2]
         zone = self.zones[cam]
         cv2.polylines(frame, [zone], True, (0, 0, 255), 2)
@@ -194,7 +161,7 @@ class ParkingMonitor:
             label = CLASS_NAMES.get(cls, "OBJ")
             center = ((x1+x2)//2, (y1+y2)//2)
 
-            if cls == 0:
+            if cls == 0:  # Skip PERSON
                 continue
 
             inside = cv2.pointPolygonTest(zone, center, False) >= 0
@@ -218,7 +185,7 @@ class ParkingMonitor:
                 self.timers.pop((cam, tid), None)
 
 # ===============================
-# Camera Stream
+# Camera Streams
 # ===============================
 class Stream:
     def __init__(self, url):
@@ -231,34 +198,31 @@ class Stream:
 
     def loop(self):
         while True:
-            ret, f = self.cap.read()
-            if not ret:
-                time.sleep(1)
+            if not self.cap.isOpened():
                 self.cap.release()
                 self.cap = cv2.VideoCapture(self.url)
-                continue
-            with self.lock:
-                self.frame = f
-                self.last = time.time()
+            ret, f = self.cap.read()
+            if ret:
+                with self.lock:
+                    self.frame = f
+                    self.last = time.time()
+            else:
+                time.sleep(1)
 
     def get(self):
         with self.lock:
             return self.frame.copy() if self.frame is not None else None
 
     def online(self):
-        return time.time() - self.last < 3
+        return time.time() - self.last < 5
 
 # ===============================
 # Init
 # ===============================
-sync_config_from_railway()
 monitor = ParkingMonitor()
 
-CAM1_URL = getattr(config, "CAM1_URL", "rtsp://localhost:8554/cam1")
-CAM2_URL = getattr(config, "CAM2_URL", "rtsp://localhost:8554/cam2")
-
-c1 = Stream(CAM1_URL)
-c2 = Stream(CAM2_URL)
+c1 = Stream(config.CAM1_URL)
+c2 = Stream(config.CAM2_URL)
 
 latest = {"Camera_1": None, "Camera_2": None}
 lock = threading.Lock()
@@ -279,8 +243,10 @@ threading.Thread(target=worker, args=("Camera_1", c1), daemon=True).start()
 threading.Thread(target=worker, args=("Camera_2", c2), daemon=True).start()
 
 # ===============================
-# Flask Routes
+# Flask App
 # ===============================
+app = Flask(__name__)
+
 def gen(cam):
     while True:
         with lock:
@@ -305,6 +271,24 @@ def status():
         "Camera_2": {"online": c2.online()}
     })
 
+@app.route("/api/upload_event", methods=["POST"])
+def api_upload_event():
+    data = request.get_json(force=True)
+    camera_id = data.get("camera_id")
+    image_b64 = data.get("image")
+    meta = data.get("meta", {})
+    if not image_b64 or not camera_id:
+        return jsonify({"success": False, "error": "Missing camera_id or image"}), 400
+
+    img_data = base64.b64decode(image_b64)
+    fname = f"{camera_id}_{datetime.utcnow().isoformat().replace(':','-')}.jpg"
+    path = os.path.join(SAVE_DIR, fname)
+    with open(path, "wb") as f:
+        f.write(img_data)
+
+    upload_event_to_cloud(camera_id, cv2.imdecode(np.frombuffer(img_data, np.uint8), cv2.IMREAD_COLOR), meta)
+    return jsonify({"success": True, "file": fname})
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -328,12 +312,9 @@ if __name__ == "__main__":
     app.config["PUBLIC_URL"] = public_url
 
     try:
-        requests.post(
-            f"{RAILWAY_API_URL}/api/set_pi_url",
-            json={"public_url": public_url},
-            timeout=5
-        )
+        requests.post(f"{RAILWAY_API_URL}/api/set_pi_url",
+                      json={"public_url": public_url}, timeout=5)
     except Exception as e:
-        logger.error("Failed to notify Railway of public URL: %s", e)
+        logger.warning("Failed to update Railway PI URL: %s", e)
 
     app.run(host="0.0.0.0", port=port, threaded=True)
