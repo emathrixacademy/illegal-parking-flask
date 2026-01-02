@@ -9,7 +9,7 @@ import logging
 import subprocess
 import re
 import requests
-from flask import Flask, request, jsonify, Response, render_template_string, render_template, make_response
+from flask import Flask, request, jsonify, Response, render_template_string, render_template
 import config
 from app_detect import detect, upload_event_to_cloud
 import signal
@@ -280,8 +280,14 @@ def decode_image(data):
 
 @app.route('/')
 def index():
-    # Serve the template as-is; frontend will fetch the current cloud link dynamically
-    return render_template("index.html")
+    public_url = app.config.get("PUBLIC_URL", "")
+    index_html = open("templates/index.html").read()
+    # Inject dynamic RASPI_BASE URL
+    html_with_url = index_html.replace(
+        'const RASPI_BASE = "{{ public_url }}";',
+        f'const RASPI_BASE = "{public_url}";'
+    )
+    return render_template_string(html_with_url)
 
 @app.route('/api/zone_selector', methods=['POST'])
 def api_zone_selector():
@@ -408,17 +414,6 @@ def api_settings():
         "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     })
-
-@app.route('/api/get_pi_url')
-def get_pi_url():
-    # Always return the latest public URL (Cloudflare tunnel)
-    public_url = app.config.get("PUBLIC_URL", "")
-    resp = jsonify({"public_url": public_url})
-    # Add CORS headers for cross-origin requests
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
-    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    return resp
 
 # --- Graceful shutdown ---
 def shutdown(sig, frame):
