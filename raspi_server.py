@@ -20,8 +20,9 @@ app = Flask(__name__)
 # --- Logging & directories ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PiCameraServer")
-if not os.path.exists(config.SAVE_DIR):
-    os.makedirs(config.SAVE_DIR)
+SAVE_DIR = getattr(config, "SAVE_DIR", "events")
+if not os.path.exists(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
 
 CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
 
@@ -126,7 +127,7 @@ class ParkingMonitor:
         import datetime
         now = datetime.datetime.now()
         date_folder = now.strftime("%B %d, %Y (%A)")
-        date_dir = os.path.join(config.SAVE_DIR, date_folder)
+        date_dir = os.path.join(SAVE_DIR, date_folder)
         os.makedirs(date_dir, exist_ok=True)
         path = os.path.join(date_dir, f"{cam}-{now.strftime('%H_%M_%S')}.jpg")
         cv2.imwrite(path, frame)
