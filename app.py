@@ -1,6 +1,5 @@
 import os
 import re
-import json
 import logging
 import traceback
 import subprocess
@@ -11,9 +10,8 @@ from flask import (
     stream_with_context, make_response
 )
 import requests
-from sqlalchemy import create_engine, Column, String, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import base64
+import config
 
 # --------------------------------------------------
 # Logging
@@ -41,64 +39,51 @@ EVENT_IMAGE_FORMAT = "{camera_id}_{timestamp}.jpg"
 EVENT_IMAGE_TIMESTAMP_REPL = lambda ts: ts.replace(":", "-").replace(".", "-")
 
 # --------------------------------------------------
-# Database Setup
+# Config helpers (local config.py)
 # --------------------------------------------------
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable not set")
-
-engine = create_engine(DATABASE_URL)
-Base = declarative_base()
-Session = sessionmaker(bind=engine)
-
-class Config(Base):
-    __tablename__ = 'config'
-    key = Column(String, primary_key=True)
-    value = Column(Text)
-
-Base.metadata.create_all(engine)
-
-def get_config_value(key, default=None):
-    session = Session()
-    try:
-        row = session.query(Config).filter_by(key=key).first()
-        return json.loads(row.value) if row else default
-    finally:
-        session.close()
-
-def set_config_value(key, value):
-    session = Session()
-    try:
-        row = session.query(Config).filter_by(key=key).first()
-        if row:
-            row.value = json.dumps(value)
-        else:
-            session.add(Config(key=key, value=json.dumps(value)))
-        session.commit()
-    finally:
-        session.close()
-
 def get_current_settings():
     return {
-        "VIOLATION_TIME_THRESHOLD": get_config_value("VIOLATION_TIME_THRESHOLD", 10),
-        "REPEAT_CAPTURE_INTERVAL": get_config_value("REPEAT_CAPTURE_INTERVAL", 60),
-        "PARKING_ZONES": get_config_value("PARKING_ZONES", {})
+        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 10),
+        "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
+        "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     }
 
 def update_config(new_settings):
+    import importlib
+    import json as pyjson
+    import re
+    config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    with open(config_path, "r") as f:
+        lines = f.readlines()
+
+    def replace_line(key, value):
+        pattern = re.compile(rf"^{key}\s*=\s*.*$")
+        for i, line in enumerate(lines):
+            if pattern.match(line):
+                if key == "PARKING_ZONES":
+                    lines[i] = f"{key} = {pyjson.dumps(value)}\n"
+                else:
+                    lines[i] = f"{key} = {value}\n"
+                return
+        lines.append(f"{key} = {pyjson.dumps(value) if key=='PARKING_ZONES' else value}\n")
+
     if "VIOLATION_TIME_THRESHOLD" in new_settings:
-        set_config_value("VIOLATION_TIME_THRESHOLD", new_settings["VIOLATION_TIME_THRESHOLD"])
+        replace_line("VIOLATION_TIME_THRESHOLD", new_settings["VIOLATION_TIME_THRESHOLD"])
     if "REPEAT_CAPTURE_INTERVAL" in new_settings:
-        set_config_value("REPEAT_CAPTURE_INTERVAL", new_settings["REPEAT_CAPTURE_INTERVAL"])
+        replace_line("REPEAT_CAPTURE_INTERVAL", new_settings["REPEAT_CAPTURE_INTERVAL"])
     if "PARKING_ZONES" in new_settings:
-        current_zones = get_config_value("PARKING_ZONES", {})
+        current_zones = getattr(config, "PARKING_ZONES", {})
         updated_zones = current_zones.copy()
         for cam, val in new_settings["PARKING_ZONES"].items():
             if val is None:
                 updated_zones.pop(cam, None)
             else:
                 updated_zones[cam] = val
-        set_config_value("PARKING_ZONES", updated_zones)
+        replace_line("PARKING_ZONES", updated_zones)
+
+    with open(config_path, "w") as f:
+        f.writelines(lines)
+    importlib.reload(config)
 
 # --------------------------------------------------
 # Cloudflare Tunnel
