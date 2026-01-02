@@ -69,6 +69,19 @@ def sync_config_from_railway():
         r = requests.get(f"{RAILWAY_API_URL}/api/settings", timeout=10)
         data = r.json()
 
+        # Ensure required keys exist with defaults if missing
+        defaults = {
+            "CAM1_URL": "rtsp://localhost:8554/cam1",
+            "CAM2_URL": "rtsp://localhost:8554/cam2",
+            "VIOLATION_TIME_THRESHOLD": 10,
+            "REPEAT_CAPTURE_INTERVAL": 60,
+            "PARKING_ZONES": {},
+            "DETECTION_THRESHOLD": 0.5,
+            "SAVE_DIR": "events"
+        }
+        for k, v in defaults.items():
+            data.setdefault(k, v)
+
         with open("config.py", "w") as f:
             for k, v in data.items():
                 f.write(f"{k} = {repr(v)}\n")
@@ -257,8 +270,12 @@ class Stream:
 sync_config_from_railway()
 monitor = ParkingMonitor()
 
-c1 = Stream(config.CAM1_URL)
-c2 = Stream(config.CAM2_URL)
+# Use defaults if config is missing attributes
+CAM1_URL = getattr(config, "CAM1_URL", "rtsp://localhost:8554/cam1")
+CAM2_URL = getattr(config, "CAM2_URL", "rtsp://localhost:8554/cam2")
+
+c1 = Stream(CAM1_URL)
+c2 = Stream(CAM2_URL)
 
 latest = {"Camera_1": None, "Camera_2": None}
 lock = threading.Lock()
