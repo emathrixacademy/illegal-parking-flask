@@ -315,8 +315,11 @@
                             <b>Undo</b>: Right-click or press 'u'. <b>Clear</b>: Press 'c'. <b>Finish</b>: Press 'Enter' or click "Save Zone".
                           </small>
                         </div>
-                        <div style="position:relative;">
-                          <canvas id="zoneCanvas" width="640" height="360" style="border:1px solid #444; background:#222;"></canvas>
+                        <div style="position:relative; display: flex; flex-direction: column; align-items: center;">
+                          <div style="position:relative;">
+                            <img id="zoneLiveImg" src="" width="640" height="360" style="position:absolute; left:0; top:0; z-index:1; border:1px solid #444; border-radius: 4px;">
+                            <canvas id="zoneCanvas" width="640" height="360" style="position:absolute; left:0; top:0; z-index:2; pointer-events:auto;"></canvas>
+                          </div>
                         </div>
                       </div>
                       <div class="modal-footer">
@@ -497,24 +500,22 @@
     let zoneCamName = "";
     let zoneImg = null;
     let zoneImgRefreshInterval = null;
+    let zoneLiveImg = null;
 
     function openZoneSelector(camName) {
         zonePoints = [];
         zoneCamName = camName;
         zoneCanvas = document.getElementById('zoneCanvas');
         zoneCtx = zoneCanvas.getContext('2d');
+        zoneLiveImg = document.getElementById('zoneLiveImg');
         // MJPEG stream URL
         let streamUrl = camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2";
-        zoneImg = new Image();
-        function refreshImg() {
-            zoneImg.src = streamUrl + "?t=" + Date.now();
-        }
-        zoneImg.onload = function() {
-            drawZonePoints();
-        };
-        refreshImg();
+        // Set the MJPEG image src for live video
+        zoneLiveImg.src = streamUrl + "?t=" + Date.now();
         if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
-        zoneImgRefreshInterval = setInterval(refreshImg, 200);
+        zoneImgRefreshInterval = setInterval(() => {
+            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
+        }, 200);
 
         // Mouse events for point selection
         zoneCanvas.onmousedown = function(e) {
@@ -579,7 +580,7 @@
         };
         function drawZonePoints() {
             zoneCtx.clearRect(0, 0, zoneCanvas.width, zoneCanvas.height);
-            if (zoneImg.complete) zoneCtx.drawImage(zoneImg, 0, 0, zoneCanvas.width, zoneCanvas.height);
+            // Draw polygon and points over the live image
             zoneCtx.strokeStyle = "#0ff";
             zoneCtx.lineWidth = 2;
             if (zonePoints.length > 1) {
@@ -600,6 +601,10 @@
                 zoneCtx.stroke();
             }
         }
+        // Redraw polygon on every new image frame
+        zoneLiveImg.onload = function() {
+            drawZonePoints();
+        };
         if (!zoneModal) {
             zoneModal = new bootstrap.Modal(document.getElementById('zoneSelectorModal'), {});
         }
