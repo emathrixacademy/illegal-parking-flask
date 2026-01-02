@@ -117,7 +117,22 @@ def set_pi_url():
 
 @app.route('/api/get_pi_url')
 def get_pi_url():
+    global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
     # Always return the latest public URL
+    if not PI_PUBLIC_URL:
+        # Try to fetch from Pi server directly if not set
+        try:
+            pi_ip = os.environ.get("RASPI_IP", "192.168.18.32")
+            pi_port = os.environ.get("RASPI_PORT", "5000")
+            pi_url = f"http://{pi_ip}:{pi_port}/api/get_pi_url"
+            resp = requests.get(pi_url, timeout=3)
+            data = resp.json()
+            if data.get("public_url"):
+                PI_PUBLIC_URL = data["public_url"]
+                PI_URL_NOT_SET_LOGGED = False
+        except Exception:
+            # Could not fetch from Pi, leave as is
+            pass
     resp = jsonify({"public_url": PI_PUBLIC_URL})
     resp.headers['Access-Control-Allow-Origin'] = '*'
     resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
