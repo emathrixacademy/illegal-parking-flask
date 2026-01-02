@@ -10,16 +10,25 @@ import subprocess
 import re
 import requests
 import signal
+import json
 from datetime import datetime
 from flask import Flask, request, jsonify, Response, render_template
 import config
-from app_detect import detect  # Your YOLO detection function
+from app_detect import detect
 
-# --- Logging & directories ---
-SAVE_DIR = getattr(config, "SAVE_DIR", "static/violations")
-os.makedirs(SAVE_DIR, exist_ok=True)
+# ===============================
+# Flask App
+# ===============================
+app = Flask(__name__)
+
+# ===============================
+# Logging & Directories
+# ===============================
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PiCameraServer")
+
+if not os.path.exists(config.SAVE_DIR):
+    os.makedirs(config.SAVE_DIR)
 
 CLASS_NAMES = {
     0: "PERSON",
@@ -29,7 +38,6 @@ CLASS_NAMES = {
     7: "TRUCK"
 }
 
-# Railway cloud server
 RAILWAY_API_URL = os.environ.get(
     "RAILWAY_API_URL",
     "https://illegal-parking-detection-flask.up.railway.app"
@@ -61,7 +69,26 @@ def start_cloudflared(port=5000):
     return process, url
 
 # ===============================
-# Upload violation to Railway
+# Sync Config From Railway
+# ===============================
+def sync_config_from_railway():
+    try:
+        r = requests.get(f"{RAILWAY_API_URL}/api/settings", timeout=10)
+        data = r.json()
+
+        with open("config.py", "w") as f:
+            for k, v in data.items():
+                f.write(f"{k} = {repr(v)}\n")
+
+        import importlib
+        importlib.reload(config)
+        logger.info("Config synced from Railway")
+
+    except Exception as e:
+        logger.error("Failed to sync config: %s", e)
+
+# ===============================
+# Upload Violation to Railway
 # ===============================
 def upload_event_to_cloud(camera_id, frame, meta):
     try:
@@ -80,7 +107,9 @@ def upload_event_to_cloud(camera_id, frame, meta):
             json=payload,
             timeout=5
         )
+
         logger.info("Violation uploaded: %s %s", r.status_code, r.text)
+
     except Exception as e:
         logger.error("Upload failed: %s", e)
 
@@ -161,7 +190,7 @@ class ParkingMonitor:
             label = CLASS_NAMES.get(cls, "OBJ")
             center = ((x1+x2)//2, (y1+y2)//2)
 
-            if cls == 0:  # Skip PERSON
+            if cls == 0:
                 continue
 
             inside = cv2.pointPolygonTest(zone, center, False) >= 0
@@ -178,7 +207,11 @@ class ParkingMonitor:
                 if violation:
                     last = self.last_upload.get((cam, tid), 0)
                     if now - last > config.REPEAT_CAPTURE_INTERVAL:
-                        meta = {"tracker_id": tid, "label": label, "confidence": float(res.conf[0])}
+                        meta = {
+                            "tracker_id": tid,
+                            "label": label,
+                            "confidence": float(res.conf[0])
+                        }
                         upload_event_to_cloud(cam, frame, meta)
                         self.last_upload[(cam, tid)] = now
             else:
@@ -189,7 +222,6 @@ class ParkingMonitor:
 # ===============================
 class Stream:
     def __init__(self, url):
-        self.url = url
         self.cap = cv2.VideoCapture(url)
         self.frame = None
         self.last = 0
@@ -198,9 +230,6 @@ class Stream:
 
     def loop(self):
         while True:
-            if not self.cap.isOpened():
-                self.cap.release()
-                self.cap = cv2.VideoCapture(self.url)
             ret, f = self.cap.read()
             if ret:
                 with self.lock:
@@ -208,17 +237,20 @@ class Stream:
                     self.last = time.time()
             else:
                 time.sleep(1)
+                self.cap.release()
+                self.cap = cv2.VideoCapture(self.cap)
 
     def get(self):
         with self.lock:
             return self.frame.copy() if self.frame is not None else None
 
     def online(self):
-        return time.time() - self.last < 5
+        return time.time() - self.last < 3
 
 # ===============================
 # Init
 # ===============================
+sync_config_from_railway()
 monitor = ParkingMonitor()
 
 c1 = Stream(config.CAM1_URL)
@@ -243,10 +275,8 @@ threading.Thread(target=worker, args=("Camera_1", c1), daemon=True).start()
 threading.Thread(target=worker, args=("Camera_2", c2), daemon=True).start()
 
 # ===============================
-# Flask App
+# Flask Routes
 # ===============================
-app = Flask(__name__)
-
 def gen(cam):
     while True:
         with lock:
@@ -271,24 +301,6 @@ def status():
         "Camera_2": {"online": c2.online()}
     })
 
-@app.route("/api/upload_event", methods=["POST"])
-def api_upload_event():
-    data = request.get_json(force=True)
-    camera_id = data.get("camera_id")
-    image_b64 = data.get("image")
-    meta = data.get("meta", {})
-    if not image_b64 or not camera_id:
-        return jsonify({"success": False, "error": "Missing camera_id or image"}), 400
-
-    img_data = base64.b64decode(image_b64)
-    fname = f"{camera_id}_{datetime.utcnow().isoformat().replace(':','-')}.jpg"
-    path = os.path.join(SAVE_DIR, fname)
-    with open(path, "wb") as f:
-        f.write(img_data)
-
-    upload_event_to_cloud(camera_id, cv2.imdecode(np.frombuffer(img_data, np.uint8), cv2.IMREAD_COLOR), meta)
-    return jsonify({"success": True, "file": fname})
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -311,10 +323,10 @@ if __name__ == "__main__":
     cf, public_url = start_cloudflared(port)
     app.config["PUBLIC_URL"] = public_url
 
-    try:
-        requests.post(f"{RAILWAY_API_URL}/api/set_pi_url",
-                      json={"public_url": public_url}, timeout=5)
-    except Exception as e:
-        logger.warning("Failed to update Railway PI URL: %s", e)
+    requests.post(
+        f"{RAILWAY_API_URL}/api/set_pi_url",
+        json={"public_url": public_url},
+        timeout=5
+    )
 
     app.run(host="0.0.0.0", port=port, threaded=True)
