@@ -421,6 +421,11 @@ def api_settings():
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     })
 
+@app.route('/api/get_pi_url')
+def get_pi_url():
+    public_url = app.config.get("PUBLIC_URL", "")
+    return jsonify({"public_url": public_url})
+
 # --- Graceful shutdown ---
 def shutdown(sig, frame):
     print("Shutting down...")
