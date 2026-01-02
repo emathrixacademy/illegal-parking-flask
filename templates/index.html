@@ -678,30 +678,14 @@ setInterval(pollRaspiBase, 3000);
 // --- Patch all API calls to use the latest RASPI_BASE ---
 function apiFetch(path, options = {}) {
     // If path starts with '/', use RASPI_BASE, else use as is
+    // If RASPI_BASE is not set, fallback to relative path (for /api/get_pi_url)
+    if (!RASPI_BASE && path === '/api/get_pi_url') {
+        return fetch(path, options);
+    }
     let url = path.startsWith('/') ? (RASPI_BASE + path) : path;
     return fetch(url, options);
 }
 
-// Update all fetch('/api/...') and fetch('/video_feed_c1') to use apiFetch
-// Example for camera status:
-function checkCameraStatus() {
-    apiFetch('/api/camera_status')
-        .then(async r => {
-            let status;
-            try {
-                status = await r.json();
-            } catch (e) {
-                // Do NOT force overlays to active on JSON error, just leave as-is
-                return;
-            }
-            // Only show overlay if camera is explicitly offline
-            overlayC1.classList.toggle('active', !(status.Camera_1 && status.Camera_1.online === true));
-            overlayC2.classList.toggle('active', !(status.Camera_2 && status.Camera_2.online === true));
-        })
-        .catch(() => {
-            // Do NOT force overlays to active on fetch error, just leave as-is
-        });
-}
 
 // Similarly, update other fetch('/api/...') calls to apiFetch('/api/...')
 function checkServerHealth() {
@@ -827,47 +811,62 @@ function updateReconnectingOverlays(camStatus) {
     const overlayC2 = document.getElementById('reconnectingOverlayC2');
     const spanC1 = overlayC1.querySelector('span');
     const spanC2 = overlayC2.querySelector('span');
-    // Use /api/get_pi_url as the only basis for cloud link status
-    fetch('/api/get_pi_url')
-        .then(resp => resp.json())
-        .then(data => {
-            const cloudLinkAvailable = !!data.public_url;
-            if (!cloudLinkAvailable) {
+    // Use AJAX (XMLHttpRequest) instead of fetch
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/get_pi_url', true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    var cloudLinkAvailable = !!data.public_url;
+                    if (!cloudLinkAvailable) {
+                        overlayC1.classList.add('active');
+                        overlayC2.classList.add('active');
+                        spanC1.textContent = "Cloud Link Disconnected";
+                        spanC1.style.display = "";
+                        spanC2.textContent = "Cloud Link Disconnected";
+                        spanC2.style.display = "";
+                    } else {
+                        // Cloud link active: show overlay only if camera is offline, hide otherwise
+                        if (!(camStatus.Camera_1 && camStatus.Camera_1.online === true)) {
+                            overlayC1.classList.add('active');
+                            spanC1.textContent = "Reconnecting";
+                            spanC1.style.display = "";
+                        } else {
+                            overlayC1.classList.remove('active');
+                            spanC1.style.display = "none";
+                        }
+                        if (!(camStatus.Camera_2 && camStatus.Camera_2.online === true)) {
+                            overlayC2.classList.add('active');
+                            spanC2.textContent = "Reconnecting";
+                            spanC2.style.display = "";
+                        } else {
+                            overlayC2.classList.remove('active');
+                            spanC2.style.display = "none";
+                        }
+                    }
+                } catch (e) {
+                    // On JSON parse error, treat as disconnected
+                    overlayC1.classList.add('active');
+                    overlayC2.classList.add('active');
+                    spanC1.textContent = "Cloud Link Disconnected";
+                    spanC1.style.display = "";
+                    spanC2.textContent = "Cloud Link Disconnected";
+                    spanC2.style.display = "";
+                }
+            } else {
+                // On HTTP error, treat as disconnected
                 overlayC1.classList.add('active');
                 overlayC2.classList.add('active');
                 spanC1.textContent = "Cloud Link Disconnected";
                 spanC1.style.display = "";
                 spanC2.textContent = "Cloud Link Disconnected";
                 spanC2.style.display = "";
-            } else {
-                // Cloud link active: show overlay only if camera is offline, hide otherwise
-                if (!(camStatus.Camera_1 && camStatus.Camera_1.online === true)) {
-                    overlayC1.classList.add('active');
-                    spanC1.textContent = "Reconnecting";
-                    spanC1.style.display = "";
-                } else {
-                    overlayC1.classList.remove('active');
-                    spanC1.style.display = "none";
-                }
-                if (!(camStatus.Camera_2 && camStatus.Camera_2.online === true)) {
-                    overlayC2.classList.add('active');
-                    spanC2.textContent = "Reconnecting";
-                    spanC2.style.display = "";
-                } else {
-                    overlayC2.classList.remove('active');
-                    spanC2.style.display = "none";
-                }
             }
-        })
-        .catch(() => {
-            // On error, treat as cloud link disconnected
-            overlayC1.classList.add('active');
-            overlayC2.classList.add('active');
-            spanC1.textContent = "Cloud Link Disconnected";
-            spanC1.style.display = "";
-            spanC2.textContent = "Cloud Link Disconnected";
-            spanC2.style.display = "";
-        });
+        }
+    };
+    xhr.send();
 }
 
 // Update checkCameraStatus to use updateReconnectingOverlays
