@@ -281,6 +281,21 @@ def api_camera_status():
         })
 
 # --------------------------------------------------
+# Settings
+# --------------------------------------------------
+@app.route('/api/settings', methods=['GET'])
+def api_settings():
+    try:
+        pi_base = get_pi_base()
+        url = f"{pi_base}/api/settings"
+        resp = requests.get(url, timeout=10)
+        # Forward the Pi's config settings to the frontend
+        return jsonify(resp.json())
+    except Exception as e:
+        logger.error(f"Failed to fetch settings from Pi: {e}")
+        return jsonify({"success": False, "error": str(e)}), 502
+
+# --------------------------------------------------
 # Error Handling
 # --------------------------------------------------
 @app.errorhandler(Exception)

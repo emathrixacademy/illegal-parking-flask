@@ -420,6 +420,11 @@ def api_settings():
 
     # GET: return current config
     return jsonify({
+        "CAM1_URL": getattr(config, "CAM1_URL", ""),
+        "CAM2_URL": getattr(config, "CAM2_URL", ""),
+        "MODEL_PATH": getattr(config, "MODEL_PATH", ""),
+        "SAVE_DIR": getattr(config, "SAVE_DIR", ""),
+        "DETECTION_THRESHOLD": getattr(config, "DETECTION_THRESHOLD", 0.3),
         "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 10),
         "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
