@@ -179,8 +179,12 @@ class Stream:
 monitor = ParkingMonitor()
 
 # Use config values directly, fallback to defaults if missing
-CAM1_URL = getattr(config, "CAM1_URL", "rtsp://localhost:8554/cam1")
-CAM2_URL = getattr(config, "CAM2_URL", "rtsp://localhost:8554/cam2")
+CAM1_URL = getattr(config, "CAM1_URL", None)
+CAM2_URL = getattr(config, "CAM2_URL", None)
+
+if not CAM1_URL or not CAM2_URL:
+    logger.error("CAM1_URL and/or CAM2_URL are not set in config.py. Please set valid RTSP URLs.")
+    exit(1)
 
 c1, c2 = Stream(CAM1_URL), Stream(CAM2_URL)
 latest_processed = {"Camera_1": None, "Camera_2": None}
