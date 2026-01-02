@@ -20,7 +20,7 @@ app = Flask(__name__)
 # --- Logging & directories ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PiCameraServer")
-SAVE_DIR = getattr(config, "SAVE_DIR", "events")
+SAVE_DIR = getattr(config, "SAVE_DIR", "static/violations")
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
@@ -177,7 +177,12 @@ class Stream:
 
 # --- Initialize ---
 monitor = ParkingMonitor()
-c1, c2 = Stream(config.CAM1_URL), Stream(config.CAM2_URL)
+
+# Use config values directly, fallback to defaults if missing
+CAM1_URL = getattr(config, "CAM1_URL", "rtsp://localhost:8554/cam1")
+CAM2_URL = getattr(config, "CAM2_URL", "rtsp://localhost:8554/cam2")
+
+c1, c2 = Stream(CAM1_URL), Stream(CAM2_URL)
 latest_processed = {"Camera_1": None, "Camera_2": None}
 proc_lock = threading.Lock()
 
