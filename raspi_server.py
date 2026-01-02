@@ -371,14 +371,12 @@ def api_settings():
 
         def replace_line(key, value):
             pattern = re.compile(rf"^{key}\s*=\s*.*$")
+            py_repr = repr(value)
             for i, line in enumerate(lines):
                 if pattern.match(line):
-                    if key == "PARKING_ZONES":
-                        lines[i] = f"{key} = {pyjson.dumps(value)}\n"
-                    else:
-                        lines[i] = f"{key} = {value}\n"
+                    lines[i] = f"{key} = {py_repr}\n"
                     return
-            lines.append(f"{key} = {pyjson.dumps(value) if key=='PARKING_ZONES' else value}\n")
+            lines.append(f"{key} = {py_repr}\n")
 
         # Update config values
         if "VIOLATION_TIME_THRESHOLD" in data:
@@ -395,9 +393,15 @@ def api_settings():
                     updated_zones[cam] = val
             replace_line("PARKING_ZONES", updated_zones)
 
-        with open(config_path, "w") as f:
-            f.writelines(lines)
-        importlib.reload(config)
+        # Validate config before reload
+        try:
+            with open(config_path, "w") as f:
+                f.writelines(lines)
+            importlib.reload(config)
+        except Exception as e:
+            logger.error(f"Config reload error: {e}")
+            return jsonify({"success": False, "error": "Config syntax error"}), 500
+
         # Update in-memory zones in ParkingMonitor
         monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
         return jsonify({"success": True})

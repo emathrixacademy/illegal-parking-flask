@@ -300,6 +300,33 @@
                     </button>
                     <div id="zoneDisplay" class="mt-2"></div>
                 </div>
+                <!-- Zone Selector Modal -->
+                <div class="modal fade" id="zoneSelectorModal" tabindex="-1" aria-labelledby="zoneSelectorModalLabel" aria-hidden="true">
+                  <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content bg-dark text-light">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="zoneSelectorModalLabel"><i class="bi bi-vector-pen"></i> Select Zone Area</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <div id="zoneSelectorInstructions" class="mb-2">
+                          <small>
+                            Click on the video to add points for the zone polygon.<br>
+                            <b>Undo</b>: Right-click or press 'u'. <b>Clear</b>: Press 'c'. <b>Finish</b>: Press 'Enter' or click "Save Zone".
+                          </small>
+                        </div>
+                        <div style="position:relative;">
+                          <canvas id="zoneCanvas" width="640" height="360" style="border:1px solid #444; background:#222;"></canvas>
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" id="zoneUndoBtn" class="btn btn-warning"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
+                        <button type="button" id="zoneClearBtn" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Clear</button>
+                        <button type="button" id="zoneSaveBtn" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Save Zone</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <button type="submit" class="btn btn-primary">Save Settings</button>
                 <a href="/" class="btn btn-secondary">Back to Home</a>
             </form>
@@ -460,6 +487,139 @@
             return;
         }
         // The popup will postMessage the zone data back to this window
+    });
+
+    // --- Zone Selector Modal Logic ---
+    let zonePoints = [];
+    let zoneVideo = null;
+    let zoneVideoStream = null;
+    let zoneCanvas = null;
+    let zoneCtx = null;
+    let zoneModal = null;
+    let zoneCamName = "";
+
+    function openZoneSelector(camName) {
+        zonePoints = [];
+        zoneCamName = camName;
+        zoneCanvas = document.getElementById('zoneCanvas');
+        zoneCtx = zoneCanvas.getContext('2d');
+        // Set up video stream
+        if (zoneVideoStream) {
+            zoneVideoStream.getTracks().forEach(track => track.stop());
+            zoneVideoStream = null;
+        }
+        // Use MJPEG stream from Pi
+        let streamUrl = camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2";
+        // Create MJPEG image loader
+        let img = new Image();
+        img.src = streamUrl + "?t=" + Date.now();
+        img.onload = function() {
+            zoneCtx.drawImage(img, 0, 0, zoneCanvas.width, zoneCanvas.height);
+            drawZonePoints();
+        };
+        // Refresh image every 200ms
+        let refreshInterval = setInterval(() => {
+            img.src = streamUrl + "?t=" + Date.now();
+        }, 200);
+
+        // Mouse events for point selection
+        zoneCanvas.onmousedown = function(e) {
+            if (e.button === 2) { // right-click
+                zonePoints.pop();
+                drawZonePoints();
+                return false;
+            }
+            const rect = zoneCanvas.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left));
+            const y = Math.round((e.clientY - rect.top));
+            zonePoints.push([x, y]);
+            drawZonePoints();
+        };
+        zoneCanvas.oncontextmenu = function(e) { e.preventDefault(); return false; };
+        document.getElementById('zoneUndoBtn').onclick = function() {
+            zonePoints.pop();
+            drawZonePoints();
+        };
+        document.getElementById('zoneClearBtn').onclick = function() {
+            zonePoints = [];
+            drawZonePoints();
+        };
+        document.getElementById('zoneSaveBtn').onclick = function() {
+            if (zonePoints.length < 3) {
+                alert("Select at least 3 points for a zone.");
+                return;
+            }
+            // Send zone to parent logic
+            updateZoneDisplay(zonePoints);
+            // Save to server
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ PARKING_ZONES: { [zoneCamName]: zonePoints } })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('status').innerHTML = '<div class="alert alert-success">Zone updated! Now active for ' + zoneCamName + '.</div>';
+                    loadSettings();
+                } else {
+                    document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone.</div>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone to server.</div>';
+            });
+            // Close modal
+            zoneModal.hide();
+            clearInterval(refreshInterval);
+        };
+        // Keyboard shortcuts
+        zoneCanvas.tabIndex = 0;
+        zoneCanvas.onkeydown = function(e) {
+            if (e.key === 'u') {
+                zonePoints.pop();
+                drawZonePoints();
+            } else if (e.key === 'c') {
+                zonePoints = [];
+                drawZonePoints();
+            } else if (e.key === 'Enter') {
+                document.getElementById('zoneSaveBtn').click();
+            }
+        };
+        // Draw points and polygon
+        function drawZonePoints() {
+            zoneCtx.clearRect(0, 0, zoneCanvas.width, zoneCanvas.height);
+            zoneCtx.drawImage(img, 0, 0, zoneCanvas.width, zoneCanvas.height);
+            zoneCtx.strokeStyle = "#0ff";
+            zoneCtx.lineWidth = 2;
+            if (zonePoints.length > 1) {
+                zoneCtx.beginPath();
+                zoneCtx.moveTo(zonePoints[0][0], zonePoints[0][1]);
+                for (let i = 1; i < zonePoints.length; i++) {
+                    zoneCtx.lineTo(zonePoints[i][0], zonePoints[i][1]);
+                }
+                zoneCtx.closePath();
+                zoneCtx.stroke();
+            }
+            for (let pt of zonePoints) {
+                zoneCtx.beginPath();
+                zoneCtx.arc(pt[0], pt[1], 6, 0, 2 * Math.PI);
+                zoneCtx.fillStyle = "#ff0";
+                zoneCtx.fill();
+                zoneCtx.strokeStyle = "#f00";
+                zoneCtx.stroke();
+            }
+        }
+        // Show modal
+        if (!zoneModal) {
+            zoneModal = new bootstrap.Modal(document.getElementById('zoneSelectorModal'), {});
+        }
+        zoneModal.show();
+    }
+
+    document.getElementById('selectZoneBtn').addEventListener('click', function() {
+        const cam = document.getElementById('cameraSelect').value;
+        openZoneSelector(cam);
     });
 </script>
 </body>
