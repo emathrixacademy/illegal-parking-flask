@@ -380,13 +380,13 @@
                 if (!r.ok) {
                     throw new Error("HTTP " + r.status + " " + r.statusText);
                 }
+                let text = await r.text();
+                let data;
                 try {
-                    const data = await r.json();
+                    data = JSON.parse(text);
                     injectSettingsToForm(data);
                     return;
                 } catch (err) {
-                    // Try to get raw text for debugging
-                    const text = await r.text();
                     document.getElementById('status').innerHTML =
                         '<div class="alert alert-danger">Failed to parse settings JSON.<br><small>' +
                         text.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
