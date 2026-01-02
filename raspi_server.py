@@ -13,10 +13,6 @@ from flask import Flask, request, jsonify, Response, render_template_string, ren
 import config
 from app_detect import detect, upload_event_to_cloud
 import signal
-import json
-from sqlalchemy import create_engine, Column, String, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 # --- Flask app ---
 app = Flask(__name__)
@@ -28,44 +24,6 @@ if not os.path.exists(config.SAVE_DIR):
     os.makedirs(config.SAVE_DIR)
 
 CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
-
-# --- SQLAlchemy Setup ---
-DATABASE_URL = "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@mainline.proxy.rlwy.net:42362/railway"
-engine = create_engine(DATABASE_URL)
-Base = declarative_base()
-
-class Config(Base):
-    __tablename__ = 'config'
-    key = Column(String, primary_key=True)
-    value = Column(Text)
-
-Session = sessionmaker(bind=engine)
-Base.metadata.create_all(engine)
-
-def get_config_value(key, default=None):
-    session = Session()
-    try:
-        row = session.query(Config).filter_by(key=key).first()
-        if row:
-            return json.loads(row.value)
-        return default
-    finally:
-        session.close()
-
-def write_config_py():
-    """Fetch config from DB and write to config.py as Python code."""
-    config_path = os.path.join(os.path.dirname(__file__), "config.py")
-    violation_time = get_config_value("VIOLATION_TIME_THRESHOLD", 10)
-    repeat_interval = get_config_value("REPEAT_CAPTURE_INTERVAL", 60)
-    parking_zones = get_config_value("PARKING_ZONES", {})
-
-    with open(config_path, "w") as f:
-        f.write(f"VIOLATION_TIME_THRESHOLD = {violation_time}\n")
-        f.write(f"REPEAT_CAPTURE_INTERVAL = {repeat_interval}\n")
-        f.write(f"PARKING_ZONES = {json.dumps(parking_zones)}\n")
-
-# --- On startup, update config.py from DB ---
-write_config_py()
 
 # --- Start Cloudflare Tunnel ---
 def start_cloudflared(port=5000):
