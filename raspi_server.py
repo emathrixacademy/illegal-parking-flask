@@ -9,51 +9,73 @@ import logging
 import subprocess
 import re
 import requests
+from flask import Flask, request, jsonify, Response, render_template_string, render_template, make_response
+import config
+from app_detect import detect, upload_event_to_cloud
 import signal
 import json
-from datetime import datetime
-from flask import Flask, request, jsonify, Response, render_template
-import config
-from app_detect import detect
+from sqlalchemy import create_engine, Column, String, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# ===============================
-# Flask App
-# ===============================
+# --- Flask app ---
 app = Flask(__name__)
 
-# ===============================
-# Logging & Directories
-# ===============================
+# --- Logging & directories ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PiCameraServer")
-
 if not os.path.exists(config.SAVE_DIR):
     os.makedirs(config.SAVE_DIR)
 
-CLASS_NAMES = {
-    0: "PERSON",
-    2: "CAR",
-    3: "MOTORCYCLE",
-    5: "BUS",
-    7: "TRUCK"
-}
+CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
 
-RAILWAY_API_URL = os.environ.get(
-    "RAILWAY_API_URL",
-    "https://illegal-parking-detection-flask.up.railway.app"
-)
+# --- SQLAlchemy Setup ---
+DATABASE_URL = "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@mainline.proxy.rlwy.net:42362/railway"
+engine = create_engine(DATABASE_URL)
+Base = declarative_base()
 
-# ===============================
-# Cloudflare Tunnel
-# ===============================
+class Config(Base):
+    __tablename__ = 'config'
+    key = Column(String, primary_key=True)
+    value = Column(Text)
+
+Session = sessionmaker(bind=engine)
+Base.metadata.create_all(engine)
+
+def get_config_value(key, default=None):
+    session = Session()
+    try:
+        row = session.query(Config).filter_by(key=key).first()
+        if row:
+            return json.loads(row.value)
+        return default
+    finally:
+        session.close()
+
+def write_config_py():
+    """Fetch config from DB and write to config.py as Python code."""
+    config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    violation_time = get_config_value("VIOLATION_TIME_THRESHOLD", 10)
+    repeat_interval = get_config_value("REPEAT_CAPTURE_INTERVAL", 60)
+    parking_zones = get_config_value("PARKING_ZONES", {})
+
+    with open(config_path, "w") as f:
+        f.write(f"VIOLATION_TIME_THRESHOLD = {violation_time}\n")
+        f.write(f"REPEAT_CAPTURE_INTERVAL = {repeat_interval}\n")
+        f.write(f"PARKING_ZONES = {json.dumps(parking_zones)}\n")
+
+# --- On startup, update config.py from DB ---
+write_config_py()
+
+# --- Start Cloudflare Tunnel ---
 def start_cloudflared(port=5000):
+    """Start cloudflared tunnel and return public URL."""
     process = subprocess.Popen(
         ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
     )
-
     url = None
     for line in iter(process.stdout.readline, ''):
         print(line.strip())
@@ -61,272 +83,432 @@ def start_cloudflared(port=5000):
         if match:
             url = match.group(0)
             break
-
     if not url:
-        raise RuntimeError("Cloudflare tunnel failed")
-
-    logger.info("Cloudflare tunnel started: %s", url)
+        raise RuntimeError("Failed to start cloudflared tunnel")
+    print(f"Cloudflared tunnel running at: {url}")
     return process, url
 
-# ===============================
-# Sync Config From Railway
-# ===============================
-def sync_config_from_railway():
-    try:
-        r = requests.get(f"{RAILWAY_API_URL}/api/settings", timeout=10)
-        data = r.json()
-
-        with open("config.py", "w") as f:
-            for k, v in data.items():
-                f.write(f"{k} = {repr(v)}\n")
-
-        import importlib
-        importlib.reload(config)
-        logger.info("Config synced from Railway")
-
-    except Exception as e:
-        logger.error("Failed to sync config: %s", e)
-
-# ===============================
-# Upload Violation to Railway
-# ===============================
-def upload_event_to_cloud(camera_id, frame, meta):
-    try:
-        _, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
-        image_b64 = base64.b64encode(buf).decode()
-
-        payload = {
-            "camera_id": camera_id,
-            "timestamp": datetime.utcnow().isoformat(),
-            "image": image_b64,
-            "meta": meta
-        }
-
-        r = requests.post(
-            f"{RAILWAY_API_URL}/api/upload_event",
-            json=payload,
-            timeout=5
-        )
-
-        logger.info("Violation uploaded: %s %s", r.status_code, r.text)
-
-    except Exception as e:
-        logger.error("Upload failed: %s", e)
-
-# ===============================
-# Tracker
-# ===============================
+# --- Simple Tracker ---
 class ByteTrackLite:
     def __init__(self):
-        self.tracked = {}
-        self.frame_id = 0
+        self.tracked_objects = {}
+        self.frame_count = 0
         self.next_id = 0
         self.buffer = 30
 
-    def iou(self, a, b):
-        xA, yA = max(a[0], b[0]), max(a[1], b[1])
-        xB, yB = min(a[2], b[2]), min(a[3], b[3])
+    def get_iou(self, b1, b2):
+        xA, yA = max(b1[0], b2[0]), max(b1[1], b2[1])
+        xB, yB = min(b1[2], b2[2]), min(b1[3], b2[3])
         inter = max(0, xB - xA) * max(0, yB - yA)
-        areaA = (a[2]-a[0])*(a[3]-a[1])
-        areaB = (b[2]-b[0])*(b[3]-b[1])
-        return inter / (areaA + areaB - inter + 1e-6)
+        a1 = (b1[2]-b1[0])*(b1[3]-b1[1])
+        a2 = (b2[2]-b2[0])*(b2[3]-b2[1])
+        return inter / (a1 + a2 - inter + 1e-6)
 
     def update(self, boxes, scores, clss):
-        self.frame_id += 1
-        updated = {}
-
-        for box, score, cls in zip(boxes, scores, clss):
-            best, best_iou = None, 0.3
-            for tid, t in self.tracked.items():
-                i = self.iou(box, t["box"])
-                if i > best_iou:
-                    best, best_iou = tid, i
-
-            if best is not None:
-                updated[best] = {"box": box, "cls": cls, "last": self.frame_id}
-                self.tracked.pop(best, None)
+        self.frame_count += 1
+        new_tracks = {}
+        for box, score, cid in zip(boxes, scores, clss):
+            best_id, best_iou = None, 0.3
+            for tid, t in self.tracked_objects.items():
+                iou = self.get_iou(box, t['box'])
+                if iou > best_iou:
+                    best_iou, best_id = iou, tid
+            if best_id is not None:
+                new_tracks[best_id] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
+                self.tracked_objects.pop(best_id, None)
             elif score >= config.DETECTION_THRESHOLD:
-                updated[self.next_id] = {"box": box, "cls": cls, "last": self.frame_id}
+                new_tracks[self.next_id] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
                 self.next_id += 1
+        for tid, t in self.tracked_objects.items():
+            if self.frame_count - t['last_seen'] < self.buffer:
+                new_tracks[tid] = t
+        self.tracked_objects = new_tracks
+        return {k: v for k, v in new_tracks.items() if v['last_seen'] == self.frame_count}
 
-        for tid, t in self.tracked.items():
-            if self.frame_id - t["last"] < self.buffer:
-                updated[tid] = t
-
-        self.tracked = updated
-        return {k: v for k, v in updated.items() if v["last"] == self.frame_id}
-
-# ===============================
-# Parking Monitor
-# ===============================
+# --- Parking Monitor ---
 class ParkingMonitor:
     def __init__(self):
-        self.trackers = {
-            "Camera_1": ByteTrackLite(),
-            "Camera_2": ByteTrackLite()
-        }
+        self.trackers = {"Camera_1": ByteTrackLite(), "Camera_2": ByteTrackLite()}
         self.timers = {}
-        self.last_upload = {}
-        self.zones = {
-            cam: np.array(zone)
-            for cam, zone in getattr(config, "PARKING_ZONES", {}).items()
-        }
+        self.last_upload_time = {}
+        self.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
 
-    def process(self, cam, res, frame):
-        if cam not in self.zones:
-            return
-
+    def process(self, name, res, frame):
+        if name not in self.zones: return
         fh, fw = frame.shape[:2]
-        zone = self.zones[cam]
-        cv2.polylines(frame, [zone], True, (0, 0, 255), 2)
-
-        boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
-        tracked = self.trackers[cam].update(boxes, res.conf, res.cls)
-
+        cv2.polylines(frame, [self.zones[name]], True, (0, 0, 255), 2)
+        pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
+        tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
         now = time.time()
         for tid, d in tracked.items():
-            x1, y1, x2, y2 = map(int, d["box"])
-            cls = d["cls"]
-            label = CLASS_NAMES.get(cls, "OBJ")
+            x1, y1, x2, y2 = map(int, d['box'])
+            label = CLASS_NAMES.get(d['cls'], "OBJ")
             center = ((x1+x2)//2, (y1+y2)//2)
-
-            if cls == 0:
+            if d['cls'] == 0:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 1)
                 continue
-
-            inside = cv2.pointPolygonTest(zone, center, False) >= 0
-            if inside:
-                self.timers.setdefault((cam, tid), now)
-                duration = int(now - self.timers[(cam, tid)])
-                violation = duration >= config.VIOLATION_TIME_THRESHOLD
-
-                color = (0, 0, 255) if violation else (0, 255, 255)
+            in_zone = cv2.pointPolygonTest(self.zones[name], center, False) >= 0
+            if in_zone:
+                self.timers.setdefault((name, tid), now)
+                dur = int(now - self.timers[(name, tid)])
+                is_violation = dur >= config.VIOLATION_TIME_THRESHOLD
+                color = (0, 0, 255) if is_violation else (0, 255, 255)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, f"{label} {duration}s", (x1, y1-8),
-                            0, 0.6, color, 2)
-
-                if violation:
-                    last = self.last_upload.get((cam, tid), 0)
-                    if now - last > config.REPEAT_CAPTURE_INTERVAL:
-                        meta = {
-                            "tracker_id": tid,
-                            "label": label,
-                            "confidence": float(res.conf[0])
-                        }
-                        upload_event_to_cloud(cam, frame, meta)
-                        self.last_upload[(cam, tid)] = now
+                cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, color, 2)
+                if is_violation:
+                    last_up = self.last_upload_time.get((name, tid), 0)
+                    if now - last_up > config.REPEAT_CAPTURE_INTERVAL:
+                        self.log_violation(name, tid, label, frame)
+                        self.last_upload_time[(name, tid)] = now
             else:
-                self.timers.pop((cam, tid), None)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                self.timers.pop((name, tid), None)
 
-# ===============================
-# Camera Streams
-# ===============================
+    def log_violation(self, cam, tid, label, frame):
+        import datetime
+        now = datetime.datetime.now()
+        date_folder = now.strftime("%B %d, %Y (%A)")
+        date_dir = os.path.join(config.SAVE_DIR, date_folder)
+        os.makedirs(date_dir, exist_ok=True)
+        path = os.path.join(date_dir, f"{cam}-{now.strftime('%H_%M_%S')}.jpg")
+        cv2.imwrite(path, frame)
+        meta = {"tracker_id": tid, "label": label, "timestamp": now.isoformat()}
+        upload_event_to_cloud(cam, frame, meta)
+
+# --- Stream handler ---
 class Stream:
     def __init__(self, url):
+        self.url = url
         self.cap = cv2.VideoCapture(url)
-        self.frame = None
-        self.last = 0
-        self.lock = threading.Lock()
-        threading.Thread(target=self.loop, daemon=True).start()
+        self.frame_buffer = None
+        self.last_update = 0
+        self.reconnecting = False
+        self.read_lock = threading.Lock()
+        self.reconnect_event = threading.Event()
+        self.running = True
+        threading.Thread(target=self._io_thread, daemon=True).start()
 
-    def loop(self):
-        while True:
+    def _io_thread(self):
+        while self.running:
+            if self.reconnect_event.is_set():
+                self.cap.release()
+                self.cap = cv2.VideoCapture(self.url)
+                self.reconnect_event.clear()
             ret, f = self.cap.read()
             if ret:
-                with self.lock:
-                    self.frame = f
-                    self.last = time.time()
+                with self.read_lock:
+                    self.frame_buffer = f
+                    self.last_update = time.time()
+                self.reconnecting = False
             else:
+                self.reconnecting = True
                 time.sleep(1)
                 self.cap.release()
-                self.cap = cv2.VideoCapture(self.cap)
+                self.cap = cv2.VideoCapture(self.url)
 
-    def get(self):
-        with self.lock:
-            return self.frame.copy() if self.frame is not None else None
+    def is_online(self):
+        return (time.time() - self.last_update) < 3.0
 
-    def online(self):
-        return time.time() - self.last < 3
+    def get_frame(self):
+        with self.read_lock:
+            return self.frame_buffer.copy() if self.frame_buffer is not None else None
 
-# ===============================
-# Init
-# ===============================
-sync_config_from_railway()
+    def reconnect(self):
+        self.reconnect_event.set()
+
+# --- Initialize ---
 monitor = ParkingMonitor()
+c1, c2 = Stream(config.CAM1_URL), Stream(config.CAM2_URL)
+latest_processed = {"Camera_1": None, "Camera_2": None}
+proc_lock = threading.Lock()
 
-c1 = Stream(config.CAM1_URL)
-c2 = Stream(config.CAM2_URL)
-
-latest = {"Camera_1": None, "Camera_2": None}
-lock = threading.Lock()
-
-def worker(name, stream):
+def processing_worker(cam_name, stream):
     while True:
-        frame = stream.get()
-        if frame is not None and stream.online():
-            res = detect([frame])
-            if res:
-                out = frame.copy()
-                monitor.process(name, res[0], out)
-                with lock:
-                    latest[name] = out
+        frame = stream.get_frame()
+        if frame is not None and stream.is_online():
+            try:
+                res = detect([frame])
+                if res:
+                    frame_disp = frame.copy()
+                    monitor.process(cam_name, res[0], frame_disp)
+                    with proc_lock:
+                        latest_processed[cam_name] = frame_disp
+            except Exception as e:
+                logger.error(f"Detection error: {e}")
         time.sleep(0.1)
 
-threading.Thread(target=worker, args=("Camera_1", c1), daemon=True).start()
-threading.Thread(target=worker, args=("Camera_2", c2), daemon=True).start()
+threading.Thread(target=processing_worker, args=("Camera_1", c1), daemon=True).start()
+threading.Thread(target=processing_worker, args=("Camera_2", c2), daemon=True).start()
 
-# ===============================
-# Flask Routes
-# ===============================
-def gen(cam):
+def gen_single(stream, cam_name):
+    FRAME_INTERVAL = 1.0 / 10  # 10 FPS for cloud streaming
+    JPEG_QUALITY = 80  # Lower quality for smoother streaming (range: 0-100)
+    last_frame_time = 0
     while True:
-        with lock:
-            frame = latest.get(cam)
+        start_time = time.time()
+        with proc_lock:
+            frame = latest_processed.get(cam_name)
         if frame is None:
-            frame = np.zeros((720,1280,3), dtype=np.uint8)
-        _, buf = cv2.imencode(".jpg", frame)
-        yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"
+            frame = stream.get_frame()
+        if frame is not None:
+            frame = cv2.resize(frame, (1280, 720))
+        else:
+            frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+            cv2.putText(frame, f"{cam_name} OFFLINE", (400, 360), 0, 1.5, (0,0,255), 3)
+        # Use JPEG quality to reduce bandwidth and smoothen streaming
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+        _, buf = cv2.imencode('.jpg', frame, encode_param)
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buf.tobytes() + b'\r\n')
+        elapsed = time.time() - start_time
+        sleep_time = max(0, FRAME_INTERVAL - elapsed)
+        time.sleep(sleep_time)
 
-@app.route("/video_feed_c1")
-def v1():
-    return Response(gen("Camera_1"), mimetype="multipart/x-mixed-replace; boundary=frame")
+# --- Flask routes ---
+@app.route('/video_feed_c1')
+def video_feed_c1():
+    return Response(gen_single(c1, "Camera_1"), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route("/video_feed_c2")
-def v2():
-    return Response(gen("Camera_2"), mimetype="multipart/x-mixed-replace; boundary=frame")
+@app.route('/video_feed_c2')
+def video_feed_c2():
+    return Response(gen_single(c2, "Camera_2"), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route("/api/camera_status")
-def status():
+@app.route('/api/camera_status')
+def camera_status():
     return jsonify({
-        "Camera_1": {"online": c1.online()},
-        "Camera_2": {"online": c2.online()}
+        "Camera_1": {"reconnecting": c1.reconnecting, "online": c1.is_online()},
+        "Camera_2": {"reconnecting": c2.reconnecting, "online": c2.is_online()}
     })
 
-@app.route("/")
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok'})
+
+@app.route('/detect', methods=['POST'])
+def detect_endpoint():
+    img = None
+    if 'image' in request.files:
+        img = decode_image(request.files['image'])
+    else:
+        data = request.get_json()
+        img = decode_image(data.get('image', '')) if data else None
+
+    if img is None:
+        return jsonify({'success': False, 'error': 'No image provided'}), 400
+
+    try:
+        results = detect([img])
+        if not results:
+            raise RuntimeError("Detection returned no results")
+        res = results[0]
+        return jsonify({
+            'success': True,
+            'boxes': res.xyxy.tolist(),
+            'confidences': res.conf.tolist(),
+            'classes': res.cls.tolist()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def decode_image(data):
+    if isinstance(data, str):
+        img_bytes = base64.b64decode(data)
+        img_array = np.frombuffer(img_bytes, np.uint8)
+        return cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    elif hasattr(data, 'read'):
+        img_bytes = data.read()
+        img_array = np.frombuffer(img_bytes, np.uint8)
+        return cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    return None
+
+@app.route('/')
 def index():
+    # Serve the template as-is; frontend will fetch the current cloud link dynamically
     return render_template("index.html")
 
-# ===============================
-# Shutdown
-# ===============================
+@app.route('/api/zone_selector', methods=['POST'])
+def api_zone_selector():
+    """
+    Update the parking zone for a camera.
+    Expects JSON: { "camera": "Camera_1" or "Camera_2", "zone": [[x1,y1], [x2,y2], ...] }
+    """
+    try:
+        data = request.get_json(force=True)
+        cam = data.get("camera")
+        zone = data.get("zone")
+        if not cam or not isinstance(zone, list) or len(zone) < 3:
+            return jsonify({"success": False, "error": "Invalid camera or zone"}), 400
+
+        import os, re, ast, json as pyjson
+        config_path = os.path.join(os.path.dirname(__file__), "config.py")
+
+        # Read config.py
+        with open(config_path, "r") as f:
+            lines = f.readlines()
+
+        # Find and update PARKING_ZONES robustly
+        zones = {}
+        start_idx = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("PARKING_ZONES"):
+                start_idx = i
+                break
+
+        if start_idx is not None:
+            # Collect all lines of the dict
+            dict_lines = []
+            for line in lines[start_idx:]:
+                dict_lines.append(line)
+                if "}" in line:
+                    break
+            dict_str = "".join(dict_lines)
+            try:
+                zones = ast.literal_eval(dict_str.split("=",1)[1].strip())
+            except Exception:
+                zones = {}
+        else:
+            zones = {}
+
+        # Update the selected camera
+        zones[cam] = zone
+
+        # Replace or append PARKING_ZONES in config.py
+        new_zones_str = f'PARKING_ZONES = {pyjson.dumps(zones, separators=(",", ":"))}\n'
+        if start_idx is not None:
+            # Remove old PARKING_ZONES block
+            end_idx = start_idx
+            for i in range(start_idx, len(lines)):
+                if "}" in lines[i]:
+                    end_idx = i
+                    break
+            lines = lines[:start_idx] + [new_zones_str] + lines[end_idx+1:]
+        else:
+            lines.append(new_zones_str)
+
+        # Write back to config.py
+        with open(config_path, "w") as f:
+            f.writelines(lines)
+
+        import importlib
+        import config as config_mod
+        importlib.reload(config_mod)
+        # Update in-memory zones in ParkingMonitor
+        monitor.zones = {cam: np.array(points) for cam, points in getattr(config_mod, "PARKING_ZONES", {}).items()}
+
+        return jsonify({"success": True, "zone": zone})
+    except Exception as e:
+        logger.error(f"Zone selector error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def api_settings():
+    import importlib
+    import json as pyjson
+    import re
+    config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        # Read config.py
+        with open(config_path, "r") as f:
+            lines = f.readlines()
+
+        def replace_line(key, value):
+            pattern = re.compile(rf"^{key}\s*=\s*.*$")
+            py_repr = repr(value)
+            for i, line in enumerate(lines):
+                if pattern.match(line):
+                    lines[i] = f"{key} = {py_repr}\n"
+                    return
+            lines.append(f"{key} = {py_repr}\n")
+
+        # Update config values
+        if "VIOLATION_TIME_THRESHOLD" in data:
+            replace_line("VIOLATION_TIME_THRESHOLD", data["VIOLATION_TIME_THRESHOLD"])
+        if "REPEAT_CAPTURE_INTERVAL" in data:
+            replace_line("REPEAT_CAPTURE_INTERVAL", data["REPEAT_CAPTURE_INTERVAL"])
+        if "PARKING_ZONES" in data:
+            current_zones = getattr(config, "PARKING_ZONES", {})
+            updated_zones = current_zones.copy()
+            for cam, val in data["PARKING_ZONES"].items():
+                if val is None:
+                    updated_zones.pop(cam, None)
+                else:
+                    updated_zones[cam] = val
+            replace_line("PARKING_ZONES", updated_zones)
+
+        # Validate config before reload
+        try:
+            with open(config_path, "w") as f:
+                f.writelines(lines)
+            importlib.reload(config)
+        except Exception as e:
+            logger.error(f"Config reload error: {e}")
+            return jsonify({"success": False, "error": "Config syntax error"}), 500
+
+        # Update in-memory zones in ParkingMonitor
+        monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+        return jsonify({"success": True})
+
+    # GET: return current config
+    return jsonify({
+        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 10),
+        "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
+        "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
+    })
+
+@app.route('/api/get_pi_url')
+def get_pi_url():
+    # Always return the latest public URL (Cloudflare tunnel)
+    public_url = app.config.get("PUBLIC_URL", "")
+    resp = jsonify({"public_url": public_url})
+    # Add CORS headers for cross-origin requests
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    return resp
+
+# --- Graceful shutdown ---
 def shutdown(sig, frame):
-    logger.info("Shutting down")
+    print("Shutting down...")
     os._exit(0)
 
 signal.signal(signal.SIGINT, shutdown)
 signal.signal(signal.SIGTERM, shutdown)
 
-# ===============================
-# Main
-# ===============================
-if __name__ == "__main__":
+if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    cf, public_url = start_cloudflared(port)
-    app.config["PUBLIC_URL"] = public_url
+    print(f"Starting Flask on 0.0.0.0:{port}")
 
-    requests.post(
-        f"{RAILWAY_API_URL}/api/set_pi_url",
-        json={"public_url": public_url},
-        timeout=5
-    )
+    # Start cloudflared automatically
+    try:
+        cf_proc, public_url = start_cloudflared(port)
+        app.config["PUBLIC_URL"] = public_url
 
-    app.run(host="0.0.0.0", port=port, threaded=True)
+        # --- Notify Railway app of the public URL ---
+        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+        import time
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(
+                    f"{RAILWAY_API_URL}/api/set_pi_url",
+                    json={"public_url": public_url},
+                    timeout=5
+                )
+                print("Posted public URL to Railway:", resp.status_code, resp.text)
+                if resp.status_code == 200:
+                    break
+            except Exception as e:
+                print(f"Failed to notify Railway app (attempt {attempt+1}):", e)
+            time.sleep(2)
+        else:
+            print("Failed to notify Railway app after retries.")
+
+    except Exception as e:
+        print("Failed to start Cloudflare Tunnel:", e)
+        app.config["PUBLIC_URL"] = ""
+
+    app.run(host='0.0.0.0', port=port, threaded=True)
+
+# NOTE: This server runs on Raspberry Pi hardware.
+# All /api/* endpoints and video feeds are served here and exposed via Cloudflare tunnel.
+# The Railway app and frontend communicate with this server via the public URL.
