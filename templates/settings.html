@@ -510,7 +510,9 @@
         zoneCtx = zoneCanvas.getContext('2d');
         zoneLiveImg = document.getElementById('zoneLiveImg');
         // MJPEG stream URL
-        let streamUrl = camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2";
+        let streamUrl = piPublicUrl
+            ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
+            : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
         // Set the MJPEG image src for live video
         zoneLiveImg.src = streamUrl + "?t=" + Date.now();
         if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
@@ -540,29 +542,30 @@
             zonePoints = [];
             drawZonePoints();
         };
-        document.getElementById('zoneSaveBtn').onclick = function() {
+        document.getElementById('zoneSaveBtn').onclick = async function() {
             if (zonePoints.length < 3) {
                 alert("Select at least 3 points for a zone.");
                 return;
             }
             updateZoneDisplay(zonePoints);
-            fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ PARKING_ZONES: { [zoneCamName]: zonePoints } })
-            })
-            .then(r => r.json())
-            .then(result => {
+            // Always POST to the Pi server directly using piPublicUrl
+            let apiUrl = piPublicUrl ? (piPublicUrl + "/api/settings") : "/api/settings";
+            try {
+                const resp = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ PARKING_ZONES: { [zoneCamName]: zonePoints } })
+                });
+                const result = await resp.json();
                 if (result.success) {
                     document.getElementById('status').innerHTML = '<div class="alert alert-success">Zone updated! Now active for ' + zoneCamName + '.</div>';
                     loadSettings();
                 } else {
-                    document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone.</div>';
+                    document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone to server.<br>' + (result.error || '') + '</div>';
                 }
-            })
-            .catch(() => {
-                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone to server.</div>';
-            });
+            } catch (err) {
+                document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone to server.<br>' + (err && err.message ? err.message : err) + '</div>';
+            }
             zoneModal.hide();
             clearInterval(zoneImgRefreshInterval);
         };
