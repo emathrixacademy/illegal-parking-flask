@@ -827,22 +827,47 @@ function updateReconnectingOverlays(camStatus) {
     const overlayC2 = document.getElementById('reconnectingOverlayC2');
     const spanC1 = overlayC1.querySelector('span');
     const spanC2 = overlayC2.querySelector('span');
-    if (!cloudLinkActive) {
-        // Cloud link disconnected: show overlay for both cameras with message
-        overlayC1.classList.add('active');
-        overlayC2.classList.add('active');
-        spanC1.textContent = "Cloud Link Disconnected";
-        spanC1.style.display = "";
-        spanC2.textContent = "Cloud Link Disconnected";
-        spanC2.style.display = "";
-    } else {
-        // Cloud link active: hide reconnecting span for both cameras
-        spanC1.style.display = "none";
-        spanC2.style.display = "none";
-        // Optionally, still show overlay if camera is offline (but without span)
-        overlayC1.classList.toggle('active', !(camStatus.Camera_1 && camStatus.Camera_1.online === true));
-        overlayC2.classList.toggle('active', !(camStatus.Camera_2 && camStatus.Camera_2.online === true));
-    }
+    // Use /api/get_pi_url as the only basis for cloud link status
+    fetch('/api/get_pi_url')
+        .then(resp => resp.json())
+        .then(data => {
+            const cloudLinkAvailable = !!data.public_url;
+            if (!cloudLinkAvailable) {
+                overlayC1.classList.add('active');
+                overlayC2.classList.add('active');
+                spanC1.textContent = "Cloud Link Disconnected";
+                spanC1.style.display = "";
+                spanC2.textContent = "Cloud Link Disconnected";
+                spanC2.style.display = "";
+            } else {
+                // Cloud link active: show overlay only if camera is offline, hide otherwise
+                if (!(camStatus.Camera_1 && camStatus.Camera_1.online === true)) {
+                    overlayC1.classList.add('active');
+                    spanC1.textContent = "Reconnecting";
+                    spanC1.style.display = "";
+                } else {
+                    overlayC1.classList.remove('active');
+                    spanC1.style.display = "none";
+                }
+                if (!(camStatus.Camera_2 && camStatus.Camera_2.online === true)) {
+                    overlayC2.classList.add('active');
+                    spanC2.textContent = "Reconnecting";
+                    spanC2.style.display = "";
+                } else {
+                    overlayC2.classList.remove('active');
+                    spanC2.style.display = "none";
+                }
+            }
+        })
+        .catch(() => {
+            // On error, treat as cloud link disconnected
+            overlayC1.classList.add('active');
+            overlayC2.classList.add('active');
+            spanC1.textContent = "Cloud Link Disconnected";
+            spanC1.style.display = "";
+            spanC2.textContent = "Cloud Link Disconnected";
+            spanC2.style.display = "";
+        });
 }
 
 // Update checkCameraStatus to use updateReconnectingOverlays
