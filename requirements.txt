@@ -3,6 +3,8 @@ opencv-python-headless
 numpy
 gunicorn
 requests
+sqlalchemy
+psycopg2-binary
 # ...add any other dependencies your app uses...
 # e.g. hailo_platform, etc.
 # web-production-787ca.up.railway.app
