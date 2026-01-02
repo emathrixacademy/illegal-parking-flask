@@ -316,9 +316,11 @@
                           </small>
                         </div>
                         <div style="position:relative; display: flex; flex-direction: column; align-items: center;">
-                          <div style="position:relative;">
-                            <img id="zoneLiveImg" src="" width="640" height="360" style="position:absolute; left:0; top:0; z-index:1; border:1px solid #444; border-radius: 4px;">
-                            <canvas id="zoneCanvas" width="640" height="360" style="position:absolute; left:0; top:0; z-index:2; pointer-events:auto;"></canvas>
+                          <div style="position:relative; width:640px; height:360px;">
+                            <img id="zoneLiveImg" src="" width="640" height="360"
+                                 style="position:absolute; left:0; top:0; z-index:1; border:1px solid #444; border-radius: 4px;">
+                            <canvas id="zoneCanvas" width="640" height="360"
+                                    style="position:absolute; left:0; top:0; z-index:2; pointer-events:auto;"></canvas>
                           </div>
                         </div>
                       </div>
@@ -498,7 +500,6 @@
     let zoneCtx = null;
     let zoneModal = null;
     let zoneCamName = "";
-    let zoneImg = null;
     let zoneImgRefreshInterval = null;
     let zoneLiveImg = null;
 
