@@ -7,8 +7,6 @@ import re
 import requests
 from flask import Flask, render_template, jsonify, request, make_response, Response, render_template_string, stream_with_context, after_this_request
 from datetime import datetime
-import threading
-import time
 
 # NOTE: This app runs on Railway and acts as a relay/config interface.
 # All /api/* endpoints are served by the Raspberry Pi server via the cloud link.
@@ -102,68 +100,39 @@ def start_cloudflared(port=DEFAULT_PORT):
 
 # --- Store latest Pi public URL in memory ---
 PI_PUBLIC_URL = ""
-PI_URL_NOT_SET_LOGGED = False
-PI_DISCOVERY_LOCK = threading.Lock()
-PI_DISCOVERY_LAST_ATTEMPT = 0
-PI_DISCOVERY_INTERVAL = 5  # seconds
-
-def try_discover_pi_public_url():
-    """Try to discover the Pi's public URL from the Pi server if not set."""
-    global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED, PI_DISCOVERY_LAST_ATTEMPT
-    with PI_DISCOVERY_LOCK:
-        now = time.time()
-        if PI_PUBLIC_URL:
-            logger.info("[CloudLink] Already have PI_PUBLIC_URL: %s", PI_PUBLIC_URL)
-            return
-        # Only try every PI_DISCOVERY_INTERVAL seconds to avoid spamming
-        if now - PI_DISCOVERY_LAST_ATTEMPT < PI_DISCOVERY_INTERVAL:
-            logger.info("[CloudLink] Discovery throttled, last attempt %.2fs ago", now - PI_DISCOVERY_LAST_ATTEMPT)
-            return
-        PI_DISCOVERY_LAST_ATTEMPT = now
-        try:
-            pi_ip = os.environ.get("RASPI_IP", "192.168.18.32")
-            pi_port = os.environ.get("RASPI_PORT", "5000")
-            pi_url = f"http://{pi_ip}:{pi_port}/api/get_pi_url"
-            logger.info("[CloudLink] Attempting to discover Pi public URL from %s", pi_url)
-            resp = requests.get(pi_url, timeout=3)
-            data = resp.json()
-            logger.info("[CloudLink] Pi server responded: %s", data)
-            if data.get("public_url"):
-                PI_PUBLIC_URL = data["public_url"]
-                PI_URL_NOT_SET_LOGGED = False
-                logger.info("[CloudLink] Discovered and set PI_PUBLIC_URL: %s", PI_PUBLIC_URL)
-            else:
-                logger.warning("[CloudLink] Pi server did not return a public_url")
-        except Exception as e:
-            logger.warning("[CloudLink] Discovery failed: %s", e)
+PI_URL_NOT_SET_LOGGED = False  # Add this flag
 
 @app.route('/api/set_pi_url', methods=['POST'])
 def set_pi_url():
     global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
     data = request.get_json(force=True)
     new_url = data.get("public_url", "")
-    logger.info("[CloudLink] /api/set_pi_url called with: %s", new_url)
     if new_url and new_url != PI_PUBLIC_URL:
-        logger.info("[CloudLink] Received new Pi public URL: %s (old was: %s)", new_url, PI_PUBLIC_URL)
+        logger.info(f"Received new Pi public URL: {new_url} (old was: {PI_PUBLIC_URL})")
         PI_PUBLIC_URL = new_url  # Overwrite with latest only
     elif new_url:
-        logger.info("[CloudLink] Received Pi public URL (unchanged): %s", new_url)
+        logger.info(f"Received Pi public URL (unchanged): {new_url}")
     PI_URL_NOT_SET_LOGGED = False  # Reset error log flag when new URL is set
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
 @app.route('/api/get_pi_url')
 def get_pi_url():
-    global PI_PUBLIC_URL
-    logger.info("[CloudLink] /api/get_pi_url called. Current PI_PUBLIC_URL: %s", PI_PUBLIC_URL)
-    if not PI_PUBLIC_URL:
-        logger.info("[CloudLink] PI_PUBLIC_URL not set, attempting discovery...")
-        try_discover_pi_public_url()
-        logger.info("[CloudLink] After discovery, PI_PUBLIC_URL: %s", PI_PUBLIC_URL)
+    # Always return the latest public URL
     resp = jsonify({"public_url": PI_PUBLIC_URL})
     resp.headers['Access-Control-Allow-Origin'] = '*'
     resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
     resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
     return resp
+
+@app.route('/api/pi_public_url')
+def pi_public_url():
+    logger.info(f"Pi public URL requested: {PI_PUBLIC_URL}")
+    return jsonify({"public_url": PI_PUBLIC_URL})
+
+@app.route('/api/cloud_link_status')
+def cloud_link_status():
+    """Return whether the cloud link (Pi public URL) is set."""
+    return jsonify({"cloud_link_active": bool(PI_PUBLIC_URL)})
 
 # --- CORS support ---
 def add_cors_headers(response):
