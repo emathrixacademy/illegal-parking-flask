@@ -491,36 +491,30 @@
 
     // --- Zone Selector Modal Logic ---
     let zonePoints = [];
-    let zoneVideo = null;
-    let zoneVideoStream = null;
     let zoneCanvas = null;
     let zoneCtx = null;
     let zoneModal = null;
     let zoneCamName = "";
+    let zoneImg = null;
+    let zoneImgRefreshInterval = null;
 
     function openZoneSelector(camName) {
         zonePoints = [];
         zoneCamName = camName;
         zoneCanvas = document.getElementById('zoneCanvas');
         zoneCtx = zoneCanvas.getContext('2d');
-        // Set up video stream
-        if (zoneVideoStream) {
-            zoneVideoStream.getTracks().forEach(track => track.stop());
-            zoneVideoStream = null;
-        }
-        // Use MJPEG stream from Pi
+        // MJPEG stream URL
         let streamUrl = camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2";
-        // Create MJPEG image loader
-        let img = new Image();
-        img.src = streamUrl + "?t=" + Date.now();
-        img.onload = function() {
-            zoneCtx.drawImage(img, 0, 0, zoneCanvas.width, zoneCanvas.height);
+        zoneImg = new Image();
+        function refreshImg() {
+            zoneImg.src = streamUrl + "?t=" + Date.now();
+        }
+        zoneImg.onload = function() {
             drawZonePoints();
         };
-        // Refresh image every 200ms
-        let refreshInterval = setInterval(() => {
-            img.src = streamUrl + "?t=" + Date.now();
-        }, 200);
+        refreshImg();
+        if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
+        zoneImgRefreshInterval = setInterval(refreshImg, 200);
 
         // Mouse events for point selection
         zoneCanvas.onmousedown = function(e) {
@@ -549,9 +543,7 @@
                 alert("Select at least 3 points for a zone.");
                 return;
             }
-            // Send zone to parent logic
             updateZoneDisplay(zonePoints);
-            // Save to server
             fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -569,9 +561,8 @@
             .catch(() => {
                 document.getElementById('status').innerHTML = '<div class="alert alert-danger">Failed to save zone to server.</div>';
             });
-            // Close modal
             zoneModal.hide();
-            clearInterval(refreshInterval);
+            clearInterval(zoneImgRefreshInterval);
         };
         // Keyboard shortcuts
         zoneCanvas.tabIndex = 0;
@@ -586,10 +577,9 @@
                 document.getElementById('zoneSaveBtn').click();
             }
         };
-        // Draw points and polygon
         function drawZonePoints() {
             zoneCtx.clearRect(0, 0, zoneCanvas.width, zoneCanvas.height);
-            zoneCtx.drawImage(img, 0, 0, zoneCanvas.width, zoneCanvas.height);
+            if (zoneImg.complete) zoneCtx.drawImage(zoneImg, 0, 0, zoneCanvas.width, zoneCanvas.height);
             zoneCtx.strokeStyle = "#0ff";
             zoneCtx.lineWidth = 2;
             if (zonePoints.length > 1) {
@@ -610,7 +600,6 @@
                 zoneCtx.stroke();
             }
         }
-        // Show modal
         if (!zoneModal) {
             zoneModal = new bootstrap.Modal(document.getElementById('zoneSelectorModal'), {});
         }
