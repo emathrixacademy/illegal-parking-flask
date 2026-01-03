@@ -363,16 +363,6 @@
         </div>
         <div class="violations-section mx-auto">
             <h2><i class="bi bi-exclamation-triangle-fill"></i> Parking Violations</h2>
-            <div class="mb-3">
-                <label for="sortSelect" class="form-label">Sort by:</label>
-                <select id="sortSelect" class="form-select" style="max-width:250px;display:inline-block;">
-                    <option value="desc">Newest First</option>
-                    <option value="asc">Oldest First</option>
-                    <option value="month">Group by Month</option>
-                    <option value="date">Group by Date</option>
-                    <option value="hour">Group by Hour</option>
-                </select>
-            </div>
 
             <!-- New: date list (click a date to load images for that date) -->
             <div id="dateList" class="mb-3"></div>
@@ -450,6 +440,23 @@ function parseTimeFromFilename(ev) {
     return "";
 }
 
+// Class label mapping (should match backend)
+const CLASS_NAMES = {2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"};
+
+// Helper to get class label from event meta
+function getClassLabel(ev) {
+    let cls = ev.meta && ev.meta.class;
+    if (!cls) return "UNKNOWN";
+    // If backend already sent the string label, just use it
+    if (typeof cls === "string" && Object.values(CLASS_NAMES).includes(cls.toUpperCase())) {
+        return cls.toUpperCase();
+    }
+    // If backend sent the class id as number or string
+    let clsId = parseInt(cls);
+    if (CLASS_NAMES[clsId]) return CLASS_NAMES[clsId];
+    return cls.toString();
+}
+
 function violationCard(ev) {
     let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
@@ -457,6 +464,7 @@ function violationCard(ev) {
     let date_label = parseDateLabel(ev.timestamp || "");
     let time_label = parseTimeFromFilename(ev);
     let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
+    let classLabel = getClassLabel(ev);
 
     return `
     <div class="violation-card flex-column" style="min-height:80px;justify-content:center; cursor:pointer;"
@@ -464,6 +472,7 @@ function violationCard(ev) {
         <div class="violation-card-body">
             <div class="violation-card-title">
                 <i class="bi bi-camera-video"></i> <b>${camera_id}</b>
+                <span class="badge bg-secondary text-light ms-2">${classLabel}</span>
                 ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
                 ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
             </div>
@@ -539,15 +548,6 @@ async function loadEventsForDate(dateLabel){
         console.error(err);
     }
 }
-
-// Sorting still affects display when viewing a loaded date (re-renders current events)
-document.getElementById('sortSelect').addEventListener('change', function(){
-    // If a date is active, reload that date with the new sort (server side returns timestamp as date label; client sort options mostly for full lists)
-    const active = document.querySelector('.date-btn.active');
-    if(active){
-        loadEventsForDate(active.getAttribute('data-date'));
-    }
-});
 
 // Start by loading only dates; poll the date list periodically
 window.addEventListener('load', () => {
