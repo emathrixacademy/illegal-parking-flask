@@ -452,10 +452,11 @@ function renderViolations(events, sortType) {
 }
 
 function violationCard(ev) {
-    let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
-    let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    let imgSrc = ev.local_image_url || ev.image_url;
-    let fallbackSrc = ev.image_url || '';
+    let label = ev.label || "";
+    let tracker_id = ev.tracker_id || "";
+    // Prefer proxy_image_url if present (for DB violations), else local_image_url/image_url
+    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url;
+    let fallbackSrc = ev.local_image_url || ev.image_url || '';
     return `
     <div class="violation-card">
         <img src="${imgSrc}" alt="Violation"
@@ -465,14 +466,13 @@ function violationCard(ev) {
             onclick="showZoomModal(this)">
         <div class="violation-card-body">
             <div class="violation-card-title">
-                <i class="bi bi-camera-video"></i> ${ev.camera_id}
+                <i class="bi bi-camera-video"></i> ${ev.camera_id || ""}
                 ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
                 ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
             </div>
             <div class="violation-card-meta">
-                <i class="bi bi-clock"></i> ${ev.timestamp}
+                <i class="bi bi-clock"></i> ${ev.timestamp || ""}
             </div>
-            ${ev.meta && Object.keys(ev.meta).length ? `<pre>${JSON.stringify(ev.meta,null,2)}</pre>` : ""}
         </div>
     </div>
     `;
@@ -481,8 +481,8 @@ function violationCard(ev) {
 let allEvents = [];
 async function loadViolationEvents(){
     try{
-        // Fetch from /api/history_events for persistent history
-        const res = await fetch('/api/history_events');
+        // Fetch from /api/db_violations to get all DB violations with images from Pi
+        const res = await fetch('/api/db_violations');
         allEvents = await res.json();
         renderViolations(allEvents, document.getElementById('sortSelect').value);
     }catch{
