@@ -252,8 +252,6 @@ def proxy_video_feed(feed_path):
 # --------------------------------------------------
 # Events
 # --------------------------------------------------
-EVENTS = []
-
 @app.route('/api/upload_event', methods=['POST'])
 def upload_event():
     try:
@@ -298,12 +296,6 @@ def upload_event():
         except Exception as e:
             logger.error(f"Failed to insert violation event into PostgreSQL: {e}")
 
-        EVENTS.append({
-            "camera_id": camera_id,
-            "timestamp": timestamp,
-            "image_url": f"/{STATIC_EVENTS_DIR}/{fname}",
-            "meta": meta
-        })
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Upload event failed: {e}")
@@ -349,20 +341,33 @@ def api_proxy_image():
 
 @app.route('/api/events')
 def api_events():
-    # Add proxy_image_url for each event (from Pi) and local_image_url for Railway
-    events_with_proxy = []
-    for ev in EVENTS:
-        proxy_url = ""
-        local_url = ""
-        if "image_url" in ev:
-            image_path = ev["image_url"].lstrip("/")
-            proxy_url = f"/api/proxy_image?image_path={image_path}"
-            local_url = f"/api/image_from_db?image_path={image_path}"
-        ev_copy = dict(ev)
-        ev_copy["proxy_image_url"] = proxy_url
-        ev_copy["local_image_url"] = local_url
-        events_with_proxy.append(ev_copy)
-    return jsonify(events_with_proxy)
+    """
+    Return all violation images as history, even after server restarts.
+    This will list all images in static/events and return them as event objects.
+    """
+    image_dir = os.path.join(os.path.dirname(__file__), STATIC_EVENTS_DIR)
+    events = []
+    for root, dirs, files in os.walk(image_dir):
+        for fname in files:
+            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
+                rel_path = rel_path.replace("\\", "/")
+                # Try to extract camera and timestamp from filename
+                # Example: Camera_2_2026-01-03T11-47-00-155665.jpg
+                match = re.match(r".*[/\\]?([A-Za-z0-9_]+)_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d+)\.jpg", rel_path)
+                camera_id = match.group(1) if match else ""
+                timestamp = match.group(2).replace("-", ":", 2).replace("T", " ", 1).replace("-", ":", 2).replace("-", ":", 2).replace("-", ".", 1) if match else ""
+                events.append({
+                    "camera_id": camera_id,
+                    "timestamp": timestamp,
+                    "image_url": f"/api/image_from_db?image_path={rel_path}",
+                    "meta": {},
+                    "proxy_image_url": "",  # Not used for history
+                    "local_image_url": f"/api/image_from_db?image_path={rel_path}"
+                })
+    # Sort newest first
+    events.sort(key=lambda ev: ev["timestamp"], reverse=True)
+    return jsonify(events)
 
 # Optional: Serve static files directly (for debugging or fallback)
 @app.route('/static/<path:filename>')

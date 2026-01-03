@@ -454,8 +454,8 @@ function renderViolations(events, sortType) {
 function violationCard(ev) {
     let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url;
-    let fallbackSrc = ev.local_image_url || ev.image_url || '';
+    let imgSrc = ev.local_image_url || ev.image_url;
+    let fallbackSrc = ev.image_url || '';
     // Add data-img for zoom, and onerror fallback
     return `
     <div class="violation-card">
@@ -489,63 +489,10 @@ async function loadViolationEvents(){
         document.getElementById('violationEvents').innerHTML="<div class='alert alert-danger'>Failed to load events.</div>";
     }
 }
-function renderImageList(images, sortType) {
-    const container = document.getElementById('violationEvents');
-    if (!images.length) {
-        container.innerHTML = "<div class='alert alert-info'>No images found in server.</div>";
-        return;
-    }
-    // For sorting, extract timestamp from filename if possible
-    let imgObjs = images.map(imgPath => {
-        // Try to extract timestamp from filename: ..._{timestamp}.jpg
-        let tsMatch = imgPath.match(/_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d+)/);
-        let ts = tsMatch ? tsMatch[1].replace(/-/g, ":").replace("T", " ").replace(/:(\d+)$/, ".$1") : "";
-        let dateObj = ts ? new Date(ts.replace(/:/g, "-").replace(" ", "T")) : null;
-        return { imgPath, ts, dateObj };
-    });
-    // Sort by dateObj if available
-    imgObjs.sort((a, b) => {
-        if (a.dateObj && b.dateObj) {
-            return sortType === "asc" ? a.dateObj - b.dateObj : b.dateObj - a.dateObj;
-        }
-        return sortType === "asc" ? a.imgPath.localeCompare(b.imgPath) : b.imgPath.localeCompare(a.imgPath);
-    });
-    let html = imgObjs.map(obj => `
-        <div class="violation-card">
-            <img src="/api/image_from_db?image_path=${encodeURIComponent(obj.imgPath)}" alt="Violation"
-                style="cursor:zoom-in" onclick="showZoomModal(this)" data-img="/api/image_from_db?image_path=${encodeURIComponent(obj.imgPath)}">
-            <div class="violation-card-body">
-                <div class="violation-card-title">
-                    <i class="bi bi-file-image"></i> ${obj.imgPath}
-                </div>
-                <div class="violation-card-meta">
-                    ${obj.ts ? `<i class="bi bi-clock"></i> ${obj.ts}` : ""}
-                </div>
-            </div>
-        </div>
-    `).join('');
-    container.innerHTML = html;
-}
-
-let allImages = [];
-async function loadAllImagesAndRender(sortType) {
-    const container = document.getElementById('violationEvents');
-    container.innerHTML = "<div class='text-info'>Loading all images...</div>";
-    try {
-        const res = await fetch('/api/list_images');
-        allImages = await res.json();
-        renderImageList(allImages, sortType);
-    } catch {
-        container.innerHTML = "<div class='alert alert-danger'>Failed to load images from server.</div>";
-    }
-}
-
 document.getElementById('sortSelect').addEventListener('change', function(){
-    renderImageList(allImages, this.value);
+    renderViolations(allEvents, this.value);
 });
-window.onload = function() {
-    loadAllImagesAndRender(document.getElementById('sortSelect').value);
-};
+window.onload = loadViolationEvents;
 
 // Image zoom modal logic
 function showZoomModal(imgElem) {
