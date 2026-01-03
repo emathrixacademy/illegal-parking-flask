@@ -448,6 +448,32 @@ def api_events():
         logger.error(f"Failed to fetch events from Pi: {e}")
         return jsonify([])
 
+
+@app.route('/api/violation_counts', methods=['GET'])
+def api_violation_counts():
+    """
+    Return counts of violations grouped by label from the local PostgreSQL `violations` table.
+    Responds with a JSON object containing keys: CAR, MOTORCYCLE, TRUCK, BUS (integers).
+    """
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("SELECT label, COUNT(*) FROM violations GROUP BY label;")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        counts = {row[0]: row[1] for row in rows}
+        result = {
+            "CAR": counts.get("CAR", 0),
+            "MOTORCYCLE": counts.get("MOTORCYCLE", 0),
+            "TRUCK": counts.get("TRUCK", 0),
+            "BUS": counts.get("BUS", 0)
+        }
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Failed to query violation counts: {e}")
+        return jsonify({"CAR":0, "MOTORCYCLE":0, "TRUCK":0, "BUS":0})
+
 # Optional: Serve static files directly (for debugging or fallback)
 @app.route('/static/<path:filename>')
 def static_files(filename):
