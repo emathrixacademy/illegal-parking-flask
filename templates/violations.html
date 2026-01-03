@@ -457,16 +457,24 @@ function violationCard(ev) {
     let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url;
     let fallbackSrc = ev.local_image_url || ev.image_url || '';
     // Add data-img for zoom, and onerror fallback
+    // Add a loading spinner for fast perceived response
+    const spinner = `<div class='spinner-border text-warning position-absolute top-50 start-50 translate-middle' role='status' style='width:2rem;height:2rem;'><span class='visually-hidden'>Loading...</span></div>`;
+    const imgId = `img_${Math.random().toString(36).substr(2,9)}`;
     return `
-    <div class="violation-card">
-        <img src="${imgSrc}" alt="Violation"
-            data-img="${imgSrc}"
-            onerror="if(this.src!==location.origin+'${fallbackSrc}' && '${fallbackSrc}')this.src='${fallbackSrc}';"
-            style="cursor:zoom-in"
-            onclick="showZoomModal(this)">
+    <div class="violation-card position-relative">
+        <div style="position:relative;width:120px;height:80px;">
+            ${spinner}
+            <img id="${imgId}" src="${imgSrc}" alt="Violation"
+                data-img="${imgSrc}"
+                loading="lazy"
+                onload="this.previousElementSibling && this.previousElementSibling.remove();"
+                onerror="if(this.src!==location.origin+'${fallbackSrc}' && '${fallbackSrc}')this.src='${fallbackSrc}';this.previousElementSibling && this.previousElementSibling.remove();"
+                style="cursor:zoom-in;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;border-radius:10px 0 0 10px;background:#222;"
+                onclick="showZoomModal(this)">
+        </div>
         <div class="violation-card-body">
             <div class="violation-card-title">
-                <i class="bi bi-camera-video"></i> ${ev.camera_id}
+                <span class="badge bg-primary text-light me-2"><i class="bi bi-camera-video"></i> ${ev.camera_id || 'Unknown Camera'}</span>
                 ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
                 ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
             </div>
