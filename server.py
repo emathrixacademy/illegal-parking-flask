@@ -438,24 +438,6 @@ def video_feed_c1():
 def video_feed_c2():
     return Response(gen_single(c2, "Camera_2"), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/api/get_image')
-def api_get_image():
-    """
-    Serve a violation image given its image_path (relative to project root).
-    Usage: /api/get_image?image_path=...
-    """
-    image_path = request.args.get("image_path")
-    if not image_path:
-        return jsonify({"success": False, "error": "Missing image_path"}), 400
-    # Sanitize path to prevent directory traversal
-    safe_path = os.path.normpath(image_path)
-    if ".." in safe_path or safe_path.startswith("/"):
-        return jsonify({"success": False, "error": "Invalid image_path"}), 400
-    abs_path = os.path.join(os.path.dirname(__file__), safe_path)
-    if not os.path.exists(abs_path):
-        return jsonify({"success": False, "error": "Image not found"}), 404
-    return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
-
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on 0.0.0.0:{port}")
