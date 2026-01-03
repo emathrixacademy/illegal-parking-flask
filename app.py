@@ -14,6 +14,8 @@ import base64
 import config
 import psycopg2
 import urllib.parse
+import threading
+import time
 
 # --------------------------------------------------
 # Logging
@@ -184,6 +186,32 @@ def ensure_violations_table():
     except Exception as e:
         logger.error(f"Failed to ensure violations table: {e}")
 
+# --- Image Cache ---
+IMAGE_CACHE = {}
+IMAGE_CACHE_LOCK = threading.Lock()
+IMAGE_CACHE_MAX_SIZE = 200  # adjust as needed
+IMAGE_CACHE_TTL = 60 * 5    # 5 minutes
+
+def get_cached_image(image_path):
+    now = time.time()
+    with IMAGE_CACHE_LOCK:
+        entry = IMAGE_CACHE.get(image_path)
+        if entry:
+            data, ts = entry
+            if now - ts < IMAGE_CACHE_TTL:
+                return data
+            else:
+                del IMAGE_CACHE[image_path]
+        return None
+
+def set_cached_image(image_path, data):
+    with IMAGE_CACHE_LOCK:
+        if len(IMAGE_CACHE) >= IMAGE_CACHE_MAX_SIZE:
+            # Remove oldest
+            oldest = min(IMAGE_CACHE.items(), key=lambda x: x[1][1])[0]
+            del IMAGE_CACHE[oldest]
+        IMAGE_CACHE[image_path] = (data, time.time())
+
 # --------------------------------------------------
 # Routes – UI
 # --------------------------------------------------
@@ -322,17 +350,24 @@ def api_image_from_db():
 @app.route('/api/proxy_image')
 def api_proxy_image():
     """
-    Proxy an image from the Pi given its image_path.
+    Proxy an image from the Pi given its image_path, with caching.
     Usage: /api/proxy_image?image_path=...
     """
     try:
         image_path = request.args.get("image_path")
         if not image_path:
             return jsonify({"success": False, "error": "Missing image_path"}), 400
+
+        # Try cache first
+        cached = get_cached_image(image_path)
+        if cached:
+            return Response(cached, mimetype="image/jpeg")
+
         pi_base = get_pi_base()
         url = f"{pi_base}/api/get_image"
         resp = requests.get(url, params={"image_path": image_path}, timeout=10)
         if resp.status_code == 200:
+            set_cached_image(image_path, resp.content)
             return Response(resp.content, mimetype="image/jpeg")
         else:
             return Response("Image not found", 404)
