@@ -297,6 +297,9 @@ class ParkingMonitor:
                         logger.info(f"Violation detected: camera={name}, tracker_id={tid}, label={label}, time={now_dt.isoformat()}")
                         logger.info(f"Saved violation image to {img_path}")
 
+                        # --- Save relative path for DB/API ---
+                        rel_img_path = os.path.relpath(img_path, os.path.dirname(__file__)).replace("\\", "/")
+
                         # --- Send violation event to Railway API ---
                         try:
                             _, buf = cv2.imencode('.jpg', frame)
@@ -307,7 +310,8 @@ class ParkingMonitor:
                                 "label": label,
                                 "timestamp": now_dt.isoformat(),
                                 "image": img_b64,
-                                "meta": {}
+                                "meta": {},
+                                "image_path": rel_img_path  # Optionally send this for debugging
                             }
                             api_url = f"{RAILWAY_API_URL}/api/upload_event"
                             resp = requests.post(api_url, json=payload, timeout=10)
@@ -324,7 +328,7 @@ class ParkingMonitor:
                         #     tracker_id=tid,
                         #     label=label,
                         #     timestamp=now_dt,
-                        #     image_path=img_path
+                        #     image_path=rel_img_path
                         # )
 
                         self.last_upload_time[(name, tid)] = now

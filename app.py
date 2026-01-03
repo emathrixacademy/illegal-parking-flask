@@ -343,7 +343,7 @@ def api_proxy_image():
 def api_events():
     """
     Return all violation events from the Railway PostgreSQL database,
-    and for each, match the image to the Pi's local files for serving.
+    and for each, provide both proxy and direct local image URLs from the Pi.
     """
     try:
         # 1. Fetch all events from PostgreSQL
@@ -369,23 +369,22 @@ def api_events():
             logger.error(f"Failed to fetch image list from Pi: {e}")
             image_files = []
 
-        # 3. Build a mapping for fast lookup (normalize slashes)
         image_set = set(f.replace("\\", "/") for f in image_files)
 
-        # 4. Prepare events for frontend
         events = []
         for camera, tracker_id, label, timestamp, image_path in rows:
-            # Normalize image_path for matching
             norm_image_path = image_path.replace("\\", "/") if image_path else ""
             proxy_url = ""
+            local_url = ""
             if norm_image_path in image_set:
                 proxy_url = f"/api/proxy_image?image_path={norm_image_path}"
+                local_url = f"{pi_base}/api/get_image?image_path={norm_image_path}"
             else:
-                # Try to match by filename only if full path not found
                 fname = os.path.basename(norm_image_path)
                 match_path = next((f for f in image_set if os.path.basename(f) == fname), None)
                 if match_path:
                     proxy_url = f"/api/proxy_image?image_path={match_path}"
+                    local_url = f"{pi_base}/api/get_image?image_path={match_path}"
             events.append({
                 "camera_id": camera,
                 "tracker_id": tracker_id,
@@ -393,8 +392,8 @@ def api_events():
                 "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp),
                 "meta": {},
                 "proxy_image_url": proxy_url,
-                "local_image_url": "",  # Not used
-                "image_url": ""         # Not used
+                "local_image_url": local_url,
+                "image_url": ""  # Not used
             })
         return jsonify(events)
     except Exception as e:
