@@ -861,8 +861,11 @@ async function fetchAnalytics(){
         const counts = labels.map(l => Number(data[l] || 0));
         const total = counts.reduce((a,b)=>a+b,0);
 
-        if(!analyticsChart){
-            const ctx = document.getElementById('analyticsChart').getContext('2d');
+        // Ensure chart is initialized even if canvas is missing
+        const canvas = document.getElementById('analyticsChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if(!analyticsChart && ctx){
             analyticsChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
@@ -876,17 +879,19 @@ async function fetchAnalytics(){
             });
         }
 
-        if(total === 0){
-            // show a neutral 'no data' slice
-            analyticsChart.data.labels = ['No data'];
-            analyticsChart.data.datasets[0].data = [1];
-            analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
-        } else {
-            analyticsChart.data.labels = labels;
-            analyticsChart.data.datasets[0].data = counts;
-            analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6'];
+        if(analyticsChart){
+            if(total === 0){
+                // show a neutral 'no data' slice
+                analyticsChart.data.labels = ['No data'];
+                analyticsChart.data.datasets[0].data = [1];
+                analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+            } else {
+                analyticsChart.data.labels = labels;
+                analyticsChart.data.datasets[0].data = counts;
+                analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6'];
+            }
+            analyticsChart.update();
         }
-        analyticsChart.update();
 
         // update legend counters (always show zeros when no data)
         labels.forEach(l => {
@@ -894,7 +899,18 @@ async function fetchAnalytics(){
             if(el) el.textContent = data && data[l] ? data[l] : 0;
         });
     }catch(e){
-        // silently fail - analytics are optional
+        // On error, set legend counters to zero and show 'No data' on chart
+        const labels = ['CAR','MOTORCYCLE','TRUCK','BUS'];
+        labels.forEach(l => {
+            const el = document.getElementById('legend-' + l);
+            if(el) el.textContent = 0;
+        });
+        if(analyticsChart){
+            analyticsChart.data.labels = ['No data'];
+            analyticsChart.data.datasets[0].data = [1];
+            analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+            analyticsChart.update();
+        }
     }
 }
 </script>
