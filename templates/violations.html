@@ -373,6 +373,10 @@
                     <option value="hour">Group by Hour</option>
                 </select>
             </div>
+
+            <!-- New: date list (click a date to load images for that date) -->
+            <div id="dateList" class="mb-3"></div>
+
             <div id="violationEvents" class="violation-timeline"></div>
             <a href="/" class="btn btn-secondary mt-3">Back to Home</a>
         </div>
@@ -417,25 +421,13 @@ function formatHour(ts) {
     return d.toLocaleDateString() + ' ' + d.getHours() + ':00';
 }
 
-// Build a safe proxy URL by encoding the image_path parameter when present
-function buildProxyUrl(ev) {
-    if (ev.proxy_image_url && ev.proxy_image_url.includes('image_path=')) {
-        const parts = ev.proxy_image_url.split('image_path=');
-        const base = parts[0] + 'image_path=';
-        const raw = parts.slice(1).join('image_path=');
-        return base + encodeURIComponent(raw);
-    }
-    return ev.local_image_url || ev.image_url || '';
-}
-
-// Inline SVG fallback (URL-encoded)
+// Build a safe proxy URL function removed from client side because server now returns encoded proxy_image_url
 const FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22250%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23ff9800%22%20font-size%3D%2220%22%20font-family%3D%22Arial%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3EImage%20unavailable%3C/text%3E%3C/svg%3E';
 
 function violationCard(ev) {
     let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    let imgSrc = buildProxyUrl(ev) || ev.local_image_url || ev.image_url || '';
-    // Ensure we don't accidentally inject unescaped quotes. Use single quotes around attributes below.
+    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
     return `
     <div class="violation-card">
         <img src="${imgSrc}" alt="Violation"
@@ -458,81 +450,76 @@ function violationCard(ev) {
     `;
 }
 
-let allEvents = [];
 let pollingHandle = null;
 
-async function loadViolationEvents(){
-    const container = document.getElementById('violationEvents');
-    container.innerHTML = "<div class='text-muted'>Loading events...</div>";
+// Fetch and render available date labels
+async function loadDateList(){
+    const dl = document.getElementById('dateList');
+    dl.innerHTML = "<div class='text-muted'>Loading dates...</div>";
     try{
-        const res = await fetch('/api/events');
-        if (!res.ok) throw new Error('Network error');
-        allEvents = await res.json();
-
-        // Preload images so browser attempts to fetch them before rendering
-        const preloadPromises = allEvents.map(ev => {
-            return new Promise(resolve => {
-                const src = buildProxyUrl(ev) || ev.local_image_url || ev.image_url || '';
-                if (!src) return resolve();
-                const img = new Image();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-                img.src = src;
+        const res = await fetch('/api/events?dates_only=1');
+        const dates = await res.json();
+        if(!dates.length){
+            dl.innerHTML = "<div class='alert alert-info'>No violation dates available.</div>";
+            return;
+        }
+        dl.innerHTML = dates.map(d => `<button class="btn btn-outline-warning me-2 mb-2 date-btn" data-date="${d}">${d}</button>`).join('');
+        document.querySelectorAll('.date-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                // highlight selected
+                document.querySelectorAll('.date-btn').forEach(x=>x.classList.remove('active'));
+                b.classList.add('active');
+                loadEventsForDate(b.getAttribute('data-date'));
             });
         });
-        await Promise.all(preloadPromises);
-
-        renderViolations(allEvents, document.getElementById('sortSelect').value);
     }catch(err){
-        container.innerHTML = "<div class='alert alert-danger'>Failed to load events.</div>";
+        dl.innerHTML = "<div class='alert alert-danger'>Failed to load dates.</div>";
         console.error(err);
     }
 }
 
-function renderViolations(events, sortType) {
+// Fetch and render events for a single date
+async function loadEventsForDate(dateLabel){
     const container = document.getElementById('violationEvents');
-    if (!events || !events.length) {
-        container.innerHTML = "<div class='alert alert-info'>No violations detected.</div>";
-        return;
+    container.innerHTML = "<div class='text-muted'>Loading events for selected date...</div>";
+    try{
+        const res = await fetch(`/api/events?date=${encodeURIComponent(dateLabel)}`);
+        const events = await res.json();
+        if(!events || !events.length){
+            container.innerHTML = "<div class='alert alert-info'>No images for this date.</div>";
+            return;
+        }
+        // Preload images for smoother display (optional)
+        await Promise.all(events.map(ev => new Promise(resolve => {
+            const src = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
+            if(!src) return resolve();
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = src;
+        })));
+        // Render
+        container.innerHTML = events.map(ev => violationCard(ev)).join('');
+    }catch(err){
+        container.innerHTML = "<div class='alert alert-danger'>Failed to load events for date.</div>";
+        console.error(err);
     }
-    let html = "";
-    if (sortType === "month") {
-        const grouped = groupBy(events, ev => formatMonth(ev.timestamp));
-        Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a)).forEach(month => {
-            html += `<h5 class="mt-4 mb-2 text-warning">${month}</h5>`;
-            html += grouped[month].map(ev => violationCard(ev)).join('');
-        });
-    } else if (sortType === "date") {
-        const grouped = groupBy(events, ev => formatDate(ev.timestamp));
-        Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
-            html += `<h6 class="mt-3 mb-2 text-info">${date}</h6>`;
-            html += grouped[date].map(ev => violationCard(ev)).join('');
-        });
-    } else if (sortType === "hour") {
-        const grouped = groupBy(events, ev => formatHour(ev.timestamp));
-        Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a)).forEach(hour => {
-            html += `<div class="mt-3 mb-2 text-secondary fw-bold">${hour}</div>`;
-            html += grouped[hour].map(ev => violationCard(ev)).join('');
-        });
-    } else {
-        // Default: sort by timestamp
-        events.sort((a, b) => sortType === "asc"
-            ? new Date(a.timestamp) - new Date(b.timestamp)
-            : new Date(b.timestamp) - new Date(a.timestamp));
-        html = events.map(ev => violationCard(ev)).join('');
-    }
-    container.innerHTML = html;
 }
 
+// Sorting still affects display when viewing a loaded date (re-renders current events)
 document.getElementById('sortSelect').addEventListener('change', function(){
-    renderViolations(allEvents, this.value);
+    // If a date is active, reload that date with the new sort (server side returns timestamp as date label; client sort options mostly for full lists)
+    const active = document.querySelector('.date-btn.active');
+    if(active){
+        loadEventsForDate(active.getAttribute('data-date'));
+    }
 });
 
-// Start polling every 10s; immediate load now
+// Start by loading only dates; poll the date list periodically
 window.addEventListener('load', () => {
-    loadViolationEvents();
+    loadDateList();
     if (pollingHandle) clearInterval(pollingHandle);
-    pollingHandle = setInterval(loadViolationEvents, 10000);
+    pollingHandle = setInterval(loadDateList, 10000);
 });
 
 // Image zoom modal logic (unchanged)
