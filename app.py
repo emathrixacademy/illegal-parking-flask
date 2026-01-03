@@ -345,6 +345,17 @@ def api_events():
     Return all violation images as history, even after server restarts.
     This will list all images in static/events and return them as event objects.
     """
+    return history_events_impl()
+
+@app.route('/api/history_events')
+def api_history_events():
+    """
+    Return all violation images as history, even after server restarts.
+    This will list all images in static/events and return them as event objects.
+    """
+    return history_events_impl()
+
+def history_events_impl():
     image_dir = os.path.join(os.path.dirname(__file__), STATIC_EVENTS_DIR)
     events = []
     for root, dirs, files in os.walk(image_dir):

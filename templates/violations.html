@@ -456,7 +456,6 @@ function violationCard(ev) {
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
     let imgSrc = ev.local_image_url || ev.image_url;
     let fallbackSrc = ev.image_url || '';
-    // Add data-img for zoom, and onerror fallback
     return `
     <div class="violation-card">
         <img src="${imgSrc}" alt="Violation"
@@ -482,7 +481,8 @@ function violationCard(ev) {
 let allEvents = [];
 async function loadViolationEvents(){
     try{
-        const res = await fetch('/api/events');
+        // Fetch from /api/history_events for persistent history
+        const res = await fetch('/api/history_events');
         allEvents = await res.json();
         renderViolations(allEvents, document.getElementById('sortSelect').value);
     }catch{
