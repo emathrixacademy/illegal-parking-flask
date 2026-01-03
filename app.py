@@ -329,11 +329,15 @@ def api_proxy_image():
         if not image_path:
             return jsonify({"success": False, "error": "Missing image_path"}), 400
         pi_base = get_pi_base()
+        # Always pass the image_path as-is to the Pi's /api/get_image endpoint
         url = f"{pi_base}/api/get_image"
+        # Forward the exact image_path, do not strip leading slashes or modify
         resp = requests.get(url, params={"image_path": image_path}, timeout=10)
         if resp.status_code == 200:
             return Response(resp.content, mimetype="image/jpeg")
         else:
+            # Log the error for debugging
+            logger.error(f"Proxy image error: Pi returned {resp.status_code} for {image_path} ({resp.text[:200]})")
             return Response("Image not found", 404)
     except Exception as e:
         logger.error(f"Proxy image error: {e}")
