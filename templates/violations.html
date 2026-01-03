@@ -440,7 +440,8 @@ function renderViolations(events, sortType) {
 function violationCard(ev) {
     let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    let imgSrc = ev.proxy_image_url || ev.image_url;
+    // Try proxy_image_url (from Pi), fallback to local_image_url (Railway), then image_url
+    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url;
     return `
     <div class="violation-card">
         <img src="${imgSrc}" alt="Violation">

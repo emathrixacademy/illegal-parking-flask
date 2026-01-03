@@ -309,18 +309,38 @@ def upload_event():
         logger.error(f"Upload event failed: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/image_from_db')
+def api_image_from_db():
+    """
+    Serve an image stored in Railway's static/events directory by its relative path.
+    Usage: /api/image_from_db?image_path=static/events/Camera_2_2026-01-03T11-47-00-155665.jpg
+    """
+    image_path = request.args.get("image_path")
+    if not image_path:
+        return jsonify({"success": False, "error": "Missing image_path"}), 400
+    # Sanitize path to prevent directory traversal
+    safe_path = os.path.normpath(image_path)
+    if ".." in safe_path or safe_path.startswith("/"):
+        return jsonify({"success": False, "error": "Invalid image_path"}), 400
+    abs_path = os.path.join(os.path.dirname(__file__), safe_path)
+    if not os.path.exists(abs_path):
+        return jsonify({"success": False, "error": "Image not found"}), 404
+    return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
+
 @app.route('/api/events')
 def api_events():
-    # Add proxy_image_url for each event
+    # Add proxy_image_url for each event (from Pi) and local_image_url for Railway
     events_with_proxy = []
     for ev in EVENTS:
         proxy_url = ""
+        local_url = ""
         if "image_url" in ev:
-            # Extract image_path from image_url (strip leading slash if present)
             image_path = ev["image_url"].lstrip("/")
             proxy_url = f"/api/proxy_image?image_path={image_path}"
+            local_url = f"/api/image_from_db?image_path={image_path}"
         ev_copy = dict(ev)
         ev_copy["proxy_image_url"] = proxy_url
+        ev_copy["local_image_url"] = local_url
         events_with_proxy.append(ev_copy)
     return jsonify(events_with_proxy)
 
