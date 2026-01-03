@@ -255,36 +255,38 @@
             width: 100%;
         }
 
-        /* Legend above violations */
+        /* Legend above violations (inline/plain text look) */
         .legend-box {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 0.6rem 1rem;
+            background: transparent;
+            border-radius: 0;
+            padding: 0.25rem 0;
             margin: 1rem 2rem 0 2rem;
-            box-shadow: var(--shadow);
-            border: var(--border);
-            display: flex;
+            box-shadow: none;
+            border: none;
+            display: inline-flex;
             align-items: center;
-            gap: 1.25rem;
-            width: calc(100% - 4rem);
+            gap: 1rem;
+            width: auto;
             box-sizing: border-box;
             color: #bfc7d5;
-            font-weight: 600;
-            flex-wrap: nowrap;
-            overflow-x: auto;
+            font-weight: 500;
+            flex-wrap: wrap;
+            overflow: visible;
         }
         .legend-item {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.5rem;
             white-space: nowrap;
+            color: #bfc7d5;
+            font-size: 0.95rem;
         }
         .legend-dot {
-            width: 14px;
-            height: 14px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             display: inline-block;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            box-shadow: none;
         }
         .legend-dot.red { background: #ff4d4d; }
         .legend-dot.blue { background: #4da6ff; }
