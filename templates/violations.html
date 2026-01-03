@@ -466,10 +466,33 @@ function violationCard(ev) {
     `;
 }
 
-// Show image modal by src
+// Show image modal by src (AJAX fetch for latest image)
 function showZoomModalBySrc(imgSrc) {
     const zoomedImage = document.getElementById('zoomedImage');
-    zoomedImage.src = imgSrc;
+    zoomedImage.src = ""; // Clear previous image
+    // If the src is a proxy_image_url, fetch the image via AJAX for freshness
+    if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
+        fetch(imgSrc)
+            .then(resp => {
+                if (!resp.ok) throw new Error("Image unavailable");
+                return resp.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                zoomedImage.src = url;
+                // Clean up object URL when modal closes
+                const modalEl = document.getElementById('zoomModal');
+                modalEl.addEventListener('hidden.bs.modal', function cleanup() {
+                    URL.revokeObjectURL(url);
+                    modalEl.removeEventListener('hidden.bs.modal', cleanup);
+                });
+            })
+            .catch(() => {
+                zoomedImage.src = FALLBACK_SVG;
+            });
+    } else {
+        zoomedImage.src = imgSrc || FALLBACK_SVG;
+    }
     const modal = new bootstrap.Modal(document.getElementById('zoomModal'));
     modal.show();
 }
