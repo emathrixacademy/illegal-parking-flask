@@ -427,62 +427,13 @@ def gen_single(stream, cam_name):
         sleep_time = max(0, FRAME_INTERVAL - elapsed)
         time.sleep(sleep_time)
 
+@app.route('/video_feed_c1')
+def video_feed_c1():
+    return Response(gen_single(c1, "Camera_1"), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+@app.route('/video_feed_c2')
+def video_feed_c2():
+    return Response(gen_single(c2, "Camera_2"), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
