@@ -342,39 +342,63 @@ def api_proxy_image():
 @app.route('/api/events')
 def api_events():
     """
-    Return all violation images as history, fetched from the Pi.
+    Return all violation events from the Railway PostgreSQL database,
+    and for each, match the image to the Pi's local files for serving.
     """
     try:
+        # 1. Fetch all events from PostgreSQL
+        ensure_violations_table()
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT camera, tracker_id, label, timestamp, image_path
+            FROM violations
+            ORDER BY timestamp DESC
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        # 2. Fetch all available image paths from the Pi
         pi_base = get_pi_base()
-        # Fetch list of images from Pi
         url = f"{pi_base}/api/list_images"
-        resp = requests.get(url, timeout=10)
-        if resp.status_code != 200:
-            return jsonify([])
-        image_files = resp.json()
+        try:
+            resp = requests.get(url, timeout=10)
+            image_files = resp.json() if resp.status_code == 200 else []
+        except Exception as e:
+            logger.error(f"Failed to fetch image list from Pi: {e}")
+            image_files = []
+
+        # 3. Build a mapping for fast lookup (normalize slashes)
+        image_set = set(f.replace("\\", "/") for f in image_files)
+
+        # 4. Prepare events for frontend
         events = []
-        for rel_path in image_files:
-            # Try to extract camera and timestamp from filename
-            match = re.match(r".*[/\\]?([A-Za-z0-9_]+)[-_](\d{4}-\d{2}-\d{2}[T _]\d{2}[-_]\d{2}[-_]\d{2}[-_\.]?\d*)\.jpg", rel_path)
-            camera_id = match.group(1) if match else ""
-            timestamp = ""
-            if match:
-                ts = match.group(2)
-                # Try to normalize timestamp
-                timestamp = ts.replace("_", ":").replace("-", ":", 2).replace("T", " ", 1)
+        for camera, tracker_id, label, timestamp, image_path in rows:
+            # Normalize image_path for matching
+            norm_image_path = image_path.replace("\\", "/") if image_path else ""
+            proxy_url = ""
+            if norm_image_path in image_set:
+                proxy_url = f"/api/proxy_image?image_path={norm_image_path}"
+            else:
+                # Try to match by filename only if full path not found
+                fname = os.path.basename(norm_image_path)
+                match_path = next((f for f in image_set if os.path.basename(f) == fname), None)
+                if match_path:
+                    proxy_url = f"/api/proxy_image?image_path={match_path}"
             events.append({
-                "camera_id": camera_id,
-                "timestamp": timestamp,
-                "image_url": "",  # Not used
+                "camera_id": camera,
+                "tracker_id": tracker_id,
+                "label": label,
+                "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp),
                 "meta": {},
-                "proxy_image_url": f"/api/proxy_image?image_path={rel_path}",
-                "local_image_url": ""  # Not used
+                "proxy_image_url": proxy_url,
+                "local_image_url": "",  # Not used
+                "image_url": ""         # Not used
             })
-        # Sort newest first
-        events.sort(key=lambda ev: ev["timestamp"], reverse=True)
         return jsonify(events)
     except Exception as e:
-        logger.error(f"Failed to fetch events from Pi: {e}")
+        logger.error(f"Failed to fetch events from DB/Pi: {e}")
         return jsonify([])
 
 # Optional: Serve static files directly (for debugging or fallback)
