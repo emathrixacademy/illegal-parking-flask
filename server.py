@@ -442,20 +442,23 @@ def video_feed_c2():
 def api_get_image():
     """
     Serve a violation image given its image_path (relative to project root or absolute).
+    Tries several locations for compatibility with DB and event records.
     Usage: /api/get_image?image_path=...
     """
     image_path = request.args.get("image_path")
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
 
-    # Try absolute path first (for legacy/DB records)
+    # Try absolute path first
     if os.path.isabs(image_path) and os.path.exists(image_path):
         abs_path = image_path
     else:
         # Try relative to project root
         safe_path = os.path.normpath(image_path)
-        if ".." in safe_path or safe_path.startswith("/"):
+        if ".." in safe_path:
             return jsonify({"success": False, "error": "Invalid image_path"}), 400
+
+        # Try as-is relative to project root
         abs_path = os.path.join(os.path.dirname(__file__), safe_path)
         if not os.path.exists(abs_path):
             # Try relative to static/violations (for DB records that may be missing prefix)
@@ -463,7 +466,17 @@ def api_get_image():
             if os.path.exists(alt_path):
                 abs_path = alt_path
             else:
-                return jsonify({"success": False, "error": f"Image not found: {image_path}"}), 404
+                # Try relative to static/events (for legacy/event records)
+                alt_path2 = os.path.join(os.path.dirname(__file__), "static", "events", os.path.basename(safe_path))
+                if os.path.exists(alt_path2):
+                    abs_path = alt_path2
+                else:
+                    # Try just the filename in SAVE_DIR
+                    alt_path3 = os.path.join(SAVE_DIR, os.path.basename(safe_path))
+                    if os.path.exists(alt_path3):
+                        abs_path = alt_path3
+                    else:
+                        return jsonify({"success": False, "error": f"Image not found: {image_path}"}), 404
 
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
