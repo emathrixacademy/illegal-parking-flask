@@ -318,7 +318,6 @@ def api_image_from_db():
     image_path = request.args.get("image_path")
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
-    # Sanitize path to prevent directory traversal
     safe_path = os.path.normpath(image_path)
     if ".." in safe_path or safe_path.startswith("/"):
         return jsonify({"success": False, "error": "Invalid image_path"}), 400
@@ -326,6 +325,27 @@ def api_image_from_db():
     if not os.path.exists(abs_path):
         return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
+
+@app.route('/api/proxy_image')
+def api_proxy_image():
+    """
+    Proxy an image from the Pi given its image_path.
+    Usage: /api/proxy_image?image_path=...
+    """
+    try:
+        image_path = request.args.get("image_path")
+        if not image_path:
+            return jsonify({"success": False, "error": "Missing image_path"}), 400
+        pi_base = get_pi_base()
+        url = f"{pi_base}/api/get_image"
+        resp = requests.get(url, params={"image_path": image_path}, timeout=10)
+        if resp.status_code == 200:
+            return Response(resp.content, mimetype="image/jpeg")
+        else:
+            return Response("Image not found", 404)
+    except Exception as e:
+        logger.error(f"Proxy image error: {e}")
+        return Response("Image unavailable", 502)
 
 @app.route('/api/events')
 def api_events():
@@ -343,6 +363,14 @@ def api_events():
         ev_copy["local_image_url"] = local_url
         events_with_proxy.append(ev_copy)
     return jsonify(events_with_proxy)
+
+# Optional: Serve static files directly (for debugging or fallback)
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    abs_path = os.path.join(os.path.dirname(__file__), "static", filename)
+    if not os.path.exists(abs_path):
+        return "Not found", 404
+    return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
 # --------------------------------------------------
 # Camera Status
@@ -382,31 +410,6 @@ def api_settings():
     except Exception as e:
         logger.error(f"Failed to fetch settings from Pi: {e}")
         return jsonify({"success": False, "error": str(e)}), 502
-
-# --------------------------------------------------
-# Proxy Image
-# --------------------------------------------------
-@app.route('/api/proxy_image')
-def api_proxy_image():
-    """
-    Proxy an image from the Pi given its image_path.
-    Usage: /api/proxy_image?image_path=...
-    """
-    try:
-        image_path = request.args.get("image_path")
-        if not image_path:
-            return jsonify({"success": False, "error": "Missing image_path"}), 400
-        pi_base = get_pi_base()
-        # The Pi should expose an endpoint to serve images, e.g. /api/get_image?image_path=...
-        url = f"{pi_base}/api/get_image"
-        resp = requests.get(url, params={"image_path": image_path}, timeout=10)
-        if resp.status_code == 200:
-            return Response(resp.content, mimetype="image/jpeg")
-        else:
-            return Response("Image not found", 404)
-    except Exception as e:
-        logger.error(f"Proxy image error: {e}")
-        return Response("Image unavailable", 502)
 
 # --------------------------------------------------
 # Error Handling

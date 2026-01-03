@@ -440,11 +440,13 @@ function renderViolations(events, sortType) {
 function violationCard(ev) {
     let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    // Try proxy_image_url (from Pi), fallback to local_image_url (Railway), then image_url
     let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url;
+    let fallbackSrc = ev.local_image_url || ev.image_url || '';
+    // Add onerror fallback to local image if proxy fails
     return `
     <div class="violation-card">
-        <img src="${imgSrc}" alt="Violation">
+        <img src="${imgSrc}" alt="Violation"
+            onerror="if(this.src!==location.origin+'${fallbackSrc}' && '${fallbackSrc}')this.src='${fallbackSrc}';">
         <div class="violation-card-body">
             <div class="violation-card-title">
                 <i class="bi bi-camera-video"></i> ${ev.camera_id}
