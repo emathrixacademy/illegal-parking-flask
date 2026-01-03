@@ -474,7 +474,9 @@ def api_list_images():
 def api_db_violations():
     """
     Fetch all violations from the PostgreSQL database and provide image access via the Pi's local file API.
-    Each event will include a proxy_image_url that fetches the image from the Pi's local filesystem.
+    Each event will include:
+      - proxy_image_url: fetches the image via this Railway server (using the tunnel)
+      - direct_pi_image_url: direct public URL to the image via the Pi's cloudflared tunnel
     """
     try:
         conn = psycopg2.connect(POSTGRES_URL)
@@ -488,23 +490,22 @@ def api_db_violations():
         cur.close()
         conn.close()
         events = []
+        pi_public_url = PI_PUBLIC_URL.rstrip("/") if PI_PUBLIC_URL else ""
         for row in rows:
             camera_id, tracker_id, label, timestamp, image_path = row
-            # image_path is the absolute or relative path on the Pi, e.g. /home/set-admin/illegal-parking-flask/static/violations/Camera_1-11_47_00.jpg
-            # We want to get the path relative to the project root for the Pi's /api/get_image endpoint
             rel_path = image_path
-            # If absolute, make it relative to project root
             if rel_path.startswith("/home/"):
                 rel_path = os.path.relpath(rel_path, "/home/set-admin/illegal-parking-flask")
             rel_path = rel_path.replace("\\", "/")
-            # Provide a proxy URL to fetch the image from the Pi
             proxy_image_url = f"/api/proxy_image?image_path={rel_path}"
+            direct_pi_image_url = f"{pi_public_url}/api/get_image?image_path={rel_path}" if pi_public_url else ""
             events.append({
                 "camera_id": camera_id,
                 "tracker_id": tracker_id,
                 "label": label,
                 "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp),
                 "proxy_image_url": proxy_image_url,
+                "direct_pi_image_url": direct_pi_image_url,
                 "image_path": rel_path
             })
         return jsonify(events)
