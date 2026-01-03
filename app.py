@@ -391,57 +391,46 @@ def api_events():
             return jsonify([])
         image_files = resp.json()  # list of relative paths from Pi, e.g. "static/violations/April 08, 2025 (Tuesday)/Camera_1-12_00_00.jpg"
 
-        # Class mapping
-        CLASS_NAMES = {2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
-
         # Extract date folder (last folder name) for each rel_path
         def date_label_from_path(p):
             try:
                 parts = p.replace("\\", "/").split("/")
+                # find "static" index and take next two segments if present (robust), else take penultimate segment
                 if len(parts) >= 3:
+                    # typical: ["static","violations","April 08, 2025 (Tuesday)","...jpg"]
                     return parts[-2]
                 return os.path.dirname(p)
             except Exception:
                 return ""
-
-        # Try to extract class id from filename (e.g. Camera_1-12_00_00-3.jpg)
-        def class_from_filename(fname):
-            # Example: Camera_1-12_00_00-3.jpg or Camera_1-12_00_00-3-123.jpg
-            m = re.match(r".*-(\d+)\.jpg$", fname)
-            if m:
-                cls_id = int(m.group(1))
-                return CLASS_NAMES.get(cls_id, str(cls_id))
-            return None
 
         # If only dates requested, return unique date labels
         if request.args.get("dates_only"):
             labels = sorted({date_label_from_path(p) for p in image_files}, reverse=True)
             return jsonify(labels)
 
+        # If filtering by a specific date label
         req_date = request.args.get("date")
         events = []
         for rel_path in image_files:
             label = date_label_from_path(rel_path)
             if req_date and label != req_date:
                 continue
+            # Try to extract camera and timestamp from filename
             fname = os.path.basename(rel_path)
             match = re.match(r"([A-Za-z0-9_]+)[-_](\d{2}_\d{2}_\d{2})", fname)
             camera_id = match.group(1) if match else ""
             timestamp = label  # use folder label as displayed date
+            # Construct proxy URL and ensure image_path is URL-encoded
             encoded = urllib.parse.quote_plus(rel_path)
-            detected_class = class_from_filename(fname)
-            # Add detected_class to meta for frontend
-            meta = {}
-            if detected_class:
-                meta["class"] = detected_class
             events.append({
                 "camera_id": camera_id,
                 "timestamp": timestamp,
-                "image_url": "",
-                "meta": meta,
+                "image_url": "",  # not used
+                "meta": {},
                 "proxy_image_url": f"/api/proxy_image?image_path={encoded}",
                 "local_image_url": ""
             })
+        # If no date filter requested, sort by timestamp (folder label) descending
         events.sort(key=lambda ev: ev["timestamp"], reverse=True)
         return jsonify(events)
     except Exception as e:
