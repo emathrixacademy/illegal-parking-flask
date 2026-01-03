@@ -430,6 +430,24 @@ def not_found(e):
     return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
 
 # --------------------------------------------------
+# List Images
+# --------------------------------------------------
+@app.route('/api/list_images')
+def api_list_images():
+    """
+    List all images in the static/events directory (recursively).
+    Returns a JSON list of relative paths.
+    """
+    image_dir = os.path.join(os.path.dirname(__file__), STATIC_EVENTS_DIR)
+    image_files = []
+    for root, dirs, files in os.walk(image_dir):
+        for fname in files:
+            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
+                image_files.append(rel_path.replace("\\", "/"))
+    return jsonify(sorted(image_files, reverse=True))
+
+# --------------------------------------------------
 # Main
 # --------------------------------------------------
 if __name__ == "__main__":
