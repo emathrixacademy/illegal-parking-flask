@@ -852,67 +852,91 @@ function fetchRaspiBaseAndInit() {
 window.onload = fetchRaspiBaseAndInit;
 // --- Analytics: fetch counts and render pie chart ---
 let analyticsChart;
-async function fetchAnalytics(){
-    try{
-        const resp = await fetch('/api/violation_counts');
-        if(!resp.ok) throw new Error('fetch failed');
-        const data = await resp.json();
-        const labels = ['CAR','MOTORCYCLE','TRUCK','BUS'];
-        const counts = labels.map(l => Number(data[l] || 0));
-        const total = counts.reduce((a,b)=>a+b,0);
+function fetchAnalyticsAjax(){
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/violation_counts', true);
+    xhr.onreadystatechange = function() {
+        if(xhr.readyState === 4) {
+            const labels = ['CAR','MOTORCYCLE','TRUCK','BUS'];
+            if(xhr.status === 200) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    const counts = labels.map(l => Number(data[l] || 0));
+                    const total = counts.reduce((a,b)=>a+b,0);
 
-        // Ensure chart is initialized even if canvas is missing
-        const canvas = document.getElementById('analyticsChart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if(!analyticsChart && ctx){
-            analyticsChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: counts,
-                        backgroundColor: ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6']
-                    }]
-                },
-                options: { plugins: { legend: { display: false } } }
-            });
-        }
+                    // Ensure chart is initialized even if canvas is missing
+                    const canvas = document.getElementById('analyticsChart');
+                    if (!canvas) return;
+                    const ctx = canvas.getContext('2d');
+                    if(!analyticsChart && ctx){
+                        analyticsChart = new Chart(ctx, {
+                            type: 'pie',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: counts,
+                                    backgroundColor: ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6']
+                                }]
+                            },
+                            options: { plugins: { legend: { display: false } } }
+                        });
+                    }
 
-        if(analyticsChart){
-            if(total === 0){
-                // show a neutral 'no data' slice
-                analyticsChart.data.labels = ['No data'];
-                analyticsChart.data.datasets[0].data = [1];
-                analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+                    if(analyticsChart){
+                        if(total === 0){
+                            analyticsChart.data.labels = ['No data'];
+                            analyticsChart.data.datasets[0].data = [1];
+                            analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+                        } else {
+                            analyticsChart.data.labels = labels;
+                            analyticsChart.data.datasets[0].data = counts;
+                            analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6'];
+                        }
+                        analyticsChart.update();
+                    }
+
+                    // update legend counters
+                    labels.forEach(l => {
+                        const el = document.getElementById('legend-' + l);
+                        if(el) el.textContent = data && data[l] ? data[l] : 0;
+                    });
+                } catch(e) {
+                    // fallback on error
+                    labels.forEach(l => {
+                        const el = document.getElementById('legend-' + l);
+                        if(el) el.textContent = 0;
+                    });
+                    if(analyticsChart){
+                        analyticsChart.data.labels = ['No data'];
+                        analyticsChart.data.datasets[0].data = [1];
+                        analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+                        analyticsChart.update();
+                    }
+                }
             } else {
-                analyticsChart.data.labels = labels;
-                analyticsChart.data.datasets[0].data = counts;
-                analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6'];
+                // fallback on error
+                labels.forEach(l => {
+                    const el = document.getElementById('legend-' + l);
+                    if(el) el.textContent = 0;
+                });
+                if(analyticsChart){
+                    analyticsChart.data.labels = ['No data'];
+                    analyticsChart.data.datasets[0].data = [1];
+                    analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+                    analyticsChart.update();
+                }
             }
-            analyticsChart.update();
         }
-
-        // update legend counters (always show zeros when no data)
-        labels.forEach(l => {
-            const el = document.getElementById('legend-' + l);
-            if(el) el.textContent = data && data[l] ? data[l] : 0;
-        });
-    }catch(e){
-        // On error, set legend counters to zero and show 'No data' on chart
-        const labels = ['CAR','MOTORCYCLE','TRUCK','BUS'];
-        labels.forEach(l => {
-            const el = document.getElementById('legend-' + l);
-            if(el) el.textContent = 0;
-        });
-        if(analyticsChart){
-            analyticsChart.data.labels = ['No data'];
-            analyticsChart.data.datasets[0].data = [1];
-            analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
-            analyticsChart.update();
-        }
-    }
+    };
+    xhr.send();
 }
+
+// Replace fetchAnalytics polling with AJAX version
+window.onload = function() {
+    fetchRaspiBaseAndInit();
+    fetchAnalyticsAjax();
+    setInterval(fetchAnalyticsAjax, 5000);
+};
 </script>
 
 <!--

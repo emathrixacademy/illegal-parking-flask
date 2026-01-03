@@ -445,9 +445,12 @@ def api_violation_counts():
     Responds with a JSON object containing keys: CAR, MOTORCYCLE, TRUCK, BUS (integers).
     """
     try:
-        CLASS_MAP = {2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
-        # Accept also string keys for robustness
-        CLASS_MAP_STR = {"2": "CAR", "3": "MOTORCYCLE", "5": "BUS", "7": "TRUCK"}
+        CLASS_MAP = {
+            2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK",
+            "2": "CAR", "3": "MOTORCYCLE", "5": "BUS", "7": "TRUCK",
+            "car": "CAR", "motorcycle": "MOTORCYCLE", "bus": "BUS", "truck": "TRUCK",
+            "CAR": "CAR", "MOTORCYCLE": "MOTORCYCLE", "BUS": "BUS", "TRUCK": "TRUCK"
+        }
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("SELECT label, COUNT(*) FROM violations GROUP BY label;")
@@ -457,22 +460,9 @@ def api_violation_counts():
 
         counts = {"CAR": 0, "MOTORCYCLE": 0, "TRUCK": 0, "BUS": 0}
         for label, cnt in rows:
-            mapped = None
-            # Normalize label which may be stored as int, numeric string, or name
-            if label is None:
-                continue
-            # Try int mapping
-            try:
-                mapped = CLASS_MAP.get(int(label))
-            except Exception:
-                mapped = None
-            # Try string mapping
+            mapped = CLASS_MAP.get(label)
             if mapped is None:
-                mapped = CLASS_MAP_STR.get(str(label))
-            # Fallback to uppercase label
-            if mapped is None:
-                mapped = str(label).upper()
-            # Only count if mapped to one of the four classes
+                mapped = CLASS_MAP.get(str(label).lower())
             if mapped in counts:
                 counts[mapped] += int(cnt)
         return jsonify(counts)
