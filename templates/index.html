@@ -256,11 +256,22 @@
         }
 
         /* Legend above violations (inline/plain text look) */
-        /* Hide the wrapper but keep child items rendered */
         .legend-box {
-            display: contents;
+            background: transparent;
+            border-radius: 0;
+            padding: 0.25rem 0;
+            margin: 1rem 2rem 0 2rem;
+            box-shadow: none;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            width: auto;
+            box-sizing: border-box;
             color: #bfc7d5;
             font-weight: 500;
+            flex-wrap: wrap;
+            overflow: visible;
         }
         .legend-item {
             display: inline-flex;
