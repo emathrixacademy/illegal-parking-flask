@@ -453,7 +453,6 @@ def api_get_image():
     if os.path.isabs(image_path) and os.path.exists(image_path):
         abs_path = image_path
     else:
-        # Try relative to project root
         safe_path = os.path.normpath(image_path)
         if ".." in safe_path:
             return jsonify({"success": False, "error": "Invalid image_path"}), 400
@@ -461,22 +460,34 @@ def api_get_image():
         # Try as-is relative to project root
         abs_path = os.path.join(os.path.dirname(__file__), safe_path)
         if not os.path.exists(abs_path):
-            # Try relative to static/violations (for DB records that may be missing prefix)
-            alt_path = os.path.join(os.path.dirname(__file__), "static", "violations", os.path.basename(safe_path))
+            # Try static/violations + full relative path (not just basename)
+            alt_path = os.path.join(os.path.dirname(__file__), "static", "violations", safe_path)
             if os.path.exists(alt_path):
                 abs_path = alt_path
             else:
-                # Try relative to static/events (for legacy/event records)
-                alt_path2 = os.path.join(os.path.dirname(__file__), "static", "events", os.path.basename(safe_path))
+                # Try static/violations + basename
+                alt_path2 = os.path.join(os.path.dirname(__file__), "static", "violations", os.path.basename(safe_path))
                 if os.path.exists(alt_path2):
                     abs_path = alt_path2
                 else:
-                    # Try just the filename in SAVE_DIR
-                    alt_path3 = os.path.join(SAVE_DIR, os.path.basename(safe_path))
+                    # Try static/events + full relative path
+                    alt_path3 = os.path.join(os.path.dirname(__file__), "static", "events", safe_path)
                     if os.path.exists(alt_path3):
                         abs_path = alt_path3
                     else:
-                        return jsonify({"success": False, "error": f"Image not found: {image_path}"}), 404
+                        # Try static/events + basename
+                        alt_path4 = os.path.join(os.path.dirname(__file__), "static", "events", os.path.basename(safe_path))
+                        if os.path.exists(alt_path4):
+                            abs_path = alt_path4
+                        else:
+                            # Try SAVE_DIR + basename
+                            alt_path5 = os.path.join(SAVE_DIR, os.path.basename(safe_path))
+                            if os.path.exists(alt_path5):
+                                abs_path = alt_path5
+                            else:
+                                # Log all tried paths for debugging
+                                logger.error(f"Image not found. Tried: {abs_path}, {alt_path}, {alt_path2}, {alt_path3}, {alt_path4}, {alt_path5}")
+                                return jsonify({"success": False, "error": f"Image not found: {image_path}"}), 404
 
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
