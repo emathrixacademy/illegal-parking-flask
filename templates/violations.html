@@ -360,6 +360,9 @@
     <div class="main-content">
         <div class="header-bar">
             <h1><i class="bi bi-exclamation-triangle-fill"></i> Violators</h1>
+            <button id="reloadBtn" class="btn btn-warning ms-3" type="button">
+                <i class="bi bi-arrow-clockwise"></i> Reload
+            </button>
         </div>
         <div class="violations-section mx-auto">
             <h2><i class="bi bi-exclamation-triangle-fill"></i> Parking Violations</h2>
@@ -372,6 +375,9 @@
                     <option value="date">Group by Date</option>
                     <option value="hour">Group by Hour</option>
                 </select>
+                <button id="showAllBtn" class="btn btn-outline-info ms-2" type="button">
+                    <i class="bi bi-card-list"></i> Show All
+                </button>
             </div>
 
             <!-- New: date list (click a date to load images for that date) -->
@@ -451,6 +457,7 @@ function violationCard(ev) {
 }
 
 let pollingHandle = null;
+let allEventsCache = []; // cache for all events
 
 // Fetch and render available date labels
 async function loadDateList(){
@@ -506,20 +513,100 @@ async function loadEventsForDate(dateLabel){
     }
 }
 
-// Sorting still affects display when viewing a loaded date (re-renders current events)
+// Fetch and render all events (not grouped by date)
+async function loadAllEvents(){
+    const container = document.getElementById('violationEvents');
+    container.innerHTML = "<div class='text-muted'>Loading all events...</div>";
+    try{
+        const res = await fetch('/api/events');
+        const events = await res.json();
+        allEventsCache = events || [];
+        renderEvents(events);
+    }catch(err){
+        container.innerHTML = "<div class='alert alert-danger'>Failed to load events.</div>";
+        console.error(err);
+    }
+}
+
+// Render events with current sort
+function renderEvents(events){
+    const container = document.getElementById('violationEvents');
+    if(!events || !events.length){
+        container.innerHTML = "<div class='alert alert-info'>No violation events found.</div>";
+        return;
+    }
+    // Sort
+    const sortVal = document.getElementById('sortSelect').value;
+    let sorted = [...events];
+    if(sortVal === "desc"){
+        sorted.sort((a,b) => (b.timestamp||"").localeCompare(a.timestamp||""));
+    }else if(sortVal === "asc"){
+        sorted.sort((a,b) => (a.timestamp||"").localeCompare(b.timestamp||""));
+    }else if(sortVal === "month"){
+        const grouped = groupBy(sorted, ev => (ev.timestamp||"").slice(0,7));
+        container.innerHTML = Object.entries(grouped).map(([month, arr]) =>
+            `<div class="mb-4">
+                <div class="fw-bold text-warning mb-2">${month}</div>
+                ${arr.map(ev => violationCard(ev)).join('')}
+            </div>`
+        ).join('');
+        return;
+    }else if(sortVal === "date"){
+        const grouped = groupBy(sorted, ev => (ev.timestamp||"").slice(0,10));
+        container.innerHTML = Object.entries(grouped).map(([date, arr]) =>
+            `<div class="mb-4">
+                <div class="fw-bold text-warning mb-2">${date}</div>
+                ${arr.map(ev => violationCard(ev)).join('')}
+            </div>`
+        ).join('');
+        return;
+    }else if(sortVal === "hour"){
+        const grouped = groupBy(sorted, ev => (ev.timestamp||"").slice(0,13));
+        container.innerHTML = Object.entries(grouped).map(([hour, arr]) =>
+            `<div class="mb-4">
+                <div class="fw-bold text-warning mb-2">${hour}:00</div>
+                ${arr.map(ev => violationCard(ev)).join('')}
+            </div>`
+        ).join('');
+        return;
+    }
+    // Default: flat list
+    container.innerHTML = sorted.map(ev => violationCard(ev)).join('');
+}
+
+// Sorting affects current events (all or by date)
 document.getElementById('sortSelect').addEventListener('change', function(){
-    // If a date is active, reload that date with the new sort (server side returns timestamp as date label; client sort options mostly for full lists)
     const active = document.querySelector('.date-btn.active');
     if(active){
         loadEventsForDate(active.getAttribute('data-date'));
+    }else{
+        renderEvents(allEventsCache);
     }
 });
 
-// Start by loading only dates; poll the date list periodically
+// Reload button: reload all events
+document.getElementById('reloadBtn').addEventListener('click', function(){
+    loadAllEvents();
+    // Remove date selection highlight
+    document.querySelectorAll('.date-btn').forEach(x=>x.classList.remove('active'));
+});
+
+// Show All button: show all events (without date filter)
+document.getElementById('showAllBtn').addEventListener('click', function(){
+    loadAllEvents();
+    document.querySelectorAll('.date-btn').forEach(x=>x.classList.remove('active'));
+});
+
+// Start by loading only dates and all events; poll the date list periodically
 window.addEventListener('load', () => {
     loadDateList();
+    loadAllEvents();
     if (pollingHandle) clearInterval(pollingHandle);
-    pollingHandle = setInterval(loadDateList, 10000);
+    pollingHandle = setInterval(() => {
+        loadDateList();
+        // Optionally, reload all events for live updates:
+        // loadAllEvents();
+    }, 10000);
 });
 
 // Image zoom modal logic (unchanged)
