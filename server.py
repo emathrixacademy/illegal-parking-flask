@@ -456,19 +456,11 @@ def api_get_image():
         return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
-def class_from_filename(fname):
-    # Example: Camera_1-12_00_00-3.jpg or Camera_1-12_00_00-3-123.jpg
-    m = re.match(r".*-(\d+)\.jpg$", fname)
-    if m:
-        cls_id = int(m.group(1))
-        return CLASS_NAMES.get(cls_id, str(cls_id))
-    return None
-
 @app.route('/api/list_images')
 def api_list_images():
     """
     List all images in the SAVE_DIR directory (recursively).
-    Returns a JSON list of dicts: { path, class_label }
+    Returns a JSON list of relative paths.
     """
     image_dir = SAVE_DIR
     image_files = []
@@ -476,13 +468,8 @@ def api_list_images():
         for fname in files:
             if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
                 rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
-                rel_path = rel_path.replace("\\", "/")
-                class_label = class_from_filename(fname)
-                image_files.append({
-                    "path": rel_path,
-                    "class_label": class_label
-                })
-    return jsonify(sorted(image_files, key=lambda x: x["path"], reverse=True))
+                image_files.append(rel_path.replace("\\", "/"))
+    return jsonify(sorted(image_files, reverse=True))
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
