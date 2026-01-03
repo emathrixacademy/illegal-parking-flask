@@ -441,19 +441,30 @@ def video_feed_c2():
 @app.route('/api/get_image')
 def api_get_image():
     """
-    Serve a violation image given its image_path (relative to project root).
+    Serve a violation image given its image_path (relative to project root or absolute).
     Usage: /api/get_image?image_path=...
     """
     image_path = request.args.get("image_path")
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
-    # Sanitize path to prevent directory traversal
-    safe_path = os.path.normpath(image_path)
-    if ".." in safe_path or safe_path.startswith("/"):
-        return jsonify({"success": False, "error": "Invalid image_path"}), 400
-    abs_path = os.path.join(os.path.dirname(__file__), safe_path)
-    if not os.path.exists(abs_path):
-        return jsonify({"success": False, "error": "Image not found"}), 404
+
+    # Try absolute path first (for legacy/DB records)
+    if os.path.isabs(image_path) and os.path.exists(image_path):
+        abs_path = image_path
+    else:
+        # Try relative to project root
+        safe_path = os.path.normpath(image_path)
+        if ".." in safe_path or safe_path.startswith("/"):
+            return jsonify({"success": False, "error": "Invalid image_path"}), 400
+        abs_path = os.path.join(os.path.dirname(__file__), safe_path)
+        if not os.path.exists(abs_path):
+            # Try relative to static/violations (for DB records that may be missing prefix)
+            alt_path = os.path.join(os.path.dirname(__file__), "static", "violations", os.path.basename(safe_path))
+            if os.path.exists(alt_path):
+                abs_path = alt_path
+            else:
+                return jsonify({"success": False, "error": f"Image not found: {image_path}"}), 404
+
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
 @app.route('/api/list_images')
