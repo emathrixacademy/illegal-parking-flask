@@ -446,6 +446,8 @@ def api_violation_counts():
     """
     try:
         CLASS_MAP = {2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
+        # Accept also string keys for robustness
+        CLASS_MAP_STR = {"2": "CAR", "3": "MOTORCYCLE", "5": "BUS", "7": "TRUCK"}
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("SELECT label, COUNT(*) FROM violations GROUP BY label;")
@@ -453,33 +455,27 @@ def api_violation_counts():
         cur.close()
         conn.close()
 
-        counts = {}
+        counts = {"CAR": 0, "MOTORCYCLE": 0, "TRUCK": 0, "BUS": 0}
         for label, cnt in rows:
             mapped = None
             # Normalize label which may be stored as int, numeric string, or name
             if label is None:
                 continue
-            # If it's an int class id
-            if isinstance(label, int):
-                mapped = CLASS_MAP.get(label)
-            else:
-                # try numeric string
-                try:
-                    mapped = CLASS_MAP.get(int(str(label)))
-                except Exception:
-                    # fallback to textual label (uppercase)
-                    mapped = str(label).upper()
+            # Try int mapping
+            try:
+                mapped = CLASS_MAP.get(int(label))
+            except Exception:
+                mapped = None
+            # Try string mapping
+            if mapped is None:
+                mapped = CLASS_MAP_STR.get(str(label))
+            # Fallback to uppercase label
             if mapped is None:
                 mapped = str(label).upper()
-            counts[mapped] = counts.get(mapped, 0) + int(cnt)
-
-        result = {
-            "CAR": counts.get("CAR", 0),
-            "MOTORCYCLE": counts.get("MOTORCYCLE", 0),
-            "TRUCK": counts.get("TRUCK", 0),
-            "BUS": counts.get("BUS", 0)
-        }
-        return jsonify(result)
+            # Only count if mapped to one of the four classes
+            if mapped in counts:
+                counts[mapped] += int(cnt)
+        return jsonify(counts)
     except Exception as e:
         logger.error(f"Failed to query violation counts: {e}")
         return jsonify({"CAR":0, "MOTORCYCLE":0, "TRUCK":0, "BUS":0})
