@@ -151,8 +151,9 @@
             box-shadow: var(--shadow);
             border: var(--border);
             overflow: hidden;
-            min-width: 550px;
-            max-width: 750px;
+            flex: 1 1 calc(50% - 2rem);
+            min-width: 320px;
+            max-width: calc(50% - 2rem);
             position: relative;
             margin-bottom: 1rem;
             display: flex;
@@ -253,6 +254,40 @@
             gap: 1.5rem;
             width: 100%;
         }
+
+        /* Legend above violations */
+        .legend-box {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            margin: 1rem 2rem 0 2rem;
+            box-shadow: var(--shadow);
+            border: var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            width: calc(100% - 4rem);
+            box-sizing: border-box;
+            color: #bfc7d5;
+            font-weight: 600;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            white-space: nowrap;
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        .legend-dot.red { background: #ff4d4d; }
+        .legend-dot.blue { background: #4da6ff; }
         .violation-card {
             background: var(--primary-bg);
             border: 1px solid #2d3342;
@@ -336,8 +371,9 @@
                 padding: 1.5rem;
             }
             .camera-frame-wrapper {
-                min-width: 500px;
-                max-width: 650px;
+                flex: 1 1 calc(50% - 1.5rem);
+                min-width: 300px;
+                max-width: calc(50% - 1.5rem);
             }
         }
         @media (max-width: 900px) {
@@ -605,6 +641,11 @@
                 </div>
             </div>
         </div>
+        <div class="legend-box" id="legendBox">
+            <div class="legend-item"><span class="legend-dot red"></span> Violator</div>
+            <div class="legend-item"><span class="legend-dot blue"></span> Detected</div>
+        </div>
+
         <div class="violations-section">
             <h2><i class="bi bi-exclamation-triangle-fill"></i> Recent Violations</h2>
             <div id="violationEvents" class="violation-timeline"></div>
