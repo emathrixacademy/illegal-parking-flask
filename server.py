@@ -456,6 +456,21 @@ def api_get_image():
         return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
+@app.route('/api/list_images')
+def api_list_images():
+    """
+    List all images in the SAVE_DIR directory (recursively).
+    Returns a JSON list of relative paths.
+    """
+    image_dir = SAVE_DIR
+    image_files = []
+    for root, dirs, files in os.walk(image_dir):
+        for fname in files:
+            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
+                image_files.append(rel_path.replace("\\", "/"))
+    return jsonify(sorted(image_files, reverse=True))
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on 0.0.0.0:{port}")

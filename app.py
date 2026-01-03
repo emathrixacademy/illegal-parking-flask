@@ -342,32 +342,40 @@ def api_proxy_image():
 @app.route('/api/events')
 def api_events():
     """
-    Return all violation images as history, even after server restarts.
-    This will list all images in static/events and return them as event objects.
+    Return all violation images as history, fetched from the Pi.
     """
-    image_dir = os.path.join(os.path.dirname(__file__), STATIC_EVENTS_DIR)
-    events = []
-    for root, dirs, files in os.walk(image_dir):
-        for fname in files:
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
-                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
-                rel_path = rel_path.replace("\\", "/")
-                # Try to extract camera and timestamp from filename
-                # Example: Camera_2_2026-01-03T11-47-00-155665.jpg
-                match = re.match(r".*[/\\]?([A-Za-z0-9_]+)_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d+)\.jpg", rel_path)
-                camera_id = match.group(1) if match else ""
-                timestamp = match.group(2).replace("-", ":", 2).replace("T", " ", 1).replace("-", ":", 2).replace("-", ":", 2).replace("-", ".", 1) if match else ""
-                events.append({
-                    "camera_id": camera_id,
-                    "timestamp": timestamp,
-                    "image_url": f"/api/image_from_db?image_path={rel_path}",
-                    "meta": {},
-                    "proxy_image_url": "",  # Not used for history
-                    "local_image_url": f"/api/image_from_db?image_path={rel_path}"
-                })
-    # Sort newest first
-    events.sort(key=lambda ev: ev["timestamp"], reverse=True)
-    return jsonify(events)
+    try:
+        pi_base = get_pi_base()
+        # Fetch list of images from Pi
+        url = f"{pi_base}/api/list_images"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return jsonify([])
+        image_files = resp.json()
+        events = []
+        for rel_path in image_files:
+            # Try to extract camera and timestamp from filename
+            match = re.match(r".*[/\\]?([A-Za-z0-9_]+)[-_](\d{4}-\d{2}-\d{2}[T _]\d{2}[-_]\d{2}[-_]\d{2}[-_\.]?\d*)\.jpg", rel_path)
+            camera_id = match.group(1) if match else ""
+            timestamp = ""
+            if match:
+                ts = match.group(2)
+                # Try to normalize timestamp
+                timestamp = ts.replace("_", ":").replace("-", ":", 2).replace("T", " ", 1)
+            events.append({
+                "camera_id": camera_id,
+                "timestamp": timestamp,
+                "image_url": "",  # Not used
+                "meta": {},
+                "proxy_image_url": f"/api/proxy_image?image_path={rel_path}",
+                "local_image_url": ""  # Not used
+            })
+        # Sort newest first
+        events.sort(key=lambda ev: ev["timestamp"], reverse=True)
+        return jsonify(events)
+    except Exception as e:
+        logger.error(f"Failed to fetch events from Pi: {e}")
+        return jsonify([])
 
 # Optional: Serve static files directly (for debugging or fallback)
 @app.route('/static/<path:filename>')
@@ -440,17 +448,17 @@ def not_found(e):
 @app.route('/api/list_images')
 def api_list_images():
     """
-    List all images in the static/events directory (recursively).
+    Proxy: List all images in the static/events directory on the Pi.
     Returns a JSON list of relative paths.
     """
-    image_dir = os.path.join(os.path.dirname(__file__), STATIC_EVENTS_DIR)
-    image_files = []
-    for root, dirs, files in os.walk(image_dir):
-        for fname in files:
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
-                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
-                image_files.append(rel_path.replace("\\", "/"))
-    return jsonify(sorted(image_files, reverse=True))
+    try:
+        pi_base = get_pi_base()
+        url = f"{pi_base}/api/list_images"
+        resp = requests.get(url, timeout=10)
+        return Response(resp.content, resp.status_code, resp.headers.items())
+    except Exception as e:
+        logger.error(f"Proxy list_images error: {e}")
+        return jsonify([])
 
 # --------------------------------------------------
 # Main
