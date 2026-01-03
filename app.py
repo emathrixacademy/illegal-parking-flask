@@ -12,6 +12,7 @@ from flask import (
 import requests
 import base64
 import config
+import psycopg2
 
 # --------------------------------------------------
 # Logging
@@ -37,6 +38,11 @@ CLOUDFLARE_TUNNEL_CMD = ["cloudflared", "tunnel", "--url", f"http://localhost:{D
 STATIC_EVENTS_DIR = "static/events"
 EVENT_IMAGE_FORMAT = "{camera_id}_{timestamp}.jpg"
 EVENT_IMAGE_TIMESTAMP_REPL = lambda ts: ts.replace(":", "-").replace(".", "-")
+
+POSTGRES_URL = os.environ.get(
+    "POSTGRES_URL",
+    "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@mainline.proxy.rlwy.net:42362/railway"
+)
 
 # --------------------------------------------------
 # Config helpers (local config.py)
@@ -155,6 +161,28 @@ def get_pi_base():
         raise RuntimeError("Pi public URL not set")
     return PI_PUBLIC_URL.rstrip("/")
 
+def ensure_violations_table():
+    """Create the violations table if it does not exist."""
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS violations (
+                id SERIAL PRIMARY KEY,
+                camera VARCHAR(32),
+                tracker_id INTEGER,
+                label VARCHAR(32),
+                timestamp TIMESTAMP,
+                image_path TEXT
+            );
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info("Ensured 'violations' table exists in PostgreSQL.")
+    except Exception as e:
+        logger.error(f"Failed to ensure violations table: {e}")
+
 # --------------------------------------------------
 # Routes – UI
 # --------------------------------------------------
@@ -229,8 +257,11 @@ EVENTS = []
 @app.route('/api/upload_event', methods=['POST'])
 def upload_event():
     try:
+        ensure_violations_table()
         data = request.get_json(force=True)
         camera_id = data.get("camera_id")
+        tracker_id = data.get("tracker_id")
+        label = data.get("label")
         timestamp = data.get("timestamp", datetime.utcnow().isoformat())
         image_b64 = data.get("image")
         meta = data.get("meta", {})
@@ -248,6 +279,21 @@ def upload_event():
         with open(img_path, "wb") as f:
             f.write(base64.b64decode(image_b64))
         logger.info(f"Saved violation image to {img_path}")
+
+        # Insert into PostgreSQL
+        try:
+            conn = psycopg2.connect(POSTGRES_URL)
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO violations (camera, tracker_id, label, timestamp, image_path)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (camera_id, tracker_id, label, timestamp, img_path))
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("Inserted violation event into PostgreSQL.")
+        except Exception as e:
+            logger.error(f"Failed to insert violation event into PostgreSQL: {e}")
 
         EVENTS.append({
             "camera_id": camera_id,
