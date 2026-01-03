@@ -140,8 +140,13 @@ def cors_headers():
         'Access-Control-Allow-Headers': 'Content-Type,Authorization'
     }
 
+@app.before_request
+def log_request_info():
+    logger.info(f"Incoming request: {request.method} {request.path} | IP: {request.remote_addr}")
+
 @app.after_request
 def after_request_func(response):
+    logger.info(f"Response: {request.method} {request.path} | Status: {response.status_code}")
     response.headers.update(cors_headers())
     return response
 
@@ -301,12 +306,14 @@ def api_settings():
 @app.errorhandler(Exception)
 def handle_exception(e):
     logger.error("Unhandled Exception: %s\n%s", e, traceback.format_exc())
+    logger.error(f"Request: {request.method} {request.path} | IP: {request.remote_addr}")
     if request.path.startswith('/api/'):
         return jsonify({"success": False, "error": str(e)}), 500
     return make_response("Internal Server Error", 500)
 
 @app.errorhandler(404)
 def not_found(e):
+    logger.warning(f"404 Not Found: {request.method} {request.path} | IP: {request.remote_addr}")
     if request.path.startswith('/api/'):
         return jsonify({"success": False, "error": "Not Found"}), 404
     return render_template_string("<h1>404 Not Found</h1><p>The requested URL was not found on the server.</p>"), 404
