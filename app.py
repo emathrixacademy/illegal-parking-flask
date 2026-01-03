@@ -268,6 +268,9 @@ def upload_event():
 
         logger.info(f"Received violation event: camera_id={camera_id}, timestamp={timestamp}, meta={meta}")
 
+        # NOTE: The image is saved only on the Raspberry Pi, not on the Railway server.
+        # The image_path stored in the database refers to the path on the Pi, not on Railway.
+        # This endpoint only receives and stores the image if the event is sent from the Pi directly.
         if not os.path.exists(STATIC_EVENTS_DIR):
             os.makedirs(STATIC_EVENTS_DIR)
         fname = EVENT_IMAGE_FORMAT.format(
@@ -278,7 +281,7 @@ def upload_event():
 
         with open(img_path, "wb") as f:
             f.write(base64.b64decode(image_b64))
-        logger.info(f"Saved violation image to {img_path}")
+        logger.info(f"Saved violation image to {img_path} (local to Railway server, not Pi)")
 
         # Insert into PostgreSQL
         try:
@@ -291,7 +294,7 @@ def upload_event():
             conn.commit()
             cur.close()
             conn.close()
-            logger.info("Inserted violation event into PostgreSQL.")
+            logger.info("Inserted violation event into PostgreSQL. (Image path is local to Pi, not Railway)")
         except Exception as e:
             logger.error(f"Failed to insert violation event into PostgreSQL: {e}")
 
@@ -308,7 +311,18 @@ def upload_event():
 
 @app.route('/api/events')
 def api_events():
-    return jsonify(EVENTS)
+    # Add proxy_image_url for each event
+    events_with_proxy = []
+    for ev in EVENTS:
+        proxy_url = ""
+        if "image_url" in ev:
+            # Extract image_path from image_url (strip leading slash if present)
+            image_path = ev["image_url"].lstrip("/")
+            proxy_url = f"/api/proxy_image?image_path={image_path}"
+        ev_copy = dict(ev)
+        ev_copy["proxy_image_url"] = proxy_url
+        events_with_proxy.append(ev_copy)
+    return jsonify(events_with_proxy)
 
 # --------------------------------------------------
 # Camera Status
@@ -348,6 +362,31 @@ def api_settings():
     except Exception as e:
         logger.error(f"Failed to fetch settings from Pi: {e}")
         return jsonify({"success": False, "error": str(e)}), 502
+
+# --------------------------------------------------
+# Proxy Image
+# --------------------------------------------------
+@app.route('/api/proxy_image')
+def api_proxy_image():
+    """
+    Proxy an image from the Pi given its image_path.
+    Usage: /api/proxy_image?image_path=...
+    """
+    try:
+        image_path = request.args.get("image_path")
+        if not image_path:
+            return jsonify({"success": False, "error": "Missing image_path"}), 400
+        pi_base = get_pi_base()
+        # The Pi should expose an endpoint to serve images, e.g. /api/get_image?image_path=...
+        url = f"{pi_base}/api/get_image"
+        resp = requests.get(url, params={"image_path": image_path}, timeout=10)
+        if resp.status_code == 200:
+            return Response(resp.content, mimetype="image/jpeg")
+        else:
+            return Response("Image not found", 404)
+    except Exception as e:
+        logger.error(f"Proxy image error: {e}")
+        return Response("Image unavailable", 502)
 
 # --------------------------------------------------
 # Error Handling
