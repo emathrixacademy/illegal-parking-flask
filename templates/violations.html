@@ -456,9 +456,11 @@ function violationCard(ev) {
     let camera_id = ev.camera_id || "";
     let date_label = parseDateLabel(ev.timestamp || "");
     let time_label = parseTimeFromFilename(ev);
+    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
 
     return `
-    <div class="violation-card flex-column" style="min-height:80px;justify-content:center;">
+    <div class="violation-card flex-column" style="min-height:80px;justify-content:center; cursor:pointer;"
+        onclick="showZoomModalBySrc('${imgSrc}')">
         <div class="violation-card-body">
             <div class="violation-card-title">
                 <i class="bi bi-camera-video"></i> <b>${camera_id}</b>
@@ -472,6 +474,14 @@ function violationCard(ev) {
         </div>
     </div>
     `;
+}
+
+// Show image modal by src
+function showZoomModalBySrc(imgSrc) {
+    const zoomedImage = document.getElementById('zoomedImage');
+    zoomedImage.src = imgSrc;
+    const modal = new bootstrap.Modal(document.getElementById('zoomModal'));
+    modal.show();
 }
 
 let pollingHandle = null;
