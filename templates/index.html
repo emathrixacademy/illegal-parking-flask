@@ -854,10 +854,13 @@ window.onload = fetchRaspiBaseAndInit;
 let analyticsChart;
 async function fetchAnalytics(){
     try{
-        const resp = await apiFetch('/api/violation_counts');
+        const resp = await fetch('/api/violation_counts');
+        if(!resp.ok) throw new Error('fetch failed');
         const data = await resp.json();
         const labels = ['CAR','MOTORCYCLE','TRUCK','BUS'];
-        const counts = labels.map(l => data[l] || 0);
+        const counts = labels.map(l => Number(data[l] || 0));
+        const total = counts.reduce((a,b)=>a+b,0);
+
         if(!analyticsChart){
             const ctx = document.getElementById('analyticsChart').getContext('2d');
             analyticsChart = new Chart(ctx, {
@@ -871,13 +874,24 @@ async function fetchAnalytics(){
                 },
                 options: { plugins: { legend: { display: false } } }
             });
-        } else {
-            analyticsChart.data.datasets[0].data = counts;
-            analyticsChart.update();
         }
+
+        if(total === 0){
+            // show a neutral 'no data' slice
+            analyticsChart.data.labels = ['No data'];
+            analyticsChart.data.datasets[0].data = [1];
+            analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
+        } else {
+            analyticsChart.data.labels = labels;
+            analyticsChart.data.datasets[0].data = counts;
+            analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6'];
+        }
+        analyticsChart.update();
+
+        // update legend counters (always show zeros when no data)
         labels.forEach(l => {
             const el = document.getElementById('legend-' + l);
-            if(el) el.textContent = data[l] || 0;
+            if(el) el.textContent = data && data[l] ? data[l] : 0;
         });
     }catch(e){
         // silently fail - analytics are optional

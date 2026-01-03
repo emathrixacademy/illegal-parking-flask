@@ -445,13 +445,34 @@ def api_violation_counts():
     Responds with a JSON object containing keys: CAR, MOTORCYCLE, TRUCK, BUS (integers).
     """
     try:
+        CLASS_MAP = {2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("SELECT label, COUNT(*) FROM violations GROUP BY label;")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        counts = {row[0]: row[1] for row in rows}
+
+        counts = {}
+        for label, cnt in rows:
+            mapped = None
+            # Normalize label which may be stored as int, numeric string, or name
+            if label is None:
+                continue
+            # If it's an int class id
+            if isinstance(label, int):
+                mapped = CLASS_MAP.get(label)
+            else:
+                # try numeric string
+                try:
+                    mapped = CLASS_MAP.get(int(str(label)))
+                except Exception:
+                    # fallback to textual label (uppercase)
+                    mapped = str(label).upper()
+            if mapped is None:
+                mapped = str(label).upper()
+            counts[mapped] = counts.get(mapped, 0) + int(cnt)
+
         result = {
             "CAR": counts.get("CAR", 0),
             "MOTORCYCLE": counts.get("MOTORCYCLE", 0),
