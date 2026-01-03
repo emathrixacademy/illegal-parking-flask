@@ -286,7 +286,6 @@ class ParkingMonitor:
                 if is_violation:
                     last_up = self.last_upload_time.get((name, tid), 0)
                     if now - last_up > config.REPEAT_CAPTURE_INTERVAL:
-                        # --- Save image locally ---
                         import datetime
                         now_dt = datetime.datetime.now()
                         date_folder = now_dt.strftime("%B %d, %Y (%A)")
@@ -295,6 +294,8 @@ class ParkingMonitor:
                         img_filename = f"{name}-{now_dt.strftime('%H_%M_%S')}.jpg"
                         img_path = os.path.join(date_dir, img_filename)
                         cv2.imwrite(img_path, frame)
+                        logger.info(f"Violation detected: camera={name}, tracker_id={tid}, label={label}, time={now_dt.isoformat()}")
+                        logger.info(f"Saved violation image to {img_path}")
 
                         # --- Send violation event to Railway API ---
                         try:
@@ -310,7 +311,9 @@ class ParkingMonitor:
                             }
                             api_url = f"{RAILWAY_API_URL}/api/upload_event"
                             resp = requests.post(api_url, json=payload, timeout=10)
-                            if not resp.ok:
+                            if resp.ok:
+                                logger.info(f"Uploaded violation event to Railway: {resp.status_code}")
+                            else:
                                 logger.error(f"Failed to upload event to Railway: {resp.status_code} {resp.text}")
                         except Exception as e:
                             logger.error(f"Exception uploading event to Railway: {e}")

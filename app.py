@@ -235,6 +235,8 @@ def upload_event():
         image_b64 = data.get("image")
         meta = data.get("meta", {})
 
+        logger.info(f"Received violation event: camera_id={camera_id}, timestamp={timestamp}, meta={meta}")
+
         if not os.path.exists(STATIC_EVENTS_DIR):
             os.makedirs(STATIC_EVENTS_DIR)
         fname = EVENT_IMAGE_FORMAT.format(
@@ -245,6 +247,7 @@ def upload_event():
 
         with open(img_path, "wb") as f:
             f.write(base64.b64decode(image_b64))
+        logger.info(f"Saved violation image to {img_path}")
 
         EVENTS.append({
             "camera_id": camera_id,
