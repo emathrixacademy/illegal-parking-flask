@@ -379,13 +379,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body text-center">
-                <!-- Spinner shown while loading -->
-                <div id="zoomSpinner" class="d-flex justify-content-center align-items-center" style="height:70vh;">
-                    <div class="spinner-border text-warning" role="status" style="width:3rem;height:3rem;">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-                <img id="zoomedImage" src="" alt="Zoomed Violation" style="max-width:100%;max-height:70vh;border-radius:10px;display:none;">
+                <img id="zoomedImage" src="" alt="Zoomed Violation" style="max-width:100%;max-height:70vh;border-radius:10px;">
               </div>
             </div>
           </div>
@@ -478,10 +472,7 @@ let zoomModalRetryInterval = null;
 // Show image modal by src (AJAX fetch for latest image, retry until loaded or modal closed)
 function showZoomModalBySrc(imgSrc) {
     const zoomedImage = document.getElementById('zoomedImage');
-    const zoomSpinner = document.getElementById('zoomSpinner');
-    zoomedImage.src = "";
-    zoomedImage.style.display = "none";
-    zoomSpinner.style.display = "flex";
+    zoomedImage.src = ""; // Clear previous image
 
     // Helper to clear retry interval
     function clearRetry() {
@@ -508,8 +499,6 @@ function showZoomModalBySrc(imgSrc) {
     // Retry logic: try to fetch image every second until success or modal closed
     function tryFetchImage() {
         if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
-            zoomSpinner.style.display = "flex";
-            zoomedImage.style.display = "none";
             fetch(imgSrc)
                 .then(resp => {
                     if (!resp.ok) throw new Error("Image unavailable");
@@ -519,19 +508,14 @@ function showZoomModalBySrc(imgSrc) {
                     clearRetry();
                     const url = URL.createObjectURL(blob);
                     zoomedImage.src = url;
-                    zoomSpinner.style.display = "none";
-                    zoomedImage.style.display = "block";
                 })
                 .catch(() => {
-                    zoomSpinner.style.display = "none";
+                    // Show fallback or keep retrying
                     zoomedImage.src = FALLBACK_SVG;
-                    zoomedImage.style.display = "block";
                 });
         } else {
             clearRetry();
-            zoomSpinner.style.display = "none";
             zoomedImage.src = imgSrc || FALLBACK_SVG;
-            zoomedImage.style.display = "block";
         }
     }
 
