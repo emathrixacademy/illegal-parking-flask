@@ -456,6 +456,50 @@ def api_get_image():
         return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
 
+@app.route('/api/list_images')
+def api_list_images():
+    """
+    List all images in the SAVE_DIR directory (recursively).
+    Returns a JSON list of relative paths.
+    """
+    image_dir = os.path.join(os.path.dirname(__file__), SAVE_DIR)
+    image_files = []
+    for root, dirs, files in os.walk(image_dir):
+        for fname in files:
+            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
+                image_files.append(rel_path.replace("\\", "/"))
+    return jsonify(sorted(image_files, reverse=True))
+
+@app.route('/api/history_events')
+def api_history_events():
+    """
+    Return all violation images as history, even after server restarts.
+    This will list all images in SAVE_DIR and return them as event objects.
+    """
+    image_dir = os.path.join(os.path.dirname(__file__), SAVE_DIR)
+    events = []
+    for root, dirs, files in os.walk(image_dir):
+        for fname in files:
+            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
+                rel_path = rel_path.replace("\\", "/")
+                # Try to extract camera and timestamp from filename
+                # Example: Camera_2-11_47_00.jpg or Camera_2_2026-01-03T11-47-00-155665.jpg
+                match = re.match(r".*[/\\]?([A-Za-z0-9_]+)[-_](\d{4}[-_]\d{2}[-_]\d{2}[T_]\d{2}[-_]\d{2}[-_]\d{2}[-_]\d+)\.jpg", rel_path)
+                camera_id = match.group(1) if match else ""
+                timestamp = match.group(2).replace("_", ":").replace("T", " ", 1) if match else ""
+                events.append({
+                    "camera_id": camera_id,
+                    "timestamp": timestamp,
+                    "image_url": f"/api/get_image?image_path={rel_path}",
+                    "meta": {},
+                    "local_image_url": f"/api/get_image?image_path={rel_path}"
+                })
+    # Sort newest first
+    events.sort(key=lambda ev: ev["timestamp"], reverse=True)
+    return jsonify(events)
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on 0.0.0.0:{port}")
