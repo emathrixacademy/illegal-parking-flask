@@ -392,8 +392,9 @@
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Replaced client-side script to use AJAX polling, safe encoding and robust fallbacks.
+
 function groupBy(arr, keyFn) {
     return arr.reduce((acc, item) => {
         const key = keyFn(item);
@@ -416,9 +417,81 @@ function formatHour(ts) {
     return d.toLocaleDateString() + ' ' + d.getHours() + ':00';
 }
 
+// Build a safe proxy URL by encoding the image_path parameter when present
+function buildProxyUrl(ev) {
+    if (ev.proxy_image_url && ev.proxy_image_url.includes('image_path=')) {
+        const parts = ev.proxy_image_url.split('image_path=');
+        const base = parts[0] + 'image_path=';
+        const raw = parts.slice(1).join('image_path=');
+        return base + encodeURIComponent(raw);
+    }
+    return ev.local_image_url || ev.image_url || '';
+}
+
+// Inline SVG fallback (URL-encoded)
+const FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22250%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23ff9800%22%20font-size%3D%2220%22%20font-family%3D%22Arial%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3EImage%20unavailable%3C/text%3E%3C/svg%3E';
+
+function violationCard(ev) {
+    let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
+    let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
+    let imgSrc = buildProxyUrl(ev) || ev.local_image_url || ev.image_url || '';
+    // Ensure we don't accidentally inject unescaped quotes. Use single quotes around attributes below.
+    return `
+    <div class="violation-card">
+        <img src="${imgSrc}" alt="Violation"
+            data-img="${imgSrc}"
+            onerror="this.onerror=null; this.src='${FALLBACK_SVG}';"
+            style="cursor:zoom-in"
+            onclick="showZoomModal(this)">
+        <div class="violation-card-body">
+            <div class="violation-card-title">
+                <i class="bi bi-camera-video"></i> ${ev.camera_id || ''}
+                ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
+                ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
+            </div>
+            <div class="violation-card-meta">
+                <i class="bi bi-clock"></i> ${ev.timestamp || ''}
+            </div>
+            ${ev.meta && Object.keys(ev.meta).length ? `<pre>${JSON.stringify(ev.meta,null,2)}</pre>` : ""}
+        </div>
+    </div>
+    `;
+}
+
+let allEvents = [];
+let pollingHandle = null;
+
+async function loadViolationEvents(){
+    const container = document.getElementById('violationEvents');
+    container.innerHTML = "<div class='text-muted'>Loading events...</div>";
+    try{
+        const res = await fetch('/api/events');
+        if (!res.ok) throw new Error('Network error');
+        allEvents = await res.json();
+
+        // Preload images so browser attempts to fetch them before rendering
+        const preloadPromises = allEvents.map(ev => {
+            return new Promise(resolve => {
+                const src = buildProxyUrl(ev) || ev.local_image_url || ev.image_url || '';
+                if (!src) return resolve();
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                img.src = src;
+            });
+        });
+        await Promise.all(preloadPromises);
+
+        renderViolations(allEvents, document.getElementById('sortSelect').value);
+    }catch(err){
+        container.innerHTML = "<div class='alert alert-danger'>Failed to load events.</div>";
+        console.error(err);
+    }
+}
+
 function renderViolations(events, sortType) {
     const container = document.getElementById('violationEvents');
-    if (!events.length) {
+    if (!events || !events.length) {
         container.innerHTML = "<div class='alert alert-info'>No violations detected.</div>";
         return;
     }
@@ -451,50 +524,18 @@ function renderViolations(events, sortType) {
     container.innerHTML = html;
 }
 
-function violationCard(ev) {
-    let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
-    let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url;
-    let fallbackSrc = ev.local_image_url || ev.image_url || '';
-    // Add data-img for zoom, and onerror fallback
-    return `
-    <div class="violation-card">
-        <img src="${imgSrc}" alt="Violation"
-            data-img="${imgSrc}"
-            onerror="if(this.src!==location.origin+'${fallbackSrc}' && '${fallbackSrc}')this.src='${fallbackSrc}';"
-            style="cursor:zoom-in"
-            onclick="showZoomModal(this)">
-        <div class="violation-card-body">
-            <div class="violation-card-title">
-                <i class="bi bi-camera-video"></i> ${ev.camera_id}
-                ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
-                ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
-            </div>
-            <div class="violation-card-meta">
-                <i class="bi bi-clock"></i> ${ev.timestamp}
-            </div>
-            ${ev.meta && Object.keys(ev.meta).length ? `<pre>${JSON.stringify(ev.meta,null,2)}</pre>` : ""}
-        </div>
-    </div>
-    `;
-}
-
-let allEvents = [];
-async function loadViolationEvents(){
-    try{
-        const res = await fetch('/api/events');
-        allEvents = await res.json();
-        renderViolations(allEvents, document.getElementById('sortSelect').value);
-    }catch{
-        document.getElementById('violationEvents').innerHTML="<div class='alert alert-danger'>Failed to load events.</div>";
-    }
-}
 document.getElementById('sortSelect').addEventListener('change', function(){
     renderViolations(allEvents, this.value);
 });
-window.onload = loadViolationEvents;
 
-// Image zoom modal logic
+// Start polling every 10s; immediate load now
+window.addEventListener('load', () => {
+    loadViolationEvents();
+    if (pollingHandle) clearInterval(pollingHandle);
+    pollingHandle = setInterval(loadViolationEvents, 10000);
+});
+
+// Image zoom modal logic (unchanged)
 function showZoomModal(imgElem) {
     const zoomedImage = document.getElementById('zoomedImage');
     zoomedImage.src = imgElem.getAttribute('data-img') || imgElem.src;
@@ -502,5 +543,6 @@ function showZoomModal(imgElem) {
     modal.show();
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
