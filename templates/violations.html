@@ -466,34 +466,66 @@ function violationCard(ev) {
     `;
 }
 
-// Show image modal by src (AJAX fetch for latest image)
+// Add a global variable to track the retry interval
+let zoomModalRetryInterval = null;
+
+// Show image modal by src (AJAX fetch for latest image, retry until loaded or modal closed)
 function showZoomModalBySrc(imgSrc) {
     const zoomedImage = document.getElementById('zoomedImage');
     zoomedImage.src = ""; // Clear previous image
-    // If the src is a proxy_image_url, fetch the image via AJAX for freshness
-    if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
-        fetch(imgSrc)
-            .then(resp => {
-                if (!resp.ok) throw new Error("Image unavailable");
-                return resp.blob();
-            })
-            .then(blob => {
-                const url = URL.createObjectURL(blob);
-                zoomedImage.src = url;
-                // Clean up object URL when modal closes
-                const modalEl = document.getElementById('zoomModal');
-                modalEl.addEventListener('hidden.bs.modal', function cleanup() {
-                    URL.revokeObjectURL(url);
-                    modalEl.removeEventListener('hidden.bs.modal', cleanup);
-                });
-            })
-            .catch(() => {
-                zoomedImage.src = FALLBACK_SVG;
-            });
-    } else {
-        zoomedImage.src = imgSrc || FALLBACK_SVG;
+
+    // Helper to clear retry interval
+    function clearRetry() {
+        if (zoomModalRetryInterval) {
+            clearInterval(zoomModalRetryInterval);
+            zoomModalRetryInterval = null;
+        }
     }
-    const modal = new bootstrap.Modal(document.getElementById('zoomModal'));
+
+    // Modal element and instance
+    const modalEl = document.getElementById('zoomModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // Listen for modal close to stop retrying and revoke object URLs
+    function onModalHidden() {
+        clearRetry();
+        if (zoomedImage.src.startsWith('blob:')) {
+            URL.revokeObjectURL(zoomedImage.src);
+        }
+        modalEl.removeEventListener('hidden.bs.modal', onModalHidden);
+    }
+    modalEl.addEventListener('hidden.bs.modal', onModalHidden);
+
+    // Retry logic: try to fetch image every second until success or modal closed
+    function tryFetchImage() {
+        if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
+            fetch(imgSrc)
+                .then(resp => {
+                    if (!resp.ok) throw new Error("Image unavailable");
+                    return resp.blob();
+                })
+                .then(blob => {
+                    clearRetry();
+                    const url = URL.createObjectURL(blob);
+                    zoomedImage.src = url;
+                })
+                .catch(() => {
+                    // Show fallback or keep retrying
+                    zoomedImage.src = FALLBACK_SVG;
+                });
+        } else {
+            clearRetry();
+            zoomedImage.src = imgSrc || FALLBACK_SVG;
+        }
+    }
+
+    // Start retry interval
+    clearRetry();
+    tryFetchImage();
+    if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
+        zoomModalRetryInterval = setInterval(tryFetchImage, 1000);
+    }
+
     modal.show();
 }
 
