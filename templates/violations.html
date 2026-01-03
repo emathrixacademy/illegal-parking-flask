@@ -376,37 +376,10 @@
             <div id="violationEvents" class="violation-timeline"></div>
             <a href="/" class="btn btn-secondary mt-3">Back to Home</a>
         </div>
-        <!-- Modal for image zoom -->
-        <div class="modal fade" id="zoomModal" tabindex="-1" aria-labelledby="zoomModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark">
-              <div class="modal-header border-0">
-                <h5 class="modal-title text-warning" id="zoomModalLabel">Violation Image</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body text-center">
-                <img id="zoomedImage" src="" alt="Zoomed Violation" style="max-width:100%;max-height:70vh;border-radius:10px;">
-              </div>
-            </div>
-          </div>
-        </div>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let piPublicUrl = "";
-let allEvents = [];
-
-async function fetchPiPublicUrl() {
-    try {
-        const res = await fetch('/api/pi_public_url');
-        const data = await res.json();
-        piPublicUrl = data.public_url || "";
-    } catch {
-        piPublicUrl = "";
-    }
-}
-
 function groupBy(arr, keyFn) {
     return arr.reduce((acc, item) => {
         const key = keyFn(item);
@@ -465,44 +438,33 @@ function renderViolations(events, sortType) {
 }
 
 function violationCard(ev) {
-    let label = ev.label || "";
-    let tracker_id = ev.tracker_id || "";
-    // Prefer direct_pi_image_url if available, then proxy, then local
-    let imgSrc = ev.direct_pi_image_url || ev.proxy_image_url || ev.local_image_url || ev.image_url;
-    let fallbackSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
+    let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
+    let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
+    let imgSrc = ev.proxy_image_url || ev.image_url;
     return `
     <div class="violation-card">
-        <img src="${imgSrc}" alt="Violation"
-            data-img="${imgSrc}"
-            onerror="if(this.src!==location.origin+'${fallbackSrc}' && '${fallbackSrc}')this.src='${fallbackSrc}';"
-            style="cursor:zoom-in"
-            onclick="showZoomModal(this)">
+        <img src="${imgSrc}" alt="Violation">
         <div class="violation-card-body">
             <div class="violation-card-title">
-                <i class="bi bi-camera-video"></i> ${ev.camera_id || ""}
+                <i class="bi bi-camera-video"></i> ${ev.camera_id}
                 ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
                 ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
             </div>
             <div class="violation-card-meta">
-                <i class="bi bi-clock"></i> ${ev.timestamp || ""}
+                <i class="bi bi-clock"></i> ${ev.timestamp}
             </div>
+            ${ev.meta && Object.keys(ev.meta).length ? `<pre>${JSON.stringify(ev.meta,null,2)}</pre>` : ""}
         </div>
     </div>
     `;
 }
 
+let allEvents = [];
 async function loadViolationEvents(){
     try{
-        await fetchPiPublicUrl();
-        const res = await fetch('/api/db_violations');
+        const res = await fetch('/api/events');
         allEvents = await res.json();
         renderViolations(allEvents, document.getElementById('sortSelect').value);
-
-        // Show a warning if Pi tunnel is not available
-        if (!piPublicUrl) {
-            const container = document.getElementById('violationEvents');
-            container.insertAdjacentHTML('afterbegin', `<div class='alert alert-warning'>Raspberry Pi tunnel is not available. Images may not be visible.</div>`);
-        }
     }catch{
         document.getElementById('violationEvents').innerHTML="<div class='alert alert-danger'>Failed to load events.</div>";
     }
@@ -511,14 +473,6 @@ document.getElementById('sortSelect').addEventListener('change', function(){
     renderViolations(allEvents, this.value);
 });
 window.onload = loadViolationEvents;
-
-// Image zoom modal logic
-function showZoomModal(imgElem) {
-    const zoomedImage = document.getElementById('zoomedImage');
-    zoomedImage.src = imgElem.getAttribute('data-img') || imgElem.src;
-    const modal = new bootstrap.Modal(document.getElementById('zoomModal'));
-    modal.show();
-}
 </script>
 </body>
 </html>

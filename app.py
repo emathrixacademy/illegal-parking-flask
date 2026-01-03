@@ -329,15 +329,11 @@ def api_proxy_image():
         if not image_path:
             return jsonify({"success": False, "error": "Missing image_path"}), 400
         pi_base = get_pi_base()
-        # Always pass the image_path as-is to the Pi's /api/get_image endpoint
         url = f"{pi_base}/api/get_image"
-        # Forward the exact image_path, do not strip leading slashes or modify
         resp = requests.get(url, params={"image_path": image_path}, timeout=10)
         if resp.status_code == 200:
             return Response(resp.content, mimetype="image/jpeg")
         else:
-            # Log the error for debugging
-            logger.error(f"Proxy image error: Pi returned {resp.status_code} for {image_path} ({resp.text[:200]})")
             return Response("Image not found", 404)
     except Exception as e:
         logger.error(f"Proxy image error: {e}")
@@ -349,17 +345,6 @@ def api_events():
     Return all violation images as history, even after server restarts.
     This will list all images in static/events and return them as event objects.
     """
-    return history_events_impl()
-
-@app.route('/api/history_events')
-def api_history_events():
-    """
-    Return all violation images as history, even after server restarts.
-    This will list all images in static/events and return them as event objects.
-    """
-    return history_events_impl()
-
-def history_events_impl():
     image_dir = os.path.join(os.path.dirname(__file__), STATIC_EVENTS_DIR)
     events = []
     for root, dirs, files in os.walk(image_dir):
@@ -466,52 +451,6 @@ def api_list_images():
                 rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
                 image_files.append(rel_path.replace("\\", "/"))
     return jsonify(sorted(image_files, reverse=True))
-
-# --------------------------------------------------
-# DB Violations
-# --------------------------------------------------
-@app.route('/api/db_violations')
-def api_db_violations():
-    """
-    Fetch all violations from the PostgreSQL database and provide image access via the Pi's local file API.
-    Each event will include:
-      - proxy_image_url: fetches the image via this Railway server (using the tunnel)
-      - direct_pi_image_url: direct public URL to the image via the Pi's cloudflared tunnel
-    """
-    try:
-        conn = psycopg2.connect(POSTGRES_URL)
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT camera, tracker_id, label, timestamp, image_path
-            FROM violations
-            ORDER BY timestamp DESC
-        """)
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        events = []
-        pi_public_url = PI_PUBLIC_URL.rstrip("/") if PI_PUBLIC_URL else ""
-        for row in rows:
-            camera_id, tracker_id, label, timestamp, image_path = row
-            rel_path = image_path
-            if rel_path.startswith("/home/"):
-                rel_path = os.path.relpath(rel_path, "/home/set-admin/illegal-parking-flask")
-            rel_path = rel_path.replace("\\", "/")
-            proxy_image_url = f"/api/proxy_image?image_path={rel_path}"
-            direct_pi_image_url = f"{pi_public_url}/api/get_image?image_path={rel_path}" if pi_public_url else ""
-            events.append({
-                "camera_id": camera_id,
-                "tracker_id": tracker_id,
-                "label": label,
-                "timestamp": timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp),
-                "proxy_image_url": proxy_image_url,
-                "direct_pi_image_url": direct_pi_image_url,
-                "image_path": rel_path
-            })
-        return jsonify(events)
-    except Exception as e:
-        logger.error(f"Failed to fetch violations from DB: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 # --------------------------------------------------
 # Main

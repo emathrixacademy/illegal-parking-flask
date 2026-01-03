@@ -441,99 +441,20 @@ def video_feed_c2():
 @app.route('/api/get_image')
 def api_get_image():
     """
-    Serve a violation image given its image_path (relative to project root or absolute).
-    Tries several locations for compatibility with DB and event records.
+    Serve a violation image given its image_path (relative to project root).
     Usage: /api/get_image?image_path=...
     """
     image_path = request.args.get("image_path")
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
-
-    # Try absolute path first
-    if os.path.isabs(image_path) and os.path.exists(image_path):
-        abs_path = image_path
-    else:
-        safe_path = os.path.normpath(image_path)
-        if ".." in safe_path:
-            return jsonify({"success": False, "error": "Invalid image_path"}), 400
-
-        # Try as-is relative to project root
-        abs_path = os.path.join(os.path.dirname(__file__), safe_path)
-        if not os.path.exists(abs_path):
-            # Try static/violations + full relative path (not just basename)
-            alt_path = os.path.join(os.path.dirname(__file__), "static", "violations", safe_path)
-            if os.path.exists(alt_path):
-                abs_path = alt_path
-            else:
-                # Try static/violations + basename
-                alt_path2 = os.path.join(os.path.dirname(__file__), "static", "violations", os.path.basename(safe_path))
-                if os.path.exists(alt_path2):
-                    abs_path = alt_path2
-                else:
-                    # Try static/events + full relative path
-                    alt_path3 = os.path.join(os.path.dirname(__file__), "static", "events", safe_path)
-                    if os.path.exists(alt_path3):
-                        abs_path = alt_path3
-                    else:
-                        # Try static/events + basename
-                        alt_path4 = os.path.join(os.path.dirname(__file__), "static", "events", os.path.basename(safe_path))
-                        if os.path.exists(alt_path4):
-                            abs_path = alt_path4
-                        else:
-                            # Try SAVE_DIR + basename
-                            alt_path5 = os.path.join(SAVE_DIR, os.path.basename(safe_path))
-                            if os.path.exists(alt_path5):
-                                abs_path = alt_path5
-                            else:
-                                # Log all tried paths for debugging
-                                logger.error(f"Image not found. Tried: {abs_path}, {alt_path}, {alt_path2}, {alt_path3}, {alt_path4}, {alt_path5}")
-                                return jsonify({"success": False, "error": f"Image not found: {image_path}"}), 404
-
+    # Sanitize path to prevent directory traversal
+    safe_path = os.path.normpath(image_path)
+    if ".." in safe_path or safe_path.startswith("/"):
+        return jsonify({"success": False, "error": "Invalid image_path"}), 400
+    abs_path = os.path.join(os.path.dirname(__file__), safe_path)
+    if not os.path.exists(abs_path):
+        return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
-
-@app.route('/api/list_images')
-def api_list_images():
-    """
-    List all images in the SAVE_DIR directory (recursively).
-    Returns a JSON list of relative paths.
-    """
-    image_dir = os.path.join(os.path.dirname(__file__), SAVE_DIR)
-    image_files = []
-    for root, dirs, files in os.walk(image_dir):
-        for fname in files:
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
-                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
-                image_files.append(rel_path.replace("\\", "/"))
-    return jsonify(sorted(image_files, reverse=True))
-
-@app.route('/api/history_events')
-def api_history_events():
-    """
-    Return all violation images as history, even after server restarts.
-    This will list all images in SAVE_DIR and return them as event objects.
-    """
-    image_dir = os.path.join(os.path.dirname(__file__), SAVE_DIR)
-    events = []
-    for root, dirs, files in os.walk(image_dir):
-        for fname in files:
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
-                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
-                rel_path = rel_path.replace("\\", "/")
-                # Try to extract camera and timestamp from filename
-                # Example: Camera_2-11_47_00.jpg or Camera_2_2026-01-03T11-47-00-155665.jpg
-                match = re.match(r".*[/\\]?([A-Za-z0-9_]+)[-_](\d{4}[-_]\d{2}[-_]\d{2}[T_]\d{2}[-_]\d{2}[-_]\d{2}[-_]\d+)\.jpg", rel_path)
-                camera_id = match.group(1) if match else ""
-                timestamp = match.group(2).replace("_", ":").replace("T", " ", 1) if match else ""
-                events.append({
-                    "camera_id": camera_id,
-                    "timestamp": timestamp,
-                    "image_url": f"/api/get_image?image_path={rel_path}",
-                    "meta": {},
-                    "local_image_url": f"/api/get_image?image_path={rel_path}"
-                })
-    # Sort newest first
-    events.sort(key=lambda ev: ev["timestamp"], reverse=True)
-    return jsonify(events)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
