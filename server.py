@@ -259,10 +259,13 @@ def index():
 
 # --- Simple Tracker ---
 class ByteTrackLite:
+    # Global counter shared across all tracker instances to avoid ID collisions between cameras
+    global_next_id = 0
+    _id_lock = threading.Lock()
+
     def __init__(self):
         self.tracked_objects = {}
         self.frame_count = 0
-        self.next_id = 0
         self.buffer = 30
 
     def get_iou(self, b1, b2):
@@ -286,8 +289,11 @@ class ByteTrackLite:
                 new_tracks[best_id] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
                 self.tracked_objects.pop(best_id, None)
             elif score >= config.DETECTION_THRESHOLD:
-                new_tracks[self.next_id] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
-                self.next_id += 1
+                # Assign a globally-unique ID in a thread-safe manner
+                with ByteTrackLite._id_lock:
+                    nid = ByteTrackLite.global_next_id
+                    ByteTrackLite.global_next_id += 1
+                new_tracks[nid] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
         for tid, t in self.tracked_objects.items():
             if self.frame_count - t['last_seen'] < self.buffer:
                 new_tracks[tid] = t
