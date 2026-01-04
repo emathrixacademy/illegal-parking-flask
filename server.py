@@ -26,7 +26,7 @@ CAM2_URL = getattr(config, "CAM2_URL", None)
 MODEL_PATH = getattr(config, "MODEL_PATH", "")
 SAVE_DIR = getattr(config, "SAVE_DIR", "static/violations")
 DETECTION_THRESHOLD = getattr(config, "DETECTION_THRESHOLD", 0.3)
-VIOLATION_TIME_THRESHOLD = getattr(config, "VIOLATION_TIME_THRESHOLD", 10)
+VIOLATION_TIME_THRESHOLD = getattr(config, "VIOLATION_TIME_THRESHOLD", 100)
 REPEAT_CAPTURE_INTERVAL = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
 PARKING_ZONES = getattr(config, "PARKING_ZONES", {})
 PORT = int(os.environ.get("PORT", 5000))
@@ -159,49 +159,76 @@ def api_settings():
     import json as pyjson
     import re
     config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    
     if request.method == 'POST':
-        data = request.get_json(force=True)
-        with open(config_path, "r") as f:
-            lines = f.readlines()
+        try:
+            data = request.get_json(force=True)
+            with open(config_path, "r") as f:
+                lines = f.readlines()
 
-        def replace_line(key, value):
-            pattern = re.compile(rf"^{key}\s*=\s*.*$")
-            for i, line in enumerate(lines):
-                if pattern.match(line):
+            def replace_line(key, value):
+                pattern = re.compile(rf"^{key}\s*=\s*.*$")
+                found = False
+                for i, line in enumerate(lines):
+                    if pattern.match(line):
+                        if key == "PARKING_ZONES":
+                            lines[i] = f"{key} = {pyjson.dumps(value)}\n"
+                        else:
+                            lines[i] = f"{key} = {value}\n"
+                        found = True
+                        break
+                if not found:
                     if key == "PARKING_ZONES":
-                        lines[i] = f"{key} = {pyjson.dumps(value)}\n"
+                        lines.append(f"{key} = {pyjson.dumps(value)}\n")
                     else:
-                        lines[i] = f"{key} = {value}\n"
-                    return
-            lines.append(f"{key} = {pyjson.dumps(value) if key=='PARKING_ZONES' else value}\n")
+                        lines.append(f"{key} = {value}\n")
 
-        if "VIOLATION_TIME_THRESHOLD" in data:
-            replace_line("VIOLATION_TIME_THRESHOLD", data["VIOLATION_TIME_THRESHOLD"])
-        if "REPEAT_CAPTURE_INTERVAL" in data:
-            replace_line("REPEAT_CAPTURE_INTERVAL", data["REPEAT_CAPTURE_INTERVAL"])
-        if "PARKING_ZONES" in data:
-            current_zones = getattr(config, "PARKING_ZONES", {})
-            updated_zones = current_zones.copy()
-            for cam, val in data["PARKING_ZONES"].items():
-                if val is None:
-                    updated_zones.pop(cam, None)
-                else:
-                    updated_zones[cam] = val
-            replace_line("PARKING_ZONES", updated_zones)
+            if "VIOLATION_TIME_THRESHOLD" in data:
+                replace_line("VIOLATION_TIME_THRESHOLD", int(data["VIOLATION_TIME_THRESHOLD"]))
+            if "REPEAT_CAPTURE_INTERVAL" in data:
+                replace_line("REPEAT_CAPTURE_INTERVAL", int(data["REPEAT_CAPTURE_INTERVAL"]))
+            if "PARKING_ZONES" in data:
+                # Reload current config to get latest zones
+                importlib.reload(config)
+                current_zones = getattr(config, "PARKING_ZONES", {})
+                updated_zones = current_zones.copy()
+                for cam, val in data["PARKING_ZONES"].items():
+                    if val is None:
+                        updated_zones.pop(cam, None)
+                    else:
+                        updated_zones[cam] = val
+                replace_line("PARKING_ZONES", updated_zones)
 
-        with open(config_path, "w") as f:
-            f.writelines(lines)
+            with open(config_path, "w") as f:
+                f.writelines(lines)
+            
+            # Reload config module to apply changes
+            importlib.reload(config)
+            
+            # Update monitor zones if PARKING_ZONES changed
+            if "PARKING_ZONES" in data:
+                monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+            
+            logger.info(f"Settings updated: VIOLATION_TIME_THRESHOLD={getattr(config, 'VIOLATION_TIME_THRESHOLD', 100)}, REPEAT_CAPTURE_INTERVAL={getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60)}")
+            
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error(f"Failed to save settings: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # GET request - return current settings
+    try:
         importlib.reload(config)
-        # No monitor.zones here, but you can reload config if needed
-        return jsonify({"success": True})
-
+    except Exception:
+        pass
+    
     return jsonify({
         "CAM1_URL": getattr(config, "CAM1_URL", ""),
         "CAM2_URL": getattr(config, "CAM2_URL", ""),
         "MODEL_PATH": getattr(config, "MODEL_PATH", ""),
         "SAVE_DIR": getattr(config, "SAVE_DIR", ""),
         "DETECTION_THRESHOLD": getattr(config, "DETECTION_THRESHOLD", 0.3),
-        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 10),
+        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 100),
         "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     })
@@ -262,6 +289,10 @@ class ParkingMonitor:
         self.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
 
     def process(self, name, res, frame):
+        # Reload thresholds from config each time (to pick up changes)
+        violation_threshold = getattr(config, "VIOLATION_TIME_THRESHOLD", 100)
+        repeat_interval = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
+        
         if name not in self.zones: return
         fh, fw = frame.shape[:2]
         cv2.polylines(frame, [self.zones[name]], True, (0, 0, 255), 2)
@@ -279,13 +310,13 @@ class ParkingMonitor:
             if in_zone:
                 self.timers.setdefault((name, tid), now)
                 dur = int(now - self.timers[(name, tid)])
-                is_violation = dur >= config.VIOLATION_TIME_THRESHOLD
+                is_violation = dur >= violation_threshold
                 color = (0, 0, 255) if is_violation else (0, 255, 255)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, color, 2)
                 if is_violation:
                     last_up = self.last_upload_time.get((name, tid), 0)
-                    if now - last_up > config.REPEAT_CAPTURE_INTERVAL:
+                    if now - last_up > repeat_interval:
                         import datetime
                         now_dt = datetime.datetime.now()
                         date_folder = now_dt.strftime("%B %d, %Y (%A)")
@@ -317,15 +348,6 @@ class ParkingMonitor:
                                 logger.error(f"Failed to upload event to Railway: {resp.status_code} {resp.text}")
                         except Exception as e:
                             logger.error(f"Exception uploading event to Railway: {e}")
-
-                        # --- Optionally: remove or comment out direct DB insert ---
-                        # insert_violation_event(
-                        #     camera=name,
-                        #     tracker_id=tid,
-                        #     label=label,
-                        #     timestamp=now_dt,
-                        #     image_path=img_path
-                        # )
 
                         self.last_upload_time[(name, tid)] = now
             else:

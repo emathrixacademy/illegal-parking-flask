@@ -9,7 +9,7 @@ MODEL_PATH = "models/yolov8s.hef"
 SAVE_DIR = "static/violations"
 
 DETECTION_THRESHOLD = 0.3      # Minimum confidence (0.0 to 1.0)
-VIOLATION_TIME_THRESHOLD = 10
+VIOLATION_TIME_THRESHOLD = 100
 REPEAT_CAPTURE_INTERVAL = 60
 # Define parking zones for each camera
 

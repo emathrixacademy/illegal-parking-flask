@@ -52,7 +52,7 @@ POSTGRES_URL = os.environ.get(
 # --------------------------------------------------
 def get_current_settings():
     return {
-        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 10),
+        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 100),
         "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
     }
@@ -505,13 +505,24 @@ def api_camera_status():
 # --------------------------------------------------
 # Settings
 # --------------------------------------------------
-@app.route('/api/settings', methods=['GET'])
+@app.route('/api/settings', methods=['GET', 'POST'])
 def api_settings():
+    if request.method == 'POST':
+        try:
+            pi_base = get_pi_base()
+            url = f"{pi_base}/api/settings"
+            data = request.get_json(force=True)
+            resp = requests.post(url, json=data, timeout=10)
+            return jsonify(resp.json())
+        except Exception as e:
+            logger.error(f"Failed to save settings to Pi: {e}")
+            return jsonify({"success": False, "error": str(e)}), 502
+    
+    # GET request
     try:
         pi_base = get_pi_base()
         url = f"{pi_base}/api/settings"
         resp = requests.get(url, timeout=10)
-        # Forward the Pi's config settings to the frontend
         return jsonify(resp.json())
     except Exception as e:
         logger.error(f"Failed to fetch settings from Pi: {e}")
