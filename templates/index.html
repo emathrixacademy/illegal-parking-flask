@@ -662,6 +662,11 @@
                         <div class="legend-item"><span class="legend-dot yellow"></span> MOTORCYCLES: <strong id="legend-MOTORCYCLE">0</strong></div>
                         <div class="legend-item"><span class="legend-dot red"></span> TRUCKS: <strong id="legend-TRUCK">0</strong></div>
                         <div class="legend-item"><span class="legend-dot" style="background:#9b59b6"></span> BUS: <strong id="legend-BUS">0</strong></div>
+                        <div style="height:8px"></div>
+                        <div class="legend-item" style="font-size:1.05rem;color:#fff;">
+                            <span class="legend-dot" style="width:12px;height:12px;background:transparent;box-shadow:none"></span>
+                            Total Unique Violations: <strong id="legend-TOTAL">0</strong>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -900,6 +905,14 @@ function fetchAnalyticsAjax(){
                         const el = document.getElementById('legend-' + l);
                         if(el) el.textContent = data && data[l] ? data[l] : 0;
                     });
+                    // Update total unique tracker count (provided by backend)
+                    try {
+                        const totalEl = document.getElementById('legend-TOTAL');
+                        if(totalEl) {
+                            const uniq = data && (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) ? (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) : 0;
+                            totalEl.textContent = uniq;
+                        }
+                    } catch(e) {}
                 } catch(e) {
                     // fallback on error
                     labels.forEach(l => {

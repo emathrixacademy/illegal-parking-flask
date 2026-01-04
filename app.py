@@ -467,6 +467,20 @@ def api_violation_counts():
                 mapped = CLASS_MAP.get(str(label).lower())
             if mapped in counts:
                 counts[mapped] += int(cnt)
+
+        # Also return a total unique tracker count (count DISTINCT tracker_id)
+        try:
+            conn2 = psycopg2.connect(POSTGRES_URL)
+            cur2 = conn2.cursor()
+            cur2.execute("SELECT COUNT(DISTINCT tracker_id) FROM violations WHERE tracker_id IS NOT NULL;")
+            uniq_row = cur2.fetchone()
+            cur2.close()
+            conn2.close()
+            total_unique = int(uniq_row[0]) if uniq_row and uniq_row[0] is not None else 0
+        except Exception:
+            total_unique = 0
+
+        counts["TOTAL_UNIQUE_TRACKERS"] = total_unique
         return jsonify(counts)
     except Exception as e:
         logger.error(f"Failed to query violation counts: {e}")
