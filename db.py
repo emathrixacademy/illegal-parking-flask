@@ -13,30 +13,69 @@ def get_connection():
         raise RuntimeError("POSTGRES_URL not set")
     return psycopg2.connect(POSTGRES_URL)
 
+def table_exists(cur, table_name):
+    """Check if a table exists in the database."""
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = %s
+        );
+    """, (table_name,))
+    return cur.fetchone()[0]
+
+def column_exists(cur, table_name, column_name):
+    """Check if a column exists in a table."""
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = %s 
+            AND column_name = %s
+        );
+    """, (table_name, column_name))
+    return cur.fetchone()[0]
+
 def ensure_tables():
     """Create violations and config tables if they don't exist."""
     try:
         conn = get_connection()
         cur = conn.cursor()
-        # Violations table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS violations (
-                id SERIAL PRIMARY KEY,
-                camera VARCHAR(32),
-                tracker_id INTEGER,
-                label VARCHAR(32),
-                timestamp TIMESTAMP,
-                image_path TEXT
-            );
-        """)
-        # Config table - stores key-value pairs for settings
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS config (
-                key VARCHAR(64) PRIMARY KEY,
-                value TEXT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+        
+        # Check and create violations table
+        if not table_exists(cur, 'violations'):
+            cur.execute("""
+                CREATE TABLE violations (
+                    id SERIAL PRIMARY KEY,
+                    camera VARCHAR(32),
+                    tracker_id INTEGER,
+                    label VARCHAR(32),
+                    timestamp TIMESTAMP,
+                    image_path TEXT
+                );
+            """)
+            logger.info("Created 'violations' table.")
+        
+        # Check and create config table
+        if not table_exists(cur, 'config'):
+            cur.execute("""
+                CREATE TABLE config (
+                    key VARCHAR(64) PRIMARY KEY,
+                    value TEXT
+                );
+            """)
+            logger.info("Created 'config' table.")
+        
+        # Check and add updated_at column to config if it doesn't exist
+        if table_exists(cur, 'config') and not column_exists(cur, 'config', 'updated_at'):
+            try:
+                cur.execute("""
+                    ALTER TABLE config ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                """)
+                logger.info("Added 'updated_at' column to config table.")
+            except Exception as e:
+                logger.warning(f"Could not add updated_at column: {e}")
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -66,6 +105,13 @@ def get_config_value(key, default=None):
     try:
         conn = get_connection()
         cur = conn.cursor()
+        
+        # Check if table exists first
+        if not table_exists(cur, 'config'):
+            cur.close()
+            conn.close()
+            return default
+        
         cur.execute("SELECT value FROM config WHERE key = %s", (key,))
         row = cur.fetchone()
         cur.close()
@@ -86,16 +132,32 @@ def set_config_value(key, value):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        # Convert to JSON string if dict/list
+        
+        # Ensure table exists
+        if not table_exists(cur, 'config'):
+            ensure_tables()
+        
         if isinstance(value, (dict, list)):
             value_str = json.dumps(value)
         else:
             value_str = str(value)
-        cur.execute("""
-            INSERT INTO config (key, value, updated_at)
-            VALUES (%s, %s, CURRENT_TIMESTAMP)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
-        """, (key, value_str))
+        
+        # Check if updated_at column exists
+        has_updated_at = column_exists(cur, 'config', 'updated_at')
+        
+        if has_updated_at:
+            cur.execute("""
+                INSERT INTO config (key, value, updated_at)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+            """, (key, value_str))
+        else:
+            cur.execute("""
+                INSERT INTO config (key, value)
+                VALUES (%s, %s)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            """, (key, value_str))
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -113,6 +175,13 @@ def get_all_settings():
     try:
         conn = get_connection()
         cur = conn.cursor()
+        
+        # Check if table exists
+        if not table_exists(cur, 'config'):
+            cur.close()
+            conn.close()
+            return defaults
+        
         cur.execute("SELECT key, value FROM config")
         rows = cur.fetchall()
         cur.close()
@@ -141,16 +210,36 @@ def save_settings(settings_dict):
     try:
         conn = get_connection()
         cur = conn.cursor()
+        
+        # Ensure table exists
+        if not table_exists(cur, 'config'):
+            conn.close()
+            ensure_tables()
+            conn = get_connection()
+            cur = conn.cursor()
+        
+        # Check if updated_at column exists
+        has_updated_at = column_exists(cur, 'config', 'updated_at')
+        
         for key, value in settings_dict.items():
             if isinstance(value, (dict, list)):
                 value_str = json.dumps(value)
             else:
                 value_str = str(value)
-            cur.execute("""
-                INSERT INTO config (key, value, updated_at)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
-            """, (key, value_str))
+            
+            if has_updated_at:
+                cur.execute("""
+                    INSERT INTO config (key, value, updated_at)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP
+                """, (key, value_str))
+            else:
+                cur.execute("""
+                    INSERT INTO config (key, value)
+                    VALUES (%s, %s)
+                    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+                """, (key, value_str))
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -171,17 +260,37 @@ def init_default_settings():
     try:
         conn = get_connection()
         cur = conn.cursor()
+        
+        # Ensure table exists first
+        if not table_exists(cur, 'config'):
+            conn.close()
+            ensure_tables()
+            conn = get_connection()
+            cur = conn.cursor()
+        
+        # Check if updated_at column exists
+        has_updated_at = column_exists(cur, 'config', 'updated_at')
+        
         for key, value in defaults.items():
             if isinstance(value, (dict, list)):
                 value_str = json.dumps(value)
             else:
                 value_str = str(value)
+            
             # Only insert if key doesn't exist
-            cur.execute("""
-                INSERT INTO config (key, value, updated_at)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (key) DO NOTHING
-            """, (key, value_str))
+            if has_updated_at:
+                cur.execute("""
+                    INSERT INTO config (key, value, updated_at)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (key) DO NOTHING
+                """, (key, value_str))
+            else:
+                cur.execute("""
+                    INSERT INTO config (key, value)
+                    VALUES (%s, %s)
+                    ON CONFLICT (key) DO NOTHING
+                """, (key, value_str))
+        
         conn.commit()
         cur.close()
         conn.close()
