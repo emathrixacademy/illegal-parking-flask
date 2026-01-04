@@ -455,18 +455,27 @@ def api_violation_counts():
         }
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
-        cur.execute("SELECT label, COUNT(*) FROM violations GROUP BY label;")
+        # Count distinct tracker_id per label; also count rows where tracker_id IS NULL
+        cur.execute("""
+            SELECT label,
+                   COUNT(DISTINCT tracker_id) AS distinct_ids,
+                   SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_count
+            FROM violations
+            GROUP BY label;
+        """)
         rows = cur.fetchall()
         cur.close()
         conn.close()
 
         counts = {"CAR": 0, "MOTORCYCLE": 0, "TRUCK": 0, "BUS": 0}
-        for label, cnt in rows:
+        for label, distinct_ids, null_count in rows:
             mapped = CLASS_MAP.get(label)
             if mapped is None:
                 mapped = CLASS_MAP.get(str(label).lower())
             if mapped in counts:
-                counts[mapped] += int(cnt)
+                d = int(distinct_ids) if distinct_ids is not None else 0
+                n = int(null_count) if null_count is not None else 0
+                counts[mapped] += (d + n)
 
         # Also return a total unique tracker count (count DISTINCT tracker_id)
         try:
