@@ -388,75 +388,6 @@
                     <input type="number" class="form-control" id="repeat_capture" name="repeat_capture" min="1" required>
                     <small class="text-muted">Cooldown between logging the same vehicle</small>
                 </div>
-                <div class="mb-3">
-                    <label for="cameraSelect" class="form-label">Select Camera for Zone Configuration</label>
-                    <select class="form-select" id="cameraSelect" name="cameraSelect">
-                        <option value="Camera_1">Camera 1</option>
-                        <option value="Camera_2">Camera 2</option>
-                    </select>
-                    <button type="button" class="btn btn-outline-primary mt-2" id="selectZoneBtn">
-                        <i class="bi bi-vector-pen"></i> Select Zone Area
-                    </button>
-                    <div id="zoneDisplay" class="mt-2"></div>
-                </div>
-                <!-- Zone Selector Modal -->
-                <div class="modal fade" id="zoneSelectorModal" tabindex="-1" aria-labelledby="zoneSelectorModalLabel" aria-hidden="true">
-                  <div class="modal-dialog modal-xl modal-dialog-centered">
-                    <div class="modal-content bg-dark text-light">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="zoneSelectorModalLabel"><i class="bi bi-vector-pen"></i> Select Zone Area - <span id="zoneModalCamName"></span></h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <div class="zone-help-text">
-                          <strong>Instructions:</strong> Click precisely on the video to add polygon points.<br>
-                          <kbd>Right-click</kbd> or <kbd>U</kbd> = Undo last point &nbsp;|&nbsp; 
-                          <kbd>C</kbd> = Clear all &nbsp;|&nbsp; 
-                          <kbd>Enter</kbd> = Save zone<br>
-                          <small class="text-warning"><i class="bi bi-info-circle"></i> Coordinates are scaled to match actual camera resolution (1280×720)</small>
-                        </div>
-                        <div class="zone-toolbar">
-                          <button type="button" id="zoneUndoBtn" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
-                          <button type="button" id="zoneClearBtn" class="btn btn-secondary btn-sm"><i class="bi bi-x-circle"></i> Clear All</button>
-                          <div class="form-check form-switch ms-3 d-flex align-items-center">
-                            <input class="form-check-input" type="checkbox" id="zoneMagnifierToggle" checked>
-                            <label class="form-check-label ms-2" for="zoneMagnifierToggle">Magnifier</label>
-                          </div>
-                          <div class="form-check form-switch ms-3 d-flex align-items-center">
-                            <input class="form-check-input" type="checkbox" id="zoneSnapGrid">
-                            <label class="form-check-label ms-2" for="zoneSnapGrid">Snap to Grid (10px)</label>
-                          </div>
-                        </div>
-                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                          <div class="zone-canvas-container" id="zoneCanvasContainer">
-                            <img id="zoneLiveImg" src="" width="640" height="360"
-                                 style="position:absolute; left:0; top:0; z-index:1; border:1px solid #444; border-radius: 4px; display:block;">
-                            <canvas id="zoneCanvas" width="640" height="360"
-                                    style="position:absolute; left:0; top:0; z-index:2;"></canvas>
-                            <div class="zone-coords-display" id="zoneCoordsDisplay">X: 0, Y: 0 (Actual: 0, 0)</div>
-                            <div class="zone-magnifier" id="zoneMagnifier">
-                              <canvas id="zoneMagnifierCanvas" width="240" height="240"></canvas>
-                            </div>
-                          </div>
-                          <div style="flex: 1; min-width: 200px;">
-                            <h6 class="text-warning mb-2"><i class="bi bi-list-ol"></i> Zone Points (<span id="zonePointCount">0</span>)</h6>
-                            <div class="zone-point-list" id="zonePointList">
-                              <div class="text-muted small text-center py-3">No points added yet</div>
-                            </div>
-                            <div class="zone-resolution-info mt-2">
-                              <i class="bi bi-aspect-ratio"></i> Display: 640×360 → Actual: 1280×720
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="modal-footer">
-                        <span id="zoneStatus" class="me-auto text-muted small"></span>
-                        <button type="button" id="zoneSaveBtn" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Save Zone</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
                 <button type="submit" class="btn btn-primary">Save Settings</button>
                 <a href="/" class="btn btn-secondary">Back to Home</a>
             </form>
@@ -467,17 +398,8 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let lastZone = null;
     let piPublicUrl = "";
     let currentSettings = {};
-
-    // Zone selector configuration
-    const DISPLAY_WIDTH = 640;
-    const DISPLAY_HEIGHT = 360;
-    const ACTUAL_WIDTH = 1280;
-    const ACTUAL_HEIGHT = 720;
-    const SCALE_X = ACTUAL_WIDTH / DISPLAY_WIDTH;
-    const SCALE_Y = ACTUAL_HEIGHT / DISPLAY_HEIGHT;
 
     // Fetch Pi public URL on load
     function fetchPiUrl() {
@@ -488,29 +410,10 @@
             });
     }
 
-    function updateZoneDisplay(zone) {
-        lastZone = zone;
-        if (zone && Array.isArray(zone) && zone.length > 0) {
-            const formattedZone = zone.map(p => `[${p[0]}, ${p[1]}]`).join(', ');
-            document.getElementById('zoneDisplay').innerHTML = 
-                `<span class="badge bg-info text-dark">Zone: ${zone.length} points</span>
-                 <div class="small text-muted mt-1" style="font-family: monospace; word-break: break-all;">[${formattedZone}]</div>`;
-        } else {
-            document.getElementById('zoneDisplay').innerHTML = 
-                `<span class="badge bg-secondary">No zone selected</span>`;
-        }
-    }
-
     function injectSettingsToForm(data) {
         currentSettings = data;
         document.getElementById('violation_time').value = data.VIOLATION_TIME_THRESHOLD || 100;
         document.getElementById('repeat_capture').value = data.REPEAT_CAPTURE_INTERVAL || 60;
-        const cam = document.getElementById('cameraSelect').value;
-        if (data.PARKING_ZONES && data.PARKING_ZONES[cam]) {
-            updateZoneDisplay(data.PARKING_ZONES[cam]);
-        } else {
-            updateZoneDisplay(null);
-        }
     }
 
     function loadSettings() {
@@ -569,23 +472,13 @@
         });
     });
 
-    document.getElementById('cameraSelect').addEventListener('change', function() {
-        const cam = this.value;
-        if (currentSettings.PARKING_ZONES && currentSettings.PARKING_ZONES[cam]) {
-            updateZoneDisplay(currentSettings.PARKING_ZONES[cam]);
-        } else {
-            updateZoneDisplay(null);
-        }
-    });
-
     document.getElementById('settingsForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const status = document.getElementById('status');
-        const cam = document.getElementById('cameraSelect').value;
-        
+
         const violationTime = parseInt(document.getElementById('violation_time').value);
         const repeatCapture = parseInt(document.getElementById('repeat_capture').value);
-        
+
         if (isNaN(violationTime) || violationTime < 1) {
             status.innerHTML = '<div class="alert alert-danger">Please enter a valid Violation Time Threshold (minimum 1 second)</div>';
             return;
@@ -594,18 +487,14 @@
             status.innerHTML = '<div class="alert alert-danger">Please enter a valid Repeat Capture Interval (minimum 1 second)</div>';
             return;
         }
-        
+
         let body = {
             VIOLATION_TIME_THRESHOLD: violationTime,
             REPEAT_CAPTURE_INTERVAL: repeatCapture
         };
-        
-        if (lastZone && Array.isArray(lastZone) && lastZone.length > 2) {
-            body.PARKING_ZONES = { [cam]: lastZone };
-        }
-        
+
         status.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Saving settings to database and syncing to Pi...</div>';
-        
+
         fetch('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -627,430 +516,6 @@
         .catch(err => {
             status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (err.message || err) + '</div>';
         });
-    });
-
-    // --- Enhanced Zone Selector Modal Logic ---
-    let zonePoints = [];  // Stores ACTUAL coordinates (scaled to 1280x720)
-    let zoneCanvas = null;
-    let zoneCtx = null;
-    let zoneModal = null;
-    let zoneCamName = "";
-    let zoneImgRefreshInterval = null;
-    let zoneLiveImg = null;
-    let zoneMagnifierEnabled = true;
-    let zoneSnapToGrid = false;
-
-    function displayToActual(x, y) {
-        // Convert display coordinates to actual camera coordinates
-        return [Math.round(x * SCALE_X), Math.round(y * SCALE_Y)];
-    }
-
-    function actualToDisplay(x, y) {
-        // Convert actual camera coordinates to display coordinates
-        return [x / SCALE_X, y / SCALE_Y];
-    }
-
-    function snapToGrid(val, gridSize) {
-        return Math.round(val / gridSize) * gridSize;
-    }
-
-    function updatePointList() {
-        const listEl = document.getElementById('zonePointList');
-        const countEl = document.getElementById('zonePointCount');
-        countEl.textContent = zonePoints.length;
-        
-        if (zonePoints.length === 0) {
-            listEl.innerHTML = '<div class="text-muted small text-center py-3">No points added yet</div>';
-            return;
-        }
-        
-        let html = '';
-        zonePoints.forEach((pt, idx) => {
-            html += `<div class="zone-point-item">
-                <span><span class="point-num">P${idx + 1}</span> <span class="point-coords">(${pt[0]}, ${pt[1]})</span></span>
-                <button type="button" class="btn btn-danger btn-remove-point" onclick="removeZonePoint(${idx})">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>`;
-        });
-        listEl.innerHTML = html;
-    }
-
-    function removeZonePoint(idx) {
-        zonePoints.splice(idx, 1);
-        updatePointList();
-        drawZonePoints();
-    }
-
-    function updateZoneStatus() {
-        const statusEl = document.getElementById('zoneStatus');
-        if (zonePoints.length < 3) {
-            statusEl.innerHTML = `<i class="bi bi-exclamation-triangle text-warning"></i> Need at least 3 points (have ${zonePoints.length})`;
-        } else {
-            statusEl.innerHTML = `<i class="bi bi-check-circle text-success"></i> Valid zone with ${zonePoints.length} points`;
-        }
-    }
-
-    function drawZonePoints() {
-        zoneCtx.clearRect(0, 0, zoneCanvas.width, zoneCanvas.height);
-        
-        // Draw grid if snap is enabled
-        if (zoneSnapToGrid) {
-            zoneCtx.strokeStyle = 'rgba(255,255,255,0.1)';
-            zoneCtx.lineWidth = 0.5;
-            for (let x = 0; x < DISPLAY_WIDTH; x += 10) {
-                zoneCtx.beginPath();
-                zoneCtx.moveTo(x, 0);
-                zoneCtx.lineTo(x, DISPLAY_HEIGHT);
-                zoneCtx.stroke();
-            }
-            for (let y = 0; y < DISPLAY_HEIGHT; y += 10) {
-                zoneCtx.beginPath();
-                zoneCtx.moveTo(0, y);
-                zoneCtx.lineTo(DISPLAY_WIDTH, y);
-                zoneCtx.stroke();
-            }
-        }
-        
-        // Convert actual points to display for drawing
-        const displayPoints = zonePoints.map(pt => actualToDisplay(pt[0], pt[1]));
-        
-        // Draw filled polygon with transparency
-        if (displayPoints.length > 2) {
-            zoneCtx.beginPath();
-            zoneCtx.moveTo(displayPoints[0][0], displayPoints[0][1]);
-            for (let i = 1; i < displayPoints.length; i++) {
-                zoneCtx.lineTo(displayPoints[i][0], displayPoints[i][1]);
-            }
-            zoneCtx.closePath();
-            zoneCtx.fillStyle = 'rgba(0, 255, 255, 0.15)';
-            zoneCtx.fill();
-        }
-        
-        // Draw polygon outline
-        if (displayPoints.length > 1) {
-            zoneCtx.beginPath();
-            zoneCtx.moveTo(displayPoints[0][0], displayPoints[0][1]);
-            for (let i = 1; i < displayPoints.length; i++) {
-                zoneCtx.lineTo(displayPoints[i][0], displayPoints[i][1]);
-            }
-            zoneCtx.closePath();
-            zoneCtx.strokeStyle = "#0ff";
-            zoneCtx.lineWidth = 2;
-            zoneCtx.stroke();
-        }
-        
-        // Draw points with numbers
-        displayPoints.forEach((pt, idx) => {
-            // Outer circle
-            zoneCtx.beginPath();
-            zoneCtx.arc(pt[0], pt[1], 8, 0, 2 * Math.PI);
-            zoneCtx.fillStyle = "#ff9800";
-            zoneCtx.fill();
-            zoneCtx.strokeStyle = "#fff";
-            zoneCtx.lineWidth = 2;
-            zoneCtx.stroke();
-            
-            // Point number
-            zoneCtx.fillStyle = "#000";
-            zoneCtx.font = "bold 10px Arial";
-            zoneCtx.textAlign = "center";
-            zoneCtx.textBaseline = "middle";
-            zoneCtx.fillText((idx + 1).toString(), pt[0], pt[1]);
-        });
-        
-        // Draw lines connecting to next potential point (preview)
-        if (displayPoints.length > 0) {
-            zoneCtx.setLineDash([5, 5]);
-            zoneCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            zoneCtx.lineWidth = 1;
-            // Line from last point back to first
-            if (displayPoints.length > 2) {
-                zoneCtx.beginPath();
-                const last = displayPoints[displayPoints.length - 1];
-                const first = displayPoints[0];
-                zoneCtx.moveTo(last[0], last[1]);
-                zoneCtx.lineTo(first[0], first[1]);
-                zoneCtx.stroke();
-            }
-            zoneCtx.setLineDash([]);
-        }
-        
-        updateZoneStatus();
-    }
-
-    function updateMagnifier(e) {
-        if (!zoneMagnifierEnabled) return;
-        
-        const magnifier = document.getElementById('zoneMagnifier');
-        const magCanvas = document.getElementById('zoneMagnifierCanvas');
-        const magCtx = magCanvas.getContext('2d');
-        const container = document.getElementById('zoneCanvasContainer');
-        const rect = container.getBoundingClientRect();
-        
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // Position magnifier
-        let magX = x + 20;
-        let magY = y - 60;
-        
-        // Keep magnifier in view
-        if (magX + 120 > DISPLAY_WIDTH) magX = x - 140;
-        if (magY < 0) magY = y + 20;
-        
-        magnifier.style.left = magX + 'px';
-        magnifier.style.top = magY + 'px';
-        magnifier.style.display = 'block';
-        
-        // Draw magnified area
-        const zoom = 3;
-        const sourceSize = 40;
-        
-        magCtx.clearRect(0, 0, 240, 240);
-        magCtx.drawImage(
-            zoneLiveImg,
-            x - sourceSize / 2, y - sourceSize / 2, sourceSize, sourceSize,
-            0, 0, 240, 240
-        );
-        
-        // Draw crosshair
-        magCtx.strokeStyle = '#ff0000';
-        magCtx.lineWidth = 1;
-        magCtx.beginPath();
-        magCtx.moveTo(120, 0);
-        magCtx.lineTo(120, 240);
-        magCtx.moveTo(0, 120);
-        magCtx.lineTo(240, 120);
-        magCtx.stroke();
-        
-        // Draw center point
-        magCtx.beginPath();
-        magCtx.arc(120, 120, 5, 0, 2 * Math.PI);
-        magCtx.strokeStyle = '#0ff';
-        magCtx.lineWidth = 2;
-        magCtx.stroke();
-    }
-
-    async function openZoneSelector(camName) {
-        zonePoints = [];
-        zoneCamName = camName;
-        zoneCanvas = document.getElementById('zoneCanvas');
-        zoneCtx = zoneCanvas.getContext('2d');
-        zoneLiveImg = document.getElementById('zoneLiveImg');
-        
-        document.getElementById('zoneModalCamName').textContent = camName;
-        
-        // Set container size
-        const container = document.getElementById('zoneCanvasContainer');
-        container.style.width = DISPLAY_WIDTH + 'px';
-        container.style.height = DISPLAY_HEIGHT + 'px';
-        
-        // Load existing zone if available (ensure integers)
-        if (currentSettings.PARKING_ZONES && currentSettings.PARKING_ZONES[camName]) {
-            zonePoints = JSON.parse(JSON.stringify(currentSettings.PARKING_ZONES[camName]))
-                .map(p => [parseInt(p[0], 10), parseInt(p[1], 10)]);
-        }
-        
-        // Try to fetch a high-quality snapshot (works even when Pi video stream isn't available)
-        let usedSnapshot = false;
-        try {
-            const snapResp = await fetch(`/api/capture_frame/${camName}`);
-            if (snapResp.ok) {
-                const snapJson = await snapResp.json();
-                if (snapJson && snapJson.success && snapJson.image) {
-                    zoneLiveImg.src = 'data:image/jpeg;base64,' + snapJson.image;
-                    usedSnapshot = true;
-                }
-            }
-        } catch (e) {
-            // fallback to stream below
-        }
-
-        // If snapshot wasn't used, fallback to proxied/live stream
-        if (!usedSnapshot) {
-            let streamUrl = piPublicUrl
-                ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
-                : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
-            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-            if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
-            zoneImgRefreshInterval = setInterval(() => {
-                zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-            }, 500);  // refresh only for live stream
-        } else {
-            // If using a static snapshot, ensure no periodic refresh runs
-            if (zoneImgRefreshInterval) { clearInterval(zoneImgRefreshInterval); zoneImgRefreshInterval = null; }
-        }
-        
-        // Mouse click handler
-        zoneCanvas.onmousedown = function(e) {
-            if (e.button === 2) {
-                // Right click - undo
-                zonePoints.pop();
-                updatePointList();
-                drawZonePoints();
-                return false;
-            }
-            
-            const rect = zoneCanvas.getBoundingClientRect();
-            let x = e.clientX - rect.left;
-            let y = e.clientY - rect.top;
-            
-            // Snap to grid if enabled
-            if (zoneSnapToGrid) {
-                x = snapToGrid(x, 10);
-                y = snapToGrid(y, 10);
-            }
-            
-            // Clamp to canvas bounds
-            x = Math.max(0, Math.min(x, DISPLAY_WIDTH));
-            y = Math.max(0, Math.min(y, DISPLAY_HEIGHT));
-            
-            // Convert to actual coordinates and ensure integers
-            const [actualX, actualY] = displayToActual(x, y).map(v => Math.round(v));
-            
-            zonePoints.push([actualX, actualY]);
-            console.log(`Point added: (${actualX}, ${actualY})`);
-            updatePointList();
-            drawZonePoints();
-        };
-        
-        // Mouse move handler for coordinate display and magnifier
-        zoneCanvas.onmousemove = function(e) {
-            const rect = zoneCanvas.getBoundingClientRect();
-            let x = e.clientX - rect.left;
-            let y = e.clientY - rect.top;
-            
-            if (zoneSnapToGrid) {
-                x = snapToGrid(x, 10);
-                y = snapToGrid(y, 10);
-            }
-            
-            const [actualX, actualY] = displayToActual(x, y);
-            
-            document.getElementById('zoneCoordsDisplay').textContent = 
-                `Display: (${Math.round(x)}, ${Math.round(y)}) → Actual: (${actualX}, ${actualY})`;
-            
-            updateMagnifier(e);
-        };
-        
-        zoneCanvas.onmouseleave = function() {
-            document.getElementById('zoneMagnifier').style.display = 'none';
-        };
-        
-        zoneCanvas.oncontextmenu = function(e) { 
-            e.preventDefault(); 
-            return false; 
-        };
-        
-        // Toolbar handlers
-        document.getElementById('zoneUndoBtn').onclick = function() {
-            zonePoints.pop();
-            updatePointList();
-            drawZonePoints();
-        };
-        
-        document.getElementById('zoneClearBtn').onclick = function() {
-            zonePoints = [];
-            updatePointList();
-            drawZonePoints();
-        };
-        
-        document.getElementById('zoneMagnifierToggle').onchange = function() {
-            zoneMagnifierEnabled = this.checked;
-            if (!zoneMagnifierEnabled) {
-                document.getElementById('zoneMagnifier').style.display = 'none';
-            }
-        };
-        
-        document.getElementById('zoneSnapGrid').onchange = function() {
-            zoneSnapToGrid = this.checked;
-            drawZonePoints();
-        };
-        
-        document.getElementById('zoneSaveBtn').onclick = async function() {
-            if (zonePoints.length < 3) {
-                alert("Please select at least 3 points to define a zone.");
-                return;
-            }
-            
-            // Force integer coordinates just before saving
-            zonePoints = zonePoints.map(p => [parseInt(p[0], 10), parseInt(p[1], 10)]);
-            updateZoneDisplay(zonePoints);
-            lastZone = zonePoints;
-            
-            try {
-                const resp = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ PARKING_ZONES: { [zoneCamName]: zonePoints } })
-                });
-                const result = await resp.json();
-                if (result.success) {
-                    document.getElementById('status').innerHTML = 
-                        '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Zone updated for ' + zoneCamName + '!</div>';
-                    loadSettings();
-                } else {
-                    document.getElementById('status').innerHTML = 
-                        '<div class="alert alert-danger">Failed to save zone.<br>' + (result.error || '') + '</div>';
-                }
-            } catch (err) {
-                document.getElementById('status').innerHTML = 
-                    '<div class="alert alert-danger">Failed to save zone.<br>' + (err.message || err) + '</div>';
-            }
-            
-            zoneModal.hide();
-            clearInterval(zoneImgRefreshInterval);
-        };
-        
-        // Keyboard shortcuts
-        zoneCanvas.tabIndex = 0;
-        zoneCanvas.onkeydown = function(e) {
-            if (e.key === 'u' || e.key === 'U') {
-                zonePoints.pop();
-                updatePointList();
-                drawZonePoints();
-            } else if (e.key === 'c' || e.key === 'C') {
-                zonePoints = [];
-                updatePointList();
-                drawZonePoints();
-            } else if (e.key === 'Enter' || e.key === 'q' || e.key === 'Q') {
-                document.getElementById('zoneSaveBtn').click();
-            }
-        };
-        
-        zoneLiveImg.onload = function() {
-            // Ensure displayed existing points are integers before drawing
-            zonePoints = zonePoints.map(p => [parseInt(p[0], 10), parseInt(p[1], 10)]);
-            updatePointList();
-            drawZonePoints();
-        };
-        
-        if (!zoneModal) {
-            zoneModal = new bootstrap.Modal(document.getElementById('zoneSelectorModal'), {});
-            
-            // Cleanup on modal close
-            document.getElementById('zoneSelectorModal').addEventListener('hidden.bs.modal', function() {
-                if (zoneImgRefreshInterval) {
-                    clearInterval(zoneImgRefreshInterval);
-                    zoneImgRefreshInterval = null;
-                }
-            });
-        }
-        
-        zoneModal.show();
-        
-        // Focus canvas for keyboard shortcuts
-        setTimeout(() => zoneCanvas.focus(), 300);
-    }
-
-    // Make removeZonePoint available globally
-    window.removeZonePoint = removeZonePoint;
-
-    // When clicking "Select Zone Area" open the in-browser selector modal
-    document.getElementById('selectZoneBtn').addEventListener('click', function() {
-        const cam = document.getElementById('cameraSelect').value;
-        openZoneSelector(cam);
     });
 </script>
 </body>
