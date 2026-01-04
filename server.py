@@ -37,6 +37,89 @@ logger = logging.getLogger("PiCameraServer")
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
+# --------------------------------------------------
+# Sync settings from Railway database
+# --------------------------------------------------
+def fetch_settings_from_railway():
+    """Fetch settings from Railway database and update local config.py"""
+    try:
+        logger.info("Fetching settings from Railway database...")
+        resp = requests.get(f"{RAILWAY_API_URL}/api/db_settings", timeout=10)
+        if resp.ok:
+            data = resp.json()
+            logger.info(f"Received settings from Railway: {data}")
+            
+            # Update local config.py
+            update_local_config(data)
+            return True
+        else:
+            logger.warning(f"Failed to fetch settings from Railway: {resp.status_code}")
+            return False
+    except Exception as e:
+        logger.warning(f"Could not fetch settings from Railway: {e}")
+        return False
+
+def update_local_config(data):
+    """Update local config.py with settings from database"""
+    import importlib
+    import json as pyjson
+    import re as re_mod
+    
+    config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    
+    try:
+        with open(config_path, "r") as f:
+            lines = f.readlines()
+
+        def replace_line(key, value):
+            pattern = re_mod.compile(rf"^{key}\s*=\s*.*$")
+            found = False
+            for i, line in enumerate(lines):
+                if pattern.match(line):
+                    if key == "PARKING_ZONES":
+                        lines[i] = f"{key} = {pyjson.dumps(value)}\n"
+                    else:
+                        lines[i] = f"{key} = {value}\n"
+                    found = True
+                    break
+            if not found:
+                if key == "PARKING_ZONES":
+                    lines.append(f"{key} = {pyjson.dumps(value)}\n")
+                else:
+                    lines.append(f"{key} = {value}\n")
+
+        if "VIOLATION_TIME_THRESHOLD" in data:
+            replace_line("VIOLATION_TIME_THRESHOLD", int(data["VIOLATION_TIME_THRESHOLD"]))
+        if "REPEAT_CAPTURE_INTERVAL" in data:
+            replace_line("REPEAT_CAPTURE_INTERVAL", int(data["REPEAT_CAPTURE_INTERVAL"]))
+        if "PARKING_ZONES" in data and data["PARKING_ZONES"]:
+            replace_line("PARKING_ZONES", data["PARKING_ZONES"])
+
+        with open(config_path, "w") as f:
+            f.writelines(lines)
+        
+        # Reload config module
+        importlib.reload(config)
+        
+        # Update monitor zones if it exists
+        if 'monitor' in globals() and hasattr(monitor, 'zones'):
+            monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+        
+        logger.info(f"Local config updated: VIOLATION_TIME_THRESHOLD={getattr(config, 'VIOLATION_TIME_THRESHOLD', 100)}, REPEAT_CAPTURE_INTERVAL={getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60)}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update local config: {e}")
+        return False
+
+def periodic_settings_sync():
+    """Periodically sync settings from Railway database"""
+    while True:
+        time.sleep(60)  # Sync every 60 seconds
+        try:
+            fetch_settings_from_railway()
+        except Exception as e:
+            logger.warning(f"Periodic sync failed: {e}")
+
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({'status': 'ok'})
@@ -165,48 +248,8 @@ def api_settings():
             data = request.get_json(force=True)
             logger.info(f"Received settings update request: {data}")
             
-            with open(config_path, "r") as f:
-                lines = f.readlines()
-
-            def replace_line(key, value):
-                pattern = re_mod.compile(rf"^{key}\s*=\s*.*$")
-                found = False
-                for i, line in enumerate(lines):
-                    if pattern.match(line):
-                        if key == "PARKING_ZONES":
-                            lines[i] = f"{key} = {pyjson.dumps(value)}\n"
-                        else:
-                            lines[i] = f"{key} = {value}\n"
-                        found = True
-                        break
-                if not found:
-                    if key == "PARKING_ZONES":
-                        lines.append(f"{key} = {pyjson.dumps(value)}\n")
-                    else:
-                        lines.append(f"{key} = {value}\n")
-
-            if "VIOLATION_TIME_THRESHOLD" in data:
-                replace_line("VIOLATION_TIME_THRESHOLD", int(data["VIOLATION_TIME_THRESHOLD"]))
-            if "REPEAT_CAPTURE_INTERVAL" in data:
-                replace_line("REPEAT_CAPTURE_INTERVAL", int(data["REPEAT_CAPTURE_INTERVAL"]))
-            if "PARKING_ZONES" in data:
-                importlib.reload(config)
-                current_zones = getattr(config, "PARKING_ZONES", {})
-                updated_zones = current_zones.copy()
-                for cam, val in data["PARKING_ZONES"].items():
-                    if val is None:
-                        updated_zones.pop(cam, None)
-                    else:
-                        updated_zones[cam] = val
-                replace_line("PARKING_ZONES", updated_zones)
-
-            with open(config_path, "w") as f:
-                f.writelines(lines)
-            
-            importlib.reload(config)
-            
-            if "PARKING_ZONES" in data:
-                monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+            # Update local config
+            update_local_config(data)
             
             # Sync to Railway database
             sync_data = {
@@ -250,6 +293,16 @@ def api_settings():
     }
     logger.info(f"Returning settings: {response_data}")
     return jsonify(response_data)
+
+# Endpoint to manually trigger sync from Railway
+@app.route('/api/sync_from_railway', methods=['POST'])
+def api_sync_from_railway():
+    """Manually trigger sync from Railway database"""
+    success = fetch_settings_from_railway()
+    if success:
+        return jsonify({"success": True, "message": "Settings synced from Railway"})
+    else:
+        return jsonify({"success": False, "error": "Failed to sync from Railway"}), 500
 
 @app.route('/')
 def index():
@@ -538,6 +591,13 @@ if __name__ == '__main__':
             time.sleep(2)
         else:
             print("Failed to notify Railway app after retries.")
+
+        # Fetch initial settings from Railway database
+        print("Fetching initial settings from Railway database...")
+        fetch_settings_from_railway()
+        
+        # Start periodic sync thread
+        threading.Thread(target=periodic_settings_sync, daemon=True).start()
 
     except Exception as e:
         print("Failed to start Cloudflare Tunnel:", e)

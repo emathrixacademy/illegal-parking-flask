@@ -468,9 +468,9 @@
             body.PARKING_ZONES = { [cam]: lastZone };
         }
         
-        status.innerHTML = '<div class="alert alert-info">Saving settings...</div>';
+        status.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Saving settings to database and syncing to Pi...</div>';
         
-        // Send to Railway proxy which will forward to Pi
+        // Send to Railway which saves to DB and forwards to Pi
         fetch('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -479,17 +479,19 @@
         .then(r => r.json())
         .then(result => {
             if (result.success) {
-                status.innerHTML = '<div class="alert alert-success">Settings saved successfully!</div>';
+                status.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Settings saved to database and synced to Pi!</div>';
+                // Refresh both settings and database status
                 setTimeout(() => {
                     loadSettings();
+                    loadDbStatus();
                     status.innerHTML = '';
                 }, 1500);
             } else {
-                status.innerHTML = '<div class="alert alert-danger">Error saving settings: ' + (result.error || 'Unknown error') + '</div>';
+                status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (result.error || 'Unknown error') + '</div>';
             }
         })
         .catch(err => {
-            status.innerHTML = '<div class="alert alert-danger">Error saving settings: ' + (err.message || err) + '</div>';
+            status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (err.message || err) + '</div>';
         });
     });
 
