@@ -490,6 +490,26 @@ def api_violation_counts():
             total_unique = 0
 
         counts["TOTAL_UNIQUE_TRACKERS"] = total_unique
+        # Also compute recent violators for the current date (deduplicated by tracker_id)
+        try:
+            conn3 = psycopg2.connect(POSTGRES_URL)
+            cur3 = conn3.cursor()
+            cur3.execute("""
+                SELECT COUNT(DISTINCT tracker_id) AS unique_today,
+                       SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_today
+                FROM violations
+                WHERE (timestamp::date) = CURRENT_DATE;
+            """)
+            today_row = cur3.fetchone()
+            cur3.close()
+            conn3.close()
+            unique_today = int(today_row[0]) if today_row and today_row[0] is not None else 0
+            null_today = int(today_row[1]) if today_row and today_row[1] is not None else 0
+            recent_total = unique_today + null_today
+        except Exception:
+            recent_total = 0
+
+        counts["RECENT_VIOLATORS_TODAY"] = recent_total
         return jsonify(counts)
     except Exception as e:
         logger.error(f"Failed to query violation counts: {e}")
