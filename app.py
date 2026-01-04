@@ -512,8 +512,28 @@ def api_settings():
             pi_base = get_pi_base()
             url = f"{pi_base}/api/settings"
             data = request.get_json(force=True)
+            logger.info(f"Forwarding settings to Pi: {data}")
             resp = requests.post(url, json=data, timeout=10)
-            return jsonify(resp.json())
+            logger.info(f"Pi response status: {resp.status_code}, content: {resp.text[:200] if resp.text else 'empty'}")
+            
+            # Handle empty or invalid response
+            if not resp.text or not resp.text.strip():
+                logger.error("Pi returned empty response for settings POST")
+                return jsonify({"success": False, "error": "Pi returned empty response"}), 502
+            
+            try:
+                result = resp.json()
+                return jsonify(result)
+            except Exception as json_err:
+                logger.error(f"Failed to parse Pi response as JSON: {json_err}, raw: {resp.text[:500]}")
+                return jsonify({"success": False, "error": f"Invalid response from Pi: {resp.text[:100]}"}), 502
+                
+        except requests.exceptions.Timeout:
+            logger.error("Timeout while saving settings to Pi")
+            return jsonify({"success": False, "error": "Timeout connecting to Pi"}), 502
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error to Pi: {e}")
+            return jsonify({"success": False, "error": "Cannot connect to Pi"}), 502
         except Exception as e:
             logger.error(f"Failed to save settings to Pi: {e}")
             return jsonify({"success": False, "error": str(e)}), 502
@@ -523,7 +543,23 @@ def api_settings():
         pi_base = get_pi_base()
         url = f"{pi_base}/api/settings"
         resp = requests.get(url, timeout=10)
-        return jsonify(resp.json())
+        
+        if not resp.text or not resp.text.strip():
+            logger.error("Pi returned empty response for settings GET")
+            return jsonify({"success": False, "error": "Pi returned empty response"}), 502
+        
+        try:
+            return jsonify(resp.json())
+        except Exception as json_err:
+            logger.error(f"Failed to parse Pi settings response: {json_err}, raw: {resp.text[:500]}")
+            return jsonify({"success": False, "error": f"Invalid response from Pi"}), 502
+            
+    except requests.exceptions.Timeout:
+        logger.error("Timeout while fetching settings from Pi")
+        return jsonify({"success": False, "error": "Timeout connecting to Pi"}), 502
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Connection error to Pi: {e}")
+        return jsonify({"success": False, "error": "Cannot connect to Pi"}), 502
     except Exception as e:
         logger.error(f"Failed to fetch settings from Pi: {e}")
         return jsonify({"success": False, "error": str(e)}), 502

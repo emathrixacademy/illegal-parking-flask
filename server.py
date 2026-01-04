@@ -157,17 +157,19 @@ def api_zone_selector():
 def api_settings():
     import importlib
     import json as pyjson
-    import re
+    import re as re_mod
     config_path = os.path.join(os.path.dirname(__file__), "config.py")
     
     if request.method == 'POST':
         try:
             data = request.get_json(force=True)
+            logger.info(f"Received settings update request: {data}")
+            
             with open(config_path, "r") as f:
                 lines = f.readlines()
 
             def replace_line(key, value):
-                pattern = re.compile(rf"^{key}\s*=\s*.*$")
+                pattern = re_mod.compile(rf"^{key}\s*=\s*.*$")
                 found = False
                 for i, line in enumerate(lines):
                     if pattern.match(line):
@@ -214,15 +216,17 @@ def api_settings():
             return jsonify({"success": True})
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({"success": False, "error": str(e)}), 500
 
     # GET request - return current settings
     try:
         importlib.reload(config)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Could not reload config: {e}")
     
-    return jsonify({
+    response_data = {
         "CAM1_URL": getattr(config, "CAM1_URL", ""),
         "CAM2_URL": getattr(config, "CAM2_URL", ""),
         "MODEL_PATH": getattr(config, "MODEL_PATH", ""),
@@ -231,7 +235,9 @@ def api_settings():
         "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 100),
         "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
         "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
-    })
+    }
+    logger.info(f"Returning settings: {response_data}")
+    return jsonify(response_data)
 
 @app.route('/')
 def index():
