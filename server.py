@@ -190,7 +190,6 @@ def api_settings():
             if "REPEAT_CAPTURE_INTERVAL" in data:
                 replace_line("REPEAT_CAPTURE_INTERVAL", int(data["REPEAT_CAPTURE_INTERVAL"]))
             if "PARKING_ZONES" in data:
-                # Reload current config to get latest zones
                 importlib.reload(config)
                 current_zones = getattr(config, "PARKING_ZONES", {})
                 updated_zones = current_zones.copy()
@@ -204,15 +203,28 @@ def api_settings():
             with open(config_path, "w") as f:
                 f.writelines(lines)
             
-            # Reload config module to apply changes
             importlib.reload(config)
             
-            # Update monitor zones if PARKING_ZONES changed
             if "PARKING_ZONES" in data:
                 monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
             
-            logger.info(f"Settings updated: VIOLATION_TIME_THRESHOLD={getattr(config, 'VIOLATION_TIME_THRESHOLD', 100)}, REPEAT_CAPTURE_INTERVAL={getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60)}")
+            # Sync to Railway database
+            sync_data = {
+                "VIOLATION_TIME_THRESHOLD": getattr(config, 'VIOLATION_TIME_THRESHOLD', 100),
+                "REPEAT_CAPTURE_INTERVAL": getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60),
+                "PARKING_ZONES": getattr(config, 'PARKING_ZONES', {})
+            }
             
+            def sync_to_db():
+                try:
+                    requests.post(f"{RAILWAY_API_URL}/api/db_settings", json=sync_data, timeout=5)
+                    logger.info("Synced settings to Railway database")
+                except Exception as e:
+                    logger.warning(f"Could not sync to Railway: {e}")
+            
+            threading.Thread(target=sync_to_db, daemon=True).start()
+            
+            logger.info(f"Settings updated: {sync_data}")
             return jsonify({"success": True})
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")

@@ -336,6 +336,7 @@
                 <a href="/" class="btn btn-secondary">Back to Home</a>
             </form>
             <div id="status" class="mt-3"></div>
+            <div id="dbStatus" class="mt-2 small text-muted"></div>
         </div>
     </div>
 </div>
@@ -408,8 +409,28 @@
             });
     }
 
+    function loadDbStatus() {
+        fetch('/api/db_settings')
+            .then(r => r.json())
+            .then(data => {
+                if (data.VIOLATION_TIME_THRESHOLD !== undefined) {
+                    document.getElementById('dbStatus').innerHTML = 
+                        '<i class="bi bi-database-check text-success"></i> Database: ' +
+                        'Violation=' + data.VIOLATION_TIME_THRESHOLD + 's, ' +
+                        'Repeat=' + data.REPEAT_CAPTURE_INTERVAL + 's';
+                }
+            })
+            .catch(() => {
+                document.getElementById('dbStatus').innerHTML = 
+                    '<i class="bi bi-database-x text-warning"></i> Database unavailable';
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        fetchPiUrl().then(loadSettings);
+        fetchPiUrl().then(() => {
+            loadSettings();
+            loadDbStatus();
+        });
     });
 
     document.getElementById('cameraSelect').addEventListener('change', function() {
