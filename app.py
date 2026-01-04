@@ -455,10 +455,11 @@ def api_violation_counts():
         }
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
-        # Count distinct tracker_id per label; also count rows where tracker_id IS NULL
+        # Count distinct tracker_id per label, but treat same tracker_id on different cameras as distinct
+        # (count distinct (camera, tracker_id) pairs). Also count rows where tracker_id IS NULL.
         cur.execute("""
             SELECT label,
-                   COUNT(DISTINCT tracker_id) AS distinct_ids,
+                   COUNT(DISTINCT (camera, tracker_id)) AS distinct_ids,
                    SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_count
             FROM violations
             GROUP BY label;
@@ -481,7 +482,7 @@ def api_violation_counts():
         try:
             conn2 = psycopg2.connect(POSTGRES_URL)
             cur2 = conn2.cursor()
-            cur2.execute("SELECT COUNT(DISTINCT tracker_id) FROM violations WHERE tracker_id IS NOT NULL;")
+            cur2.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations WHERE tracker_id IS NOT NULL;")
             uniq_row = cur2.fetchone()
             cur2.close()
             conn2.close()
@@ -495,7 +496,7 @@ def api_violation_counts():
             conn3 = psycopg2.connect(POSTGRES_URL)
             cur3 = conn3.cursor()
             cur3.execute("""
-                SELECT COUNT(DISTINCT tracker_id) AS unique_today,
+                SELECT COUNT(DISTINCT (camera, tracker_id)) AS unique_today,
                        SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_today
                 FROM violations
                 WHERE (timestamp::date) = CURRENT_DATE;
