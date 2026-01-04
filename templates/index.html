@@ -600,6 +600,42 @@
                 padding: 0.4rem;
             }
         }
+        /* Analytics grid styles */
+        .analytics-panel {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 1.25rem;
+            align-items: start;
+        }
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, auto);
+            gap: 0.75rem;
+        }
+        .analytics-box {
+            background: var(--card-bg);
+            border: 1px solid #2d3342;
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 68px;
+            color: #bfc7d5;
+        }
+        .analytics-box .box-header { font-weight:700; color: var(--accent); display:flex; align-items:center; gap:0.6rem; }
+        .analytics-box .box-count { font-size:1.25rem; font-weight:700; color:#fff; margin-top:0.35rem; }
+        .analytics-stats {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+        .color-dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
+        .dot-blue { background:#4da6ff; }
+        .dot-yellow { background:#ffd11a; }
+        .dot-red { background:#ff4d4d; }
+        .dot-purple { background:#a76bff; }
     </style>
 </head>
 <body>
@@ -653,26 +689,39 @@
 
         <div class="violations-section">
             <h2><i class="bi bi-bar-chart-fill"></i> Analytics</h2>
-            <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap;">
-                <div style="flex:0 0 380px; max-width:380px; min-width:260px;">
-                    <canvas id="analyticsChart" width="380" height="280" style="width:100%;height:280px;display:block;"></canvas>
-                </div>
-                <div style="min-width:200px;">
-                    <div class="legend-box" style="flex-direction:column;align-items:flex-start;gap:0.6rem;">
-                        <div class="legend-item"><span class="legend-dot blue"></span> CARS: <strong id="legend-CAR">0</strong></div>
-                        <div class="legend-item"><span class="legend-dot yellow"></span> MOTORCYCLES: <strong id="legend-MOTORCYCLE">0</strong></div>
-                        <div class="legend-item"><span class="legend-dot red"></span> TRUCKS: <strong id="legend-TRUCK">0</strong></div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#9b59b6"></span> BUS: <strong id="legend-BUS">0</strong></div>
-                        <div style="height:8px"></div>
-                        <div class="legend-item" style="font-size:1.05rem;color:#fff;">
-                            <span class="legend-dot" style="width:12px;height:12px;background:transparent;box-shadow:none"></span>
-                            Total Unique Violations: <strong id="legend-TOTAL">0</strong>
+            <div class="analytics-panel">
+                <div>
+                    <div class="analytics-grid">
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-blue"></span> CARS</div>
+                            <div id="count-CAR" class="box-count">0</div>
                         </div>
-                        <div class="legend-item" style="font-size:1.05rem;color:#fff;">
-                            <span class="legend-dot" style="width:12px;height:12px;background:transparent;box-shadow:none"></span>
-                            Recent Violators (today): <strong id="legend-RECENT">0</strong>
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-yellow"></span> MOTORCYCLES</div>
+                            <div id="count-MOTORCYCLE" class="box-count">0</div>
+                        </div>
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-red"></span> TRUCKS</div>
+                            <div id="count-TRUCK" class="box-count">0</div>
+                        </div>
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-purple"></span> BUS</div>
+                            <div id="count-BUS" class="box-count">0</div>
                         </div>
                     </div>
+                    <div class="analytics-stats" style="margin-top:0.75rem;">
+                        <div class="analytics-box">
+                            <div class="box-header" style="color:#fff">Total Unique Violations</div>
+                            <div id="total-violators" class="box-count">0</div>
+                        </div>
+                        <div class="analytics-box">
+                            <div class="box-header" style="color:#fff">Recent Violators (today)</div>
+                            <div id="recent-violators" class="box-count">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="flex:0 0 380px; max-width:380px; min-width:260px;">
+                    <canvas id="analyticsChart" width="380" height="280" style="width:100%;height:280px;display:block;"></canvas>
                 </div>
             </div>
         </div>
@@ -905,23 +954,30 @@ function fetchAnalyticsAjax(){
                         analyticsChart.update();
                     }
 
-                    // update legend counters
+                    // update legend counters (legacy)
                     labels.forEach(l => {
                         const el = document.getElementById('legend-' + l);
                         if(el) el.textContent = data && data[l] ? data[l] : 0;
                     });
-                    // Update total unique tracker count (provided by backend)
+                    // Also populate the analytics grid boxes (new IDs)
+                    const idMap = { 'CAR':'count-CAR', 'MOTORCYCLE':'count-MOTORCYCLE', 'TRUCK':'count-TRUCK', 'BUS':'count-BUS' };
+                    labels.forEach(l => {
+                        const el2 = document.getElementById(idMap[l]);
+                        if(el2) el2.textContent = data && data[l] ? data[l] : 0;
+                    });
+                    // Update total/ recent both for legacy legend and new boxes
                     try {
+                        const uniq = data && (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) ? (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) : total;
                         const totalEl = document.getElementById('legend-TOTAL');
-                        if(totalEl) {
-                            const uniq = data && (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) ? (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) : 0;
-                            totalEl.textContent = uniq;
-                        }
+                        const totalBox = document.getElementById('total-violators');
+                        if(totalEl) totalEl.textContent = uniq;
+                        if(totalBox) totalBox.textContent = uniq;
+
+                        const recent = data && (data.RECENT_VIOLATORS_TODAY || data.recent) ? (data.RECENT_VIOLATORS_TODAY || data.recent) : total;
                         const recentEl = document.getElementById('legend-RECENT');
-                        if(recentEl) {
-                            const recent = data && (data.RECENT_VIOLATORS_TODAY || data.recent) ? (data.RECENT_VIOLATORS_TODAY || data.recent) : 0;
-                            recentEl.textContent = recent;
-                        }
+                        const recentBox = document.getElementById('recent-violators');
+                        if(recentEl) recentEl.textContent = recent;
+                        if(recentBox) recentBox.textContent = recent;
                     } catch(e) {}
                 } catch(e) {
                     // fallback on error
@@ -929,6 +985,15 @@ function fetchAnalyticsAjax(){
                         const el = document.getElementById('legend-' + l);
                         if(el) el.textContent = 0;
                     });
+                    // clear new analytics boxes as well
+                    labels.forEach(l => {
+                        const el2 = document.getElementById('count-' + l);
+                        if(el2) el2.textContent = 0;
+                    });
+                    const totalBox = document.getElementById('total-violators');
+                    if(totalBox) totalBox.textContent = 0;
+                    const recentBox = document.getElementById('recent-violators');
+                    if(recentBox) recentBox.textContent = 0;
                     if(analyticsChart){
                         analyticsChart.data.labels = ['No data'];
                         analyticsChart.data.datasets[0].data = [1];
@@ -942,6 +1007,15 @@ function fetchAnalyticsAjax(){
                     const el = document.getElementById('legend-' + l);
                     if(el) el.textContent = 0;
                 });
+                // clear new analytics boxes as well
+                labels.forEach(l => {
+                    const el2 = document.getElementById('count-' + l);
+                    if(el2) el2.textContent = 0;
+                });
+                const totalBox2 = document.getElementById('total-violators');
+                if(totalBox2) totalBox2.textContent = 0;
+                const recentBox2 = document.getElementById('recent-violators');
+                if(recentBox2) recentBox2.textContent = 0;
                 if(analyticsChart){
                     analyticsChart.data.labels = ['No data'];
                     analyticsChart.data.datasets[0].data = [1];
