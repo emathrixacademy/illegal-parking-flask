@@ -832,7 +832,7 @@
         magCtx.stroke();
     }
 
-    function openZoneSelector(camName) {
+    async function openZoneSelector(camName) {
         zonePoints = [];
         zoneCamName = camName;
         zoneCanvas = document.getElementById('zoneCanvas');
@@ -851,18 +851,36 @@
             zonePoints = JSON.parse(JSON.stringify(currentSettings.PARKING_ZONES[camName]));
         }
         
-        let streamUrl = piPublicUrl
-            ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
-            : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
-        
-        // Use snapshot approach for more accurate frame
-        zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-        
-        if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
-        zoneImgRefreshInterval = setInterval(() => {
-            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-        }, 500);  // Slower refresh for stability
+        // Try to fetch a high-quality snapshot (works even when Pi video stream isn't available)
+        let usedSnapshot = false;
+        try {
+            const snapResp = await fetch(`/api/capture_frame/${camName}`);
+            if (snapResp.ok) {
+                const snapJson = await snapResp.json();
+                if (snapJson && snapJson.success && snapJson.image) {
+                    zoneLiveImg.src = 'data:image/jpeg;base64,' + snapJson.image;
+                    usedSnapshot = true;
+                }
+            }
+        } catch (e) {
+            // fallback to stream below
+        }
 
+        // If snapshot wasn't used, fallback to proxied/live stream
+        if (!usedSnapshot) {
+            let streamUrl = piPublicUrl
+                ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
+                : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
+            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
+            if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
+            zoneImgRefreshInterval = setInterval(() => {
+                zoneLiveImg.src = streamUrl + "?t=" + Date.now();
+            }, 500);  // refresh only for live stream
+        } else {
+            // If using a static snapshot, ensure no periodic refresh runs
+            if (zoneImgRefreshInterval) { clearInterval(zoneImgRefreshInterval); zoneImgRefreshInterval = null; }
+        }
+        
         // Mouse click handler
         zoneCanvas.onmousedown = function(e) {
             if (e.button === 2) {
@@ -1022,31 +1040,11 @@
 
     // Make removeZonePoint available globally
     window.removeZonePoint = removeZonePoint;
-
-    // When clicking "Select Zone Area" run zone_selector.py on the Pi (via proxy) and update zone
-    document.getElementById('selectZoneBtn').addEventListener('click', async function() {
+    
+    // When clicking "Select Zone Area" open the in-browser selector modal
+    document.getElementById('selectZoneBtn').addEventListener('click', function() {
         const cam = document.getElementById('cameraSelect').value;
-        const status = document.getElementById('status');
-        status.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Launching zone selector on Raspberry Pi... Complete selection on the Pi and then close the window.</div>';
-        try {
-            const resp = await fetch('/api/run_zone_selector', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ camera: cam })
-            });
-            const result = await resp.json();
-            if (result.success && Array.isArray(result.zone) && result.zone.length >= 3) {
-                updateZoneDisplay(result.zone);
-                lastZone = result.zone;
-                status.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Zone updated from Pi.</div>';
-                // refresh local settings view
-                loadSettings();
-            } else {
-                status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Failed to get zone from Pi. ' + (result.error || '') + '</div>';
-            }
-        } catch (err) {
-            status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error launching selector: ' + (err.message || err) + '</div>';
-        }
+        openZoneSelector(cam);
     });
 </script>
 </body>
