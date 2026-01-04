@@ -388,13 +388,6 @@
                     <input type="number" class="form-control" id="repeat_capture" name="repeat_capture" min="1" required>
                     <small class="text-muted">Cooldown between logging the same vehicle</small>
                 </div>
-                <div class="mb-3">
-                    <label for="cameraSelect" class="form-label">Select Camera</label>
-                    <select class="form-select" id="cameraSelect" name="cameraSelect">
-                        <option value="Camera_1">Camera 1</option>
-                        <option value="Camera_2">Camera 2</option>
-                    </select>
-                </div>
                 <button type="submit" class="btn btn-primary">Save Settings</button>
                 <a href="/" class="btn btn-secondary">Back to Home</a>
             </form>
@@ -477,10 +470,6 @@
             loadSettings();
             loadDbStatus();
         });
-    });
-
-    document.getElementById('cameraSelect').addEventListener('change', function() {
-        // Camera selector kept for user choice; no zone logic
     });
 
     document.getElementById('settingsForm').addEventListener('submit', function(e) {
