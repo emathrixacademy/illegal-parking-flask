@@ -640,6 +640,40 @@ def api_list_images():
         return jsonify([])
 
 # --------------------------------------------------
+# Snapshots and Frame Info
+# --------------------------------------------------
+@app.route('/api/snapshot/<cam_name>')
+def proxy_snapshot(cam_name):
+    """Proxy snapshot from Pi with frame dimensions."""
+    try:
+        pi_base = get_pi_base()
+        url = f"{pi_base}/api/snapshot/{cam_name}"
+        resp = requests.get(url, timeout=10)
+        response = Response(resp.content, resp.status_code, mimetype="image/jpeg")
+        # Forward dimension headers
+        if 'X-Frame-Width' in resp.headers:
+            response.headers['X-Frame-Width'] = resp.headers['X-Frame-Width']
+        if 'X-Frame-Height' in resp.headers:
+            response.headers['X-Frame-Height'] = resp.headers['X-Frame-Height']
+        response.headers['Access-Control-Expose-Headers'] = 'X-Frame-Width, X-Frame-Height'
+        return response
+    except Exception as e:
+        logger.error(f"Proxy snapshot error: {e}")
+        return Response("Snapshot unavailable", 502)
+
+@app.route('/api/frame_info/<cam_name>')
+def proxy_frame_info(cam_name):
+    """Proxy frame info from Pi."""
+    try:
+        pi_base = get_pi_base()
+        url = f"{pi_base}/api/frame_info/{cam_name}"
+        resp = requests.get(url, timeout=10)
+        return Response(resp.content, resp.status_code, resp.headers.items())
+    except Exception as e:
+        logger.error(f"Proxy frame_info error: {e}")
+        return jsonify({"success": False, "error": str(e), "width": 1280, "height": 720})
+
+# --------------------------------------------------
 # Main
 # --------------------------------------------------
 if __name__ == "__main__":

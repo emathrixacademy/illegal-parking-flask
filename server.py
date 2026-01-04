@@ -564,6 +564,45 @@ def api_list_images():
                 image_files.append(rel_path.replace("\\", "/"))
     return jsonify(sorted(image_files, reverse=True))
 
+@app.route('/api/snapshot/<cam_name>')
+def api_snapshot(cam_name):
+    """
+    Return a single JPEG frame from the specified camera with actual resolution info.
+    Usage: /api/snapshot/Camera_1 or /api/snapshot/Camera_2
+    """
+    stream = c1 if cam_name == "Camera_1" else c2 if cam_name == "Camera_2" else None
+    if stream is None:
+        return jsonify({"success": False, "error": "Invalid camera"}), 400
+    
+    frame = stream.get_frame()
+    if frame is None:
+        return jsonify({"success": False, "error": "No frame available"}), 503
+    
+    # Return actual frame dimensions in headers
+    h, w = frame.shape[:2]
+    _, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+    response = Response(buf.tobytes(), mimetype="image/jpeg")
+    response.headers['X-Frame-Width'] = str(w)
+    response.headers['X-Frame-Height'] = str(h)
+    response.headers['Access-Control-Expose-Headers'] = 'X-Frame-Width, X-Frame-Height'
+    return response
+
+@app.route('/api/frame_info/<cam_name>')
+def api_frame_info(cam_name):
+    """
+    Return the actual frame dimensions for a camera.
+    """
+    stream = c1 if cam_name == "Camera_1" else c2 if cam_name == "Camera_2" else None
+    if stream is None:
+        return jsonify({"success": False, "error": "Invalid camera"}), 400
+    
+    frame = stream.get_frame()
+    if frame is None:
+        return jsonify({"success": False, "error": "No frame available", "width": 1280, "height": 720})
+    
+    h, w = frame.shape[:2]
+    return jsonify({"success": True, "width": w, "height": h})
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on 0.0.0.0:{port}")
