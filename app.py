@@ -651,16 +651,3 @@ if __name__ == "__main__":
         app.config["PUBLIC_URL"] = ""
 
     app.run(host='0.0.0.0', port=DEFAULT_PORT, threaded=True)
-
-@app.route('/api/capture_frame/<camera>')
-def proxy_capture_frame(camera):
-    """Proxy frame capture from Pi for zone selection."""
-    try:
-        pi_base = get_pi_base()
-        url = f"{pi_base}/api/capture_frame/{camera}"
-        resp = requests.get(url, timeout=15)
-        return Response(resp.content, resp.status_code, 
-                       content_type=resp.headers.get('Content-Type', 'application/json'))
-    except Exception as e:
-        logger.error(f"Proxy capture frame error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 502

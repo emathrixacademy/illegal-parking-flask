@@ -96,7 +96,6 @@
             position: relative;
             display: inline-block;
             cursor: crosshair;
-            background: #000;
         }
         .zone-canvas-container canvas {
             cursor: crosshair;
@@ -105,34 +104,32 @@
             position: absolute;
             bottom: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.8);
             color: #0ff;
-            padding: 8px 12px;
+            padding: 5px 10px;
             border-radius: 4px;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 12px;
             pointer-events: none;
             z-index: 10;
-            border: 1px solid #0ff;
         }
         .zone-magnifier {
             position: absolute;
-            width: 150px;
-            height: 150px;
-            border: 3px solid #0ff;
+            width: 120px;
+            height: 120px;
+            border: 2px solid #0ff;
             border-radius: 50%;
             pointer-events: none;
             overflow: hidden;
             display: none;
             z-index: 15;
-            box-shadow: 0 0 15px rgba(0,255,255,0.7);
-            background: #000;
+            box-shadow: 0 0 10px rgba(0,255,255,0.5);
         }
         .zone-magnifier canvas {
             position: absolute;
         }
         .zone-point-list {
-            max-height: 200px;
+            max-height: 150px;
             overflow-y: auto;
             background: #1a1e25;
             border-radius: 4px;
@@ -143,7 +140,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border-bottom: 1px solid #333;
             font-family: monospace;
             font-size: 13px;
@@ -155,71 +152,41 @@
             color: #ff9800;
             font-weight: bold;
             margin-right: 10px;
-            min-width: 25px;
         }
         .zone-point-item .point-coords {
             color: #0ff;
         }
         .zone-point-item .btn-remove-point {
-            padding: 2px 8px;
-            font-size: 11px;
+            padding: 2px 6px;
+            font-size: 10px;
         }
         .zone-help-text {
             background: #1a1e25;
             border-left: 3px solid #ff9800;
-            padding: 12px 15px;
+            padding: 10px 15px;
             margin-bottom: 15px;
             font-size: 13px;
-            line-height: 1.6;
         }
         .zone-help-text kbd {
             background: #333;
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 11px;
-            border: 1px solid #555;
         }
         .zone-toolbar {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             flex-wrap: wrap;
-            align-items: center;
         }
         .zone-toolbar .btn {
             font-size: 13px;
-            padding: 6px 14px;
+            padding: 5px 12px;
         }
         .zone-resolution-info {
             color: #888;
             font-size: 12px;
-            margin-top: 8px;
-        }
-        .zone-mode-indicator {
-            background: #1a1e25;
-            padding: 8px 15px;
-            border-radius: 4px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .zone-mode-indicator.streaming {
-            border-left: 3px solid #28a745;
-        }
-        .zone-mode-indicator.captured {
-            border-left: 3px solid #0dcaf0;
-        }
-        .capture-loading {
-            display: none;
-            align-items: center;
-            gap: 10px;
-            padding: 20px;
-            color: #fff;
-        }
-        .capture-loading .spinner-border {
-            width: 24px;
-            height: 24px;
+            margin-top: 5px;
         }
         
         /* Large screens (1400px+) */
@@ -442,29 +409,18 @@
                       </div>
                       <div class="modal-body">
                         <div class="zone-help-text">
-                          <strong>Instructions:</strong> Click on the image to add polygon points for the parking zone.<br>
+                          <strong>Instructions:</strong> Click precisely on the video to add polygon points.<br>
                           <kbd>Right-click</kbd> or <kbd>U</kbd> = Undo last point &nbsp;|&nbsp; 
                           <kbd>C</kbd> = Clear all &nbsp;|&nbsp; 
                           <kbd>Enter</kbd> = Save zone<br>
-                          <small class="text-info"><i class="bi bi-info-circle"></i> Use <strong>Capture Frame</strong> mode for precise selection on a frozen frame (recommended).</small>
+                          <small class="text-warning"><i class="bi bi-info-circle"></i> Coordinates are scaled to match actual camera resolution (1280×720)</small>
                         </div>
                         <div class="zone-toolbar">
-                          <button type="button" id="zoneCaptureBtn" class="btn btn-info btn-sm">
-                            <i class="bi bi-camera"></i> Capture Frame
-                          </button>
-                          <button type="button" id="zoneStreamBtn" class="btn btn-outline-success btn-sm">
-                            <i class="bi bi-broadcast"></i> Live Stream
-                          </button>
-                          <div class="zone-mode-indicator streaming" id="zoneModeIndicator">
-                            <i class="bi bi-broadcast"></i> <span id="zoneModeText">Live Streaming</span>
-                          </div>
-                          <button type="button" id="zoneUndoBtn" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo (U)</button>
-                          <button type="button" id="zoneClearBtn" class="btn btn-secondary btn-sm"><i class="bi bi-x-circle"></i> Clear (C)</button>
-                        </div>
-                        <div class="zone-toolbar">
-                          <div class="form-check form-switch d-flex align-items-center">
+                          <button type="button" id="zoneUndoBtn" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
+                          <button type="button" id="zoneClearBtn" class="btn btn-secondary btn-sm"><i class="bi bi-x-circle"></i> Clear All</button>
+                          <div class="form-check form-switch ms-3 d-flex align-items-center">
                             <input class="form-check-input" type="checkbox" id="zoneMagnifierToggle" checked>
-                            <label class="form-check-label ms-2" for="zoneMagnifierToggle">Magnifier (3x zoom)</label>
+                            <label class="form-check-label ms-2" for="zoneMagnifierToggle">Magnifier</label>
                           </div>
                           <div class="form-check form-switch ms-3 d-flex align-items-center">
                             <input class="form-check-input" type="checkbox" id="zoneSnapGrid">
@@ -472,46 +428,30 @@
                           </div>
                         </div>
                         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                          <div>
-                            <div class="capture-loading" id="captureLoading">
-                              <div class="spinner-border text-info" role="status"></div>
-                              <span>Capturing frame...</span>
-                            </div>
-                            <div class="zone-canvas-container" id="zoneCanvasContainer">
-                              <img id="zoneLiveImg" src="" width="640" height="360"
-                                   style="position:absolute; left:0; top:0; z-index:1; border:2px solid #444; border-radius: 4px; display:block; background:#000;">
-                              <canvas id="zoneCanvas" width="640" height="360"
-                                      style="position:absolute; left:0; top:0; z-index:2;"></canvas>
-                              <div class="zone-coords-display" id="zoneCoordsDisplay">X: 0, Y: 0</div>
-                              <div class="zone-magnifier" id="zoneMagnifier">
-                                <canvas id="zoneMagnifierCanvas" width="300" height="300"></canvas>
-                              </div>
+                          <div class="zone-canvas-container" id="zoneCanvasContainer">
+                            <img id="zoneLiveImg" src="" width="640" height="360"
+                                 style="position:absolute; left:0; top:0; z-index:1; border:1px solid #444; border-radius: 4px; display:block;">
+                            <canvas id="zoneCanvas" width="640" height="360"
+                                    style="position:absolute; left:0; top:0; z-index:2;"></canvas>
+                            <div class="zone-coords-display" id="zoneCoordsDisplay">X: 0, Y: 0 (Actual: 0, 0)</div>
+                            <div class="zone-magnifier" id="zoneMagnifier">
+                              <canvas id="zoneMagnifierCanvas" width="240" height="240"></canvas>
                             </div>
                           </div>
-                          <div style="flex: 1; min-width: 220px;">
-                            <h6 class="text-warning mb-2"><i class="bi bi-list-ol"></i> Zone Points (<span id="zonePointCount">0</span>/20)</h6>
+                          <div style="flex: 1; min-width: 200px;">
+                            <h6 class="text-warning mb-2"><i class="bi bi-list-ol"></i> Zone Points (<span id="zonePointCount">0</span>)</h6>
                             <div class="zone-point-list" id="zonePointList">
-                              <div class="text-muted small text-center py-3">No points added yet.<br>Click on the image to add points.</div>
+                              <div class="text-muted small text-center py-3">No points added yet</div>
                             </div>
                             <div class="zone-resolution-info mt-2">
-                              <i class="bi bi-aspect-ratio"></i> Coordinates saved at actual resolution: <strong>1280×720</strong>
-                            </div>
-                            <div class="mt-3">
-                              <small class="text-muted">
-                                <i class="bi bi-lightbulb"></i> Tips:<br>
-                                • Minimum 3 points required<br>
-                                • Points are auto-scaled to camera resolution<br>
-                                • Use Capture mode for precision
-                              </small>
+                              <i class="bi bi-aspect-ratio"></i> Display: 640×360 → Actual: 1280×720
                             </div>
                           </div>
                         </div>
                       </div>
                       <div class="modal-footer">
                         <span id="zoneStatus" class="me-auto text-muted small"></span>
-                        <button type="button" id="zoneSaveBtn" class="btn btn-primary" disabled>
-                          <i class="bi bi-check2-circle"></i> Save Zone
-                        </button>
+                        <button type="button" id="zoneSaveBtn" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Save Zone</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                       </div>
                     </div>
@@ -531,14 +471,13 @@
     let piPublicUrl = "";
     let currentSettings = {};
 
-    // Zone selector configuration - matching zone_selector.py
+    // Zone selector configuration
     const DISPLAY_WIDTH = 640;
     const DISPLAY_HEIGHT = 360;
     const ACTUAL_WIDTH = 1280;
     const ACTUAL_HEIGHT = 720;
     const SCALE_X = ACTUAL_WIDTH / DISPLAY_WIDTH;
     const SCALE_Y = ACTUAL_HEIGHT / DISPLAY_HEIGHT;
-    const MAX_POINTS = 20;
 
     // Fetch Pi public URL on load
     function fetchPiUrl() {
@@ -554,11 +493,11 @@
         if (zone && Array.isArray(zone) && zone.length > 0) {
             const formattedZone = zone.map(p => `[${p[0]}, ${p[1]}]`).join(', ');
             document.getElementById('zoneDisplay').innerHTML = 
-                `<span class="badge bg-info text-dark"><i class="bi bi-check-circle"></i> Zone: ${zone.length} points</span>
-                 <div class="small text-muted mt-1" style="font-family: monospace; word-break: break-all; max-height: 60px; overflow-y: auto;">[${formattedZone}]</div>`;
+                `<span class="badge bg-info text-dark">Zone: ${zone.length} points</span>
+                 <div class="small text-muted mt-1" style="font-family: monospace; word-break: break-all;">[${formattedZone}]</div>`;
         } else {
             document.getElementById('zoneDisplay').innerHTML = 
-                `<span class="badge bg-secondary"><i class="bi bi-x-circle"></i> No zone selected</span>`;
+                `<span class="badge bg-secondary">No zone selected</span>`;
         }
     }
 
@@ -690,7 +629,7 @@
         });
     });
 
-    // --- Enhanced Zone Selector Modal Logic (based on zone_selector.py) ---
+    // --- Enhanced Zone Selector Modal Logic ---
     let zonePoints = [];  // Stores ACTUAL coordinates (scaled to 1280x720)
     let zoneCanvas = null;
     let zoneCtx = null;
@@ -700,11 +639,9 @@
     let zoneLiveImg = null;
     let zoneMagnifierEnabled = true;
     let zoneSnapToGrid = false;
-    let zoneMode = 'stream';  // 'stream' or 'capture'
-    let capturedImageData = null;
 
     function displayToActual(x, y) {
-        // Convert display coordinates to actual camera coordinates (like zone_selector.py)
+        // Convert display coordinates to actual camera coordinates
         return [Math.round(x * SCALE_X), Math.round(y * SCALE_Y)];
     }
 
@@ -720,13 +657,10 @@
     function updatePointList() {
         const listEl = document.getElementById('zonePointList');
         const countEl = document.getElementById('zonePointCount');
-        const saveBtn = document.getElementById('zoneSaveBtn');
-        
         countEl.textContent = zonePoints.length;
-        saveBtn.disabled = zonePoints.length < 3;
         
         if (zonePoints.length === 0) {
-            listEl.innerHTML = '<div class="text-muted small text-center py-3">No points added yet.<br>Click on the image to add points.</div>';
+            listEl.innerHTML = '<div class="text-muted small text-center py-3">No points added yet</div>';
             return;
         }
         
@@ -734,7 +668,7 @@
         zonePoints.forEach((pt, idx) => {
             html += `<div class="zone-point-item">
                 <span><span class="point-num">P${idx + 1}</span> <span class="point-coords">(${pt[0]}, ${pt[1]})</span></span>
-                <button type="button" class="btn btn-danger btn-remove-point" onclick="removeZonePoint(${idx})" title="Remove point">
+                <button type="button" class="btn btn-danger btn-remove-point" onclick="removeZonePoint(${idx})">
                     <i class="bi bi-x"></i>
                 </button>
             </div>`;
@@ -750,31 +684,10 @@
 
     function updateZoneStatus() {
         const statusEl = document.getElementById('zoneStatus');
-        if (zonePoints.length === 0) {
-            statusEl.innerHTML = `<i class="bi bi-info-circle text-info"></i> Click on the image to add zone points`;
-        } else if (zonePoints.length < 3) {
+        if (zonePoints.length < 3) {
             statusEl.innerHTML = `<i class="bi bi-exclamation-triangle text-warning"></i> Need at least 3 points (have ${zonePoints.length})`;
         } else {
-            statusEl.innerHTML = `<i class="bi bi-check-circle text-success"></i> Valid zone with ${zonePoints.length} points - Ready to save`;
-        }
-    }
-
-    function updateModeIndicator() {
-        const indicator = document.getElementById('zoneModeIndicator');
-        const modeText = document.getElementById('zoneModeText');
-        const captureBtn = document.getElementById('zoneCaptureBtn');
-        const streamBtn = document.getElementById('zoneStreamBtn');
-        
-        if (zoneMode === 'capture') {
-            indicator.className = 'zone-mode-indicator captured';
-            indicator.innerHTML = '<i class="bi bi-camera"></i> <span>Captured Frame (Precise Mode)</span>';
-            captureBtn.className = 'btn btn-info btn-sm';
-            streamBtn.className = 'btn btn-outline-success btn-sm';
-        } else {
-            indicator.className = 'zone-mode-indicator streaming';
-            indicator.innerHTML = '<i class="bi bi-broadcast"></i> <span>Live Streaming</span>';
-            captureBtn.className = 'btn btn-outline-info btn-sm';
-            streamBtn.className = 'btn btn-success btn-sm';
+            statusEl.innerHTML = `<i class="bi bi-check-circle text-success"></i> Valid zone with ${zonePoints.length} points`;
         }
     }
 
@@ -783,7 +696,7 @@
         
         // Draw grid if snap is enabled
         if (zoneSnapToGrid) {
-            zoneCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+            zoneCtx.strokeStyle = 'rgba(255,255,255,0.1)';
             zoneCtx.lineWidth = 0.5;
             for (let x = 0; x < DISPLAY_WIDTH; x += 10) {
                 zoneCtx.beginPath();
@@ -810,7 +723,7 @@
                 zoneCtx.lineTo(displayPoints[i][0], displayPoints[i][1]);
             }
             zoneCtx.closePath();
-            zoneCtx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+            zoneCtx.fillStyle = 'rgba(0, 255, 255, 0.15)';
             zoneCtx.fill();
         }
         
@@ -821,33 +734,17 @@
             for (let i = 1; i < displayPoints.length; i++) {
                 zoneCtx.lineTo(displayPoints[i][0], displayPoints[i][1]);
             }
-            if (displayPoints.length > 2) {
-                zoneCtx.closePath();
-            }
+            zoneCtx.closePath();
             zoneCtx.strokeStyle = "#0ff";
             zoneCtx.lineWidth = 2;
             zoneCtx.stroke();
         }
         
-        // Draw closing line preview (dashed)
-        if (displayPoints.length > 2) {
-            zoneCtx.setLineDash([5, 5]);
-            zoneCtx.strokeStyle = "rgba(0, 255, 255, 0.5)";
-            zoneCtx.lineWidth = 1;
-            zoneCtx.beginPath();
-            const last = displayPoints[displayPoints.length - 1];
-            const first = displayPoints[0];
-            zoneCtx.moveTo(last[0], last[1]);
-            zoneCtx.lineTo(first[0], first[1]);
-            zoneCtx.stroke();
-            zoneCtx.setLineDash([]);
-        }
-        
-        // Draw points with numbers (like zone_selector.py)
+        // Draw points with numbers
         displayPoints.forEach((pt, idx) => {
             // Outer circle
             zoneCtx.beginPath();
-            zoneCtx.arc(pt[0], pt[1], 10, 0, 2 * Math.PI);
+            zoneCtx.arc(pt[0], pt[1], 8, 0, 2 * Math.PI);
             zoneCtx.fillStyle = "#ff9800";
             zoneCtx.fill();
             zoneCtx.strokeStyle = "#fff";
@@ -856,16 +753,33 @@
             
             // Point number
             zoneCtx.fillStyle = "#000";
-            zoneCtx.font = "bold 11px Arial";
+            zoneCtx.font = "bold 10px Arial";
             zoneCtx.textAlign = "center";
             zoneCtx.textBaseline = "middle";
             zoneCtx.fillText((idx + 1).toString(), pt[0], pt[1]);
         });
         
+        // Draw lines connecting to next potential point (preview)
+        if (displayPoints.length > 0) {
+            zoneCtx.setLineDash([5, 5]);
+            zoneCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+            zoneCtx.lineWidth = 1;
+            // Line from last point back to first
+            if (displayPoints.length > 2) {
+                zoneCtx.beginPath();
+                const last = displayPoints[displayPoints.length - 1];
+                const first = displayPoints[0];
+                zoneCtx.moveTo(last[0], last[1]);
+                zoneCtx.lineTo(first[0], first[1]);
+                zoneCtx.stroke();
+            }
+            zoneCtx.setLineDash([]);
+        }
+        
         updateZoneStatus();
     }
 
-    function updateMagnifier(e, sourceImage) {
+    function updateMagnifier(e) {
         if (!zoneMagnifierEnabled) return;
         
         const magnifier = document.getElementById('zoneMagnifier');
@@ -877,120 +791,45 @@
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        // Position magnifier (avoid edges)
-        let magX = x + 25;
-        let magY = y - 75;
+        // Position magnifier
+        let magX = x + 20;
+        let magY = y - 60;
         
-        if (magX + 150 > DISPLAY_WIDTH) magX = x - 175;
-        if (magY < 0) magY = y + 25;
-        if (magY + 150 > DISPLAY_HEIGHT) magY = DISPLAY_HEIGHT - 160;
+        // Keep magnifier in view
+        if (magX + 120 > DISPLAY_WIDTH) magX = x - 140;
+        if (magY < 0) magY = y + 20;
         
         magnifier.style.left = magX + 'px';
         magnifier.style.top = magY + 'px';
         magnifier.style.display = 'block';
         
-        // Draw magnified area (3x zoom like zone_selector.py)
+        // Draw magnified area
         const zoom = 3;
-        const sourceSize = 50;
+        const sourceSize = 40;
         
-        magCtx.fillStyle = '#000';
-        magCtx.fillRect(0, 0, 300, 300);
-        
-        if (sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
-            // Scale source coordinates for the actual image
-            const srcX = (x / DISPLAY_WIDTH) * sourceImage.naturalWidth;
-            const srcY = (y / DISPLAY_HEIGHT) * sourceImage.naturalHeight;
-            const srcSize = (sourceSize / DISPLAY_WIDTH) * sourceImage.naturalWidth;
-            
-            magCtx.drawImage(
-                sourceImage,
-                srcX - srcSize / 2, srcY - srcSize / 2, srcSize, srcSize,
-                0, 0, 300, 300
-            );
-        }
+        magCtx.clearRect(0, 0, 240, 240);
+        magCtx.drawImage(
+            zoneLiveImg,
+            x - sourceSize / 2, y - sourceSize / 2, sourceSize, sourceSize,
+            0, 0, 240, 240
+        );
         
         // Draw crosshair
         magCtx.strokeStyle = '#ff0000';
         magCtx.lineWidth = 1;
         magCtx.beginPath();
-        magCtx.moveTo(150, 0);
-        magCtx.lineTo(150, 300);
-        magCtx.moveTo(0, 150);
-        magCtx.lineTo(300, 150);
+        magCtx.moveTo(120, 0);
+        magCtx.lineTo(120, 240);
+        magCtx.moveTo(0, 120);
+        magCtx.lineTo(240, 120);
         magCtx.stroke();
         
-        // Draw center circle
+        // Draw center point
         magCtx.beginPath();
-        magCtx.arc(150, 150, 8, 0, 2 * Math.PI);
+        magCtx.arc(120, 120, 5, 0, 2 * Math.PI);
         magCtx.strokeStyle = '#0ff';
         magCtx.lineWidth = 2;
         magCtx.stroke();
-        
-        // Draw coordinate text in magnifier
-        const [actualX, actualY] = displayToActual(x, y);
-        magCtx.fillStyle = '#0ff';
-        magCtx.font = '12px monospace';
-        magCtx.textAlign = 'center';
-        magCtx.fillText(`(${actualX}, ${actualY})`, 150, 290);
-    }
-
-    async function captureFrame(camName) {
-        const loadingEl = document.getElementById('captureLoading');
-        const containerEl = document.getElementById('zoneCanvasContainer');
-        
-        loadingEl.style.display = 'flex';
-        containerEl.style.opacity = '0.5';
-        
-        try {
-            const response = await fetch(`/api/capture_frame/${camName}`);
-            const data = await response.json();
-            
-            if (data.success && data.image) {
-                // Stop live stream
-                if (zoneImgRefreshInterval) {
-                    clearInterval(zoneImgRefreshInterval);
-                    zoneImgRefreshInterval = null;
-                }
-                
-                // Set captured image
-                zoneLiveImg.src = 'data:image/jpeg;base64,' + data.image;
-                capturedImageData = data.image;
-                zoneMode = 'capture';
-                updateModeIndicator();
-                
-                console.log(`Captured frame: ${data.width}x${data.height}`);
-            } else {
-                throw new Error(data.error || 'Failed to capture frame');
-            }
-        } catch (err) {
-            console.error('Capture frame error:', err);
-            alert('Failed to capture frame: ' + err.message + '\nFalling back to live stream.');
-            startLiveStream(camName);
-        } finally {
-            loadingEl.style.display = 'none';
-            containerEl.style.opacity = '1';
-        }
-    }
-
-    function startLiveStream(camName) {
-        // Stop any existing interval
-        if (zoneImgRefreshInterval) {
-            clearInterval(zoneImgRefreshInterval);
-        }
-        
-        let streamUrl = piPublicUrl
-            ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
-            : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
-        
-        zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-        
-        zoneImgRefreshInterval = setInterval(() => {
-            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-        }, 300);
-        
-        zoneMode = 'stream';
-        capturedImageData = null;
-        updateModeIndicator();
     }
 
     function openZoneSelector(camName) {
@@ -1012,25 +851,26 @@
             zonePoints = JSON.parse(JSON.stringify(currentSettings.PARKING_ZONES[camName]));
         }
         
-        // Start with live stream, user can switch to capture mode
-        startLiveStream(camName);
+        let streamUrl = piPublicUrl
+            ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
+            : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
+        
+        // Use snapshot approach for more accurate frame
+        zoneLiveImg.src = streamUrl + "?t=" + Date.now();
+        
+        if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
+        zoneImgRefreshInterval = setInterval(() => {
+            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
+        }, 500);  // Slower refresh for stability
 
-        // Mouse click handler (like zone_selector.py)
+        // Mouse click handler
         zoneCanvas.onmousedown = function(e) {
             if (e.button === 2) {
-                // Right click - undo (like zone_selector.py 'u' key)
-                if (zonePoints.length > 0) {
-                    zonePoints.pop();
-                    updatePointList();
-                    drawZonePoints();
-                    console.log(`Point removed. Total: ${zonePoints.length}`);
-                }
+                // Right click - undo
+                zonePoints.pop();
+                updatePointList();
+                drawZonePoints();
                 return false;
-            }
-            
-            if (zonePoints.length >= MAX_POINTS) {
-                alert(`Maximum ${MAX_POINTS} points allowed.`);
-                return;
             }
             
             const rect = zoneCanvas.getBoundingClientRect();
@@ -1044,14 +884,13 @@
             }
             
             // Clamp to canvas bounds
-            x = Math.max(0, Math.min(x, DISPLAY_WIDTH - 1));
-            y = Math.max(0, Math.min(y, DISPLAY_HEIGHT - 1));
+            x = Math.max(0, Math.min(x, DISPLAY_WIDTH));
+            y = Math.max(0, Math.min(y, DISPLAY_HEIGHT));
             
-            // Convert to actual coordinates (like zone_selector.py)
+            // Convert to actual coordinates
             const [actualX, actualY] = displayToActual(x, y);
             
             zonePoints.push([actualX, actualY]);
-            console.log(`Point added: (${actualX}, ${actualY}). Total: ${zonePoints.length}`);
             updatePointList();
             drawZonePoints();
         };
@@ -1070,9 +909,9 @@
             const [actualX, actualY] = displayToActual(x, y);
             
             document.getElementById('zoneCoordsDisplay').textContent = 
-                `X: ${actualX}, Y: ${actualY}`;
+                `Display: (${Math.round(x)}, ${Math.round(y)}) → Actual: (${actualX}, ${actualY})`;
             
-            updateMagnifier(e, zoneLiveImg);
+            updateMagnifier(e);
         };
         
         zoneCanvas.onmouseleave = function() {
@@ -1084,33 +923,17 @@
             return false; 
         };
         
-        // Capture button
-        document.getElementById('zoneCaptureBtn').onclick = function() {
-            captureFrame(zoneCamName);
-        };
-        
-        // Stream button
-        document.getElementById('zoneStreamBtn').onclick = function() {
-            startLiveStream(zoneCamName);
-        };
-        
-        // Toolbar handlers (like zone_selector.py 'u' and 'c' keys)
+        // Toolbar handlers
         document.getElementById('zoneUndoBtn').onclick = function() {
-            if (zonePoints.length > 0) {
-                zonePoints.pop();
-                updatePointList();
-                drawZonePoints();
-                console.log(`Undo. Points remaining: ${zonePoints.length}`);
-            }
+            zonePoints.pop();
+            updatePointList();
+            drawZonePoints();
         };
         
         document.getElementById('zoneClearBtn').onclick = function() {
-            if (zonePoints.length > 0 && confirm('Clear all points?')) {
-                zonePoints = [];
-                updatePointList();
-                drawZonePoints();
-                console.log('All points cleared');
-            }
+            zonePoints = [];
+            updatePointList();
+            drawZonePoints();
         };
         
         document.getElementById('zoneMagnifierToggle').onchange = function() {
@@ -1134,9 +957,6 @@
             updateZoneDisplay(zonePoints);
             lastZone = zonePoints;
             
-            // Log the zone data like zone_selector.py does
-            console.log('Saving zone:', JSON.stringify(zonePoints));
-            
             try {
                 const resp = await fetch('/api/settings', {
                     method: 'POST',
@@ -1146,7 +966,7 @@
                 const result = await resp.json();
                 if (result.success) {
                     document.getElementById('status').innerHTML = 
-                        '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Zone saved for ' + zoneCamName + '!</div>';
+                        '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Zone updated for ' + zoneCamName + '!</div>';
                     loadSettings();
                 } else {
                     document.getElementById('status').innerHTML = 
@@ -1158,38 +978,22 @@
             }
             
             zoneModal.hide();
-            if (zoneImgRefreshInterval) {
-                clearInterval(zoneImgRefreshInterval);
-                zoneImgRefreshInterval = null;
-            }
+            clearInterval(zoneImgRefreshInterval);
         };
         
-        // Keyboard shortcuts (like zone_selector.py)
+        // Keyboard shortcuts
         zoneCanvas.tabIndex = 0;
         zoneCanvas.onkeydown = function(e) {
             if (e.key === 'u' || e.key === 'U') {
-                // Undo - like zone_selector.py
-                if (zonePoints.length > 0) {
-                    zonePoints.pop();
-                    updatePointList();
-                    drawZonePoints();
-                }
-                e.preventDefault();
+                zonePoints.pop();
+                updatePointList();
+                drawZonePoints();
             } else if (e.key === 'c' || e.key === 'C') {
-                // Clear - like zone_selector.py
-                if (zonePoints.length > 0) {
-                    zonePoints = [];
-                    updatePointList();
-                    drawZonePoints();
-                }
-                e.preventDefault();
+                zonePoints = [];
+                updatePointList();
+                drawZonePoints();
             } else if (e.key === 'Enter') {
-                // Save - like zone_selector.py 'q' to quit and save
                 document.getElementById('zoneSaveBtn').click();
-                e.preventDefault();
-            } else if (e.key === 'Escape') {
-                zoneModal.hide();
-                e.preventDefault();
             }
         };
         
@@ -1207,18 +1011,13 @@
                     clearInterval(zoneImgRefreshInterval);
                     zoneImgRefreshInterval = null;
                 }
-                zoneMode = 'stream';
-                capturedImageData = null;
             });
         }
         
         zoneModal.show();
         
         // Focus canvas for keyboard shortcuts
-        setTimeout(() => {
-            zoneCanvas.focus();
-            updateModeIndicator();
-        }, 300);
+        setTimeout(() => zoneCanvas.focus(), 300);
     }
 
     // Make removeZonePoint available globally

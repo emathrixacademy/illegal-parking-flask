@@ -32,14 +32,14 @@ PARKING_ZONES = getattr(config, "PARKING_ZONES", {})
 PORT = int(os.environ.get("PORT", 5000))
 RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
 
+# Resolution constants for zone selection (matching zone_selector.py)
+ACTUAL_WIDTH = 1280
+ACTUAL_HEIGHT = 720
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PiCameraServer")
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
-
-# Constants for resolution (add near top of file after imports)
-ACTUAL_WIDTH = 1280
-ACTUAL_HEIGHT = 720
 
 # --------------------------------------------------
 # Sync settings from Railway database
