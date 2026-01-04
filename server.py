@@ -179,68 +179,6 @@ def decode_image(data):
         return cv2.imdecode(img_array, cv2.IMREAD_COLOR)
     return None
 
-@app.route('/api/zone_selector', methods=['POST'])
-def api_zone_selector():
-    try:
-        data = request.get_json(force=True)
-        cam = data.get("camera")
-        zone = data.get("zone")
-        if not cam or not isinstance(zone, list) or len(zone) < 3:
-            return jsonify({"success": False, "error": "Invalid camera or zone"}), 400
-
-        import os, re, ast, json as pyjson
-        config_path = os.path.join(os.path.dirname(__file__), "config.py")
-
-        with open(config_path, "r") as f:
-            lines = f.readlines()
-
-        zones = {}
-        start_idx = None
-        for i, line in enumerate(lines):
-            if line.strip().startswith("PARKING_ZONES"):
-                start_idx = i
-                break
-
-        if start_idx is not None:
-            dict_lines = []
-            for line in lines[start_idx:]:
-                dict_lines.append(line)
-                if "}" in line:
-                    break
-            dict_str = "".join(dict_lines)
-            try:
-                zones = ast.literal_eval(dict_str.split("=",1)[1].strip())
-            except Exception:
-                zones = {}
-        else:
-            zones = {}
-
-        zones[cam] = zone
-
-        new_zones_str = f'PARKING_ZONES = {pyjson.dumps(zones, separators=(",", ":"))}\n'
-        if start_idx is not None:
-            end_idx = start_idx
-            for i in range(start_idx, len(lines)):
-                if "}" in lines[i]:
-                    end_idx = i
-                    break
-            lines = lines[:start_idx] + [new_zones_str] + lines[end_idx+1:]
-        else:
-            lines.append(new_zones_str)
-
-        with open(config_path, "w") as f:
-            f.writelines(lines)
-
-        import importlib
-        import config as config_mod
-        importlib.reload(config_mod)
-        # No monitor.zones here, but you can reload config if needed
-
-        return jsonify({"success": True, "zone": zone})
-    except Exception as e:
-        logger.error(f"Zone selector error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
 @app.route('/api/settings', methods=['GET', 'POST'])
 def api_settings():
     import importlib
@@ -536,6 +474,22 @@ def video_feed_c1():
 def video_feed_c2():
     return Response(gen_single(c2, "Camera_2"), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/api/list_images')
+def api_list_images():
+    """
+    List all images in the SAVE_DIR directory (recursively).
+    Returns a JSON list of relative paths.
+    """
+    image_dir = SAVE_DIR
+    image_files = []
+    for root, dirs, files in os.walk(image_dir):
+        for fname in files:
+            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
+                image_files.append(rel_path.replace("\\", "/"))
+    return jsonify(sorted(image_files, reverse=True))
+
+# Endpoint to serve images (kept) - previously used by UI; not zone-related
 @app.route('/api/get_image')
 def api_get_image():
     """
@@ -553,21 +507,6 @@ def api_get_image():
     if not os.path.exists(abs_path):
         return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
-
-@app.route('/api/list_images')
-def api_list_images():
-    """
-    List all images in the SAVE_DIR directory (recursively).
-    Returns a JSON list of relative paths.
-    """
-    image_dir = SAVE_DIR
-    image_files = []
-    for root, dirs, files in os.walk(image_dir):
-        for fname in files:
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
-                rel_path = os.path.relpath(os.path.join(root, fname), os.path.dirname(__file__))
-                image_files.append(rel_path.replace("\\", "/"))
-    return jsonify(sorted(image_files, reverse=True))
 
 @app.route('/api/capture_frame/<camera>')
 def capture_frame(camera):
@@ -594,60 +533,6 @@ def capture_frame(camera):
         })
     except Exception as e:
         logger.error(f"Capture frame error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/run_zone_selector', methods=['POST'])
-def api_run_zone_selector():
-    """
-    Run zone_selector.py on the Pi as an interactive subprocess.
-    Expects JSON: { "camera": "Camera_1" | "Camera_2" | "1" | "2" }
-    Returns JSON: { success: bool, zone: [[x,y], ...], stdout: "...", stderr: "..." }
-    """
-    try:
-        data = request.get_json(force=True)
-        cam = data.get("camera")
-        if cam in ("Camera_1", "1"):
-            arg = "1"
-        elif cam in ("Camera_2", "2"):
-            arg = "2"
-        else:
-            return jsonify({"success": False, "error": "Invalid camera"}), 400
-
-        script = os.path.join(os.path.dirname(__file__), "zone_selector.py")
-        # Run script interactively on the Pi; user must interact with OpenCV window on the Pi host.
-        proc = subprocess.run([sys.executable, script, arg], capture_output=True, text=True, timeout=300)
-        out = proc.stdout or ""
-        err = proc.stderr or ""
-
-        # Try to extract the last JSON array/object printed by the script
-        import re as _re, ast as _ast
-        json_match = None
-        # find last [...] or {...}
-        arrs = _re.findall(r'(\[.*\]|\{.*\})', out, flags=_re.S)
-        if arrs:
-            json_text = arrs[-1]
-            try:
-                parsed = _ast.literal_eval(json_text)
-            except Exception:
-                parsed = None
-        else:
-            parsed = None
-
-        # Reload local config and update monitor zones if running
-        try:
-            import importlib
-            import config as cfg_mod
-            importlib.reload(cfg_mod)
-            if 'monitor' in globals() and hasattr(monitor, 'zones'):
-                monitor.zones = {cam_k: np.array(points) for cam_k, points in getattr(cfg_mod, "PARKING_ZONES", {}).items()}
-        except Exception as e:
-            logger.warning(f"Could not reload config after zone selector: {e}")
-
-        return jsonify({"success": True, "zone": parsed, "stdout": out, "stderr": err})
-    except subprocess.TimeoutExpired:
-        return jsonify({"success": False, "error": "Zone selector timed out"}), 500
-    except Exception as e:
-        logger.error(f"run_zone_selector error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
