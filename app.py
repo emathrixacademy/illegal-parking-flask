@@ -16,6 +16,7 @@ import psycopg2
 import urllib.parse
 import threading
 import time
+from db import ensure_tables, get_all_settings, save_settings, init_default_settings
 
 # --------------------------------------------------
 # Logging
@@ -47,15 +48,16 @@ POSTGRES_URL = os.environ.get(
     "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@mainline.proxy.rlwy.net:42362/railway"
 )
 
+# Initialize database tables and default settings on startup
+ensure_tables()
+init_default_settings()
+
 # --------------------------------------------------
 # Config helpers (local config.py)
 # --------------------------------------------------
 def get_current_settings():
-    return {
-        "VIOLATION_TIME_THRESHOLD": getattr(config, "VIOLATION_TIME_THRESHOLD", 10),
-        "REPEAT_CAPTURE_INTERVAL": getattr(config, "REPEAT_CAPTURE_INTERVAL", 60),
-        "PARKING_ZONES": getattr(config, "PARKING_ZONES", {})
-    }
+    """Get settings from database."""
+    return get_all_settings()
 
 def update_config(new_settings):
     import importlib
@@ -505,17 +507,101 @@ def api_camera_status():
 # --------------------------------------------------
 # Settings
 # --------------------------------------------------
-@app.route('/api/settings', methods=['GET'])
+@app.route('/api/settings', methods=['GET', 'POST'])
 def api_settings():
+    if request.method == 'POST':
+        try:
+            data = request.get_json(force=True)
+            logger.info(f"Received settings update: {data}")
+            
+            # Get current settings from database
+            current = get_all_settings()
+            
+            # Merge PARKING_ZONES if present
+            if "PARKING_ZONES" in data:
+                current_zones = current.get("PARKING_ZONES", {})
+                if isinstance(current_zones, str):
+                    import json
+                    current_zones = json.loads(current_zones)
+                for cam, val in data["PARKING_ZONES"].items():
+                    if val is None:
+                        current_zones.pop(cam, None)
+                    else:
+                        current_zones[cam] = val
+                data["PARKING_ZONES"] = current_zones
+            
+            # Save to database
+            save_settings(data)
+            logger.info(f"Settings saved to database: {data}")
+            
+            # Try to forward to Pi if connected
+            try:
+                pi_base = get_pi_base()
+                url = f"{pi_base}/api/settings"
+                resp = requests.post(url, json=data, timeout=10)
+                logger.info(f"Forwarded to Pi, status: {resp.status_code}")
+            except Exception as pi_err:
+                logger.warning(f"Could not forward to Pi: {pi_err}")
+            
+            return jsonify({"success": True})
+                
+        except Exception as e:
+            logger.error(f"Failed to save settings: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    # GET request - get from database, try to sync with Pi
     try:
-        pi_base = get_pi_base()
-        url = f"{pi_base}/api/settings"
-        resp = requests.get(url, timeout=10)
-        # Forward the Pi's config settings to the frontend
-        return jsonify(resp.json())
+        # First try to get from Pi and sync to database
+        try:
+            pi_base = get_pi_base()
+            url = f"{pi_base}/api/settings"
+            resp = requests.get(url, timeout=5)
+            if resp.ok and resp.text:
+                pi_settings = resp.json()
+                # Sync relevant settings to database
+                sync_data = {}
+                if "VIOLATION_TIME_THRESHOLD" in pi_settings:
+                    sync_data["VIOLATION_TIME_THRESHOLD"] = pi_settings["VIOLATION_TIME_THRESHOLD"]
+                if "REPEAT_CAPTURE_INTERVAL" in pi_settings:
+                    sync_data["REPEAT_CAPTURE_INTERVAL"] = pi_settings["REPEAT_CAPTURE_INTERVAL"]
+                if "PARKING_ZONES" in pi_settings:
+                    sync_data["PARKING_ZONES"] = pi_settings["PARKING_ZONES"]
+                if sync_data:
+                    save_settings(sync_data)
+                return jsonify(pi_settings)
+        except Exception as pi_err:
+            logger.warning(f"Could not fetch from Pi: {pi_err}, using database")
+        
+        # Fallback to database
+        db_settings = get_all_settings()
+        return jsonify(db_settings)
+            
     except Exception as e:
-        logger.error(f"Failed to fetch settings from Pi: {e}")
+        logger.error(f"Failed to get settings: {e}")
         return jsonify({"success": False, "error": str(e)}), 502
+
+@app.route('/api/db_settings', methods=['GET', 'POST'])
+def api_db_settings():
+    """Direct database settings endpoint."""
+    if request.method == 'POST':
+        try:
+            data = request.get_json(force=True)
+            # Merge PARKING_ZONES
+            if "PARKING_ZONES" in data:
+                current = get_all_settings()
+                current_zones = current.get("PARKING_ZONES", {})
+                for cam, val in data["PARKING_ZONES"].items():
+                    if val is None:
+                        current_zones.pop(cam, None)
+                    else:
+                        current_zones[cam] = val
+                data["PARKING_ZONES"] = current_zones
+            save_settings(data)
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    return jsonify(get_all_settings())
 
 # --------------------------------------------------
 # Error Handling
