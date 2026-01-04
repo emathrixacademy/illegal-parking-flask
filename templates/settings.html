@@ -846,9 +846,10 @@
         container.style.width = DISPLAY_WIDTH + 'px';
         container.style.height = DISPLAY_HEIGHT + 'px';
         
-        // Load existing zone if available
+        // Load existing zone if available (ensure integers)
         if (currentSettings.PARKING_ZONES && currentSettings.PARKING_ZONES[camName]) {
-            zonePoints = JSON.parse(JSON.stringify(currentSettings.PARKING_ZONES[camName]));
+            zonePoints = JSON.parse(JSON.stringify(currentSettings.PARKING_ZONES[camName]))
+                .map(p => [parseInt(p[0], 10), parseInt(p[1], 10)]);
         }
         
         // Try to fetch a high-quality snapshot (works even when Pi video stream isn't available)
@@ -905,10 +906,11 @@
             x = Math.max(0, Math.min(x, DISPLAY_WIDTH));
             y = Math.max(0, Math.min(y, DISPLAY_HEIGHT));
             
-            // Convert to actual coordinates
-            const [actualX, actualY] = displayToActual(x, y);
+            // Convert to actual coordinates and ensure integers
+            const [actualX, actualY] = displayToActual(x, y).map(v => Math.round(v));
             
             zonePoints.push([actualX, actualY]);
+            console.log(`Point added: (${actualX}, ${actualY})`);
             updatePointList();
             drawZonePoints();
         };
@@ -972,6 +974,8 @@
                 return;
             }
             
+            // Force integer coordinates just before saving
+            zonePoints = zonePoints.map(p => [parseInt(p[0], 10), parseInt(p[1], 10)]);
             updateZoneDisplay(zonePoints);
             lastZone = zonePoints;
             
@@ -1010,12 +1014,14 @@
                 zonePoints = [];
                 updatePointList();
                 drawZonePoints();
-            } else if (e.key === 'Enter') {
+            } else if (e.key === 'Enter' || e.key === 'q' || e.key === 'Q') {
                 document.getElementById('zoneSaveBtn').click();
             }
         };
         
         zoneLiveImg.onload = function() {
+            // Ensure displayed existing points are integers before drawing
+            zonePoints = zonePoints.map(p => [parseInt(p[0], 10), parseInt(p[1], 10)]);
             updatePointList();
             drawZonePoints();
         };
@@ -1040,7 +1046,7 @@
 
     // Make removeZonePoint available globally
     window.removeZonePoint = removeZonePoint;
-    
+
     // When clicking "Select Zone Area" open the in-browser selector modal
     document.getElementById('selectZoneBtn').addEventListener('click', function() {
         const cam = document.getElementById('cameraSelect').value;
