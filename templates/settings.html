@@ -105,32 +105,34 @@
             position: absolute;
             bottom: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             color: #0ff;
-            padding: 6px 12px;
+            padding: 8px 12px;
             border-radius: 4px;
             font-family: monospace;
-            font-size: 13px;
+            font-size: 14px;
             pointer-events: none;
             z-index: 10;
+            border: 1px solid #0ff;
         }
         .zone-magnifier {
             position: absolute;
             width: 150px;
             height: 150px;
-            border: 2px solid #0ff;
+            border: 3px solid #0ff;
             border-radius: 50%;
             pointer-events: none;
             overflow: hidden;
             display: none;
             z-index: 15;
-            box-shadow: 0 0 15px rgba(0,255,255,0.6);
+            box-shadow: 0 0 15px rgba(0,255,255,0.7);
+            background: #000;
         }
         .zone-magnifier canvas {
             position: absolute;
         }
         .zone-point-list {
-            max-height: 180px;
+            max-height: 200px;
             overflow-y: auto;
             background: #1a1e25;
             border-radius: 4px;
@@ -141,7 +143,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-bottom: 1px solid #333;
             font-family: monospace;
             font-size: 13px;
@@ -153,69 +155,71 @@
             color: #ff9800;
             font-weight: bold;
             margin-right: 10px;
+            min-width: 25px;
         }
         .zone-point-item .point-coords {
             color: #0ff;
         }
         .zone-point-item .btn-remove-point {
-            padding: 2px 6px;
-            font-size: 10px;
+            padding: 2px 8px;
+            font-size: 11px;
         }
         .zone-help-text {
             background: #1a1e25;
             border-left: 3px solid #ff9800;
-            padding: 10px 15px;
+            padding: 12px 15px;
             margin-bottom: 15px;
             font-size: 13px;
+            line-height: 1.6;
         }
         .zone-help-text kbd {
             background: #333;
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 11px;
+            border: 1px solid #555;
         }
         .zone-toolbar {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             flex-wrap: wrap;
             align-items: center;
         }
         .zone-toolbar .btn {
             font-size: 13px;
-            padding: 5px 12px;
+            padding: 6px 14px;
         }
         .zone-resolution-info {
             color: #888;
             font-size: 12px;
-            margin-top: 5px;
+            margin-top: 8px;
         }
-        .zone-frame-info {
+        .zone-mode-indicator {
             background: #1a1e25;
-            border-radius: 4px;
-            padding: 8px 12px;
-            margin-bottom: 10px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-        .zone-frame-info .label {
-            color: #888;
-        }
-        .zone-frame-info .value {
-            color: #0ff;
-            font-weight: bold;
-        }
-        .frozen-indicator {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255, 152, 0, 0.9);
-            color: #000;
-            padding: 4px 10px;
+            padding: 8px 15px;
             border-radius: 4px;
             font-size: 12px;
-            font-weight: bold;
-            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .zone-mode-indicator.streaming {
+            border-left: 3px solid #28a745;
+        }
+        .zone-mode-indicator.captured {
+            border-left: 3px solid #0dcaf0;
+        }
+        .capture-loading {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+            color: #fff;
+        }
+        .capture-loading .spinner-border {
+            width: 24px;
+            height: 24px;
         }
         
         /* Large screens (1400px+) */
@@ -438,53 +442,76 @@
                       </div>
                       <div class="modal-body">
                         <div class="zone-help-text">
-                          <strong>Instructions:</strong> Click on the frame to add polygon points (like zone_selector.py).<br>
-                          <kbd>Right-click</kbd> or <kbd>U</kbd> = Undo &nbsp;|&nbsp; 
+                          <strong>Instructions:</strong> Click on the image to add polygon points for the parking zone.<br>
+                          <kbd>Right-click</kbd> or <kbd>U</kbd> = Undo last point &nbsp;|&nbsp; 
                           <kbd>C</kbd> = Clear all &nbsp;|&nbsp; 
-                          <kbd>Enter</kbd> = Save zone &nbsp;|&nbsp;
-                          <kbd>F</kbd> = Freeze/Unfreeze frame<br>
-                          <small class="text-success"><i class="bi bi-check-circle"></i> Coordinates match actual camera resolution - no scaling needed!</small>
-                        </div>
-                        <div class="zone-frame-info" id="zoneFrameInfo">
-                          <span class="label">Frame Resolution:</span> <span class="value" id="frameResDisplay">Loading...</span>
-                          &nbsp;|&nbsp;
-                          <span class="label">Display:</span> <span class="value" id="displayResDisplay">--</span>
-                          &nbsp;|&nbsp;
-                          <span class="label">Scale:</span> <span class="value" id="scaleDisplay">1:1</span>
+                          <kbd>Enter</kbd> = Save zone<br>
+                          <small class="text-info"><i class="bi bi-info-circle"></i> Use <strong>Capture Frame</strong> mode for precise selection on a frozen frame (recommended).</small>
                         </div>
                         <div class="zone-toolbar">
-                          <button type="button" id="zoneFreezeBtn" class="btn btn-info btn-sm"><i class="bi bi-pause-fill"></i> Freeze Frame</button>
-                          <button type="button" id="zoneUndoBtn" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
-                          <button type="button" id="zoneClearBtn" class="btn btn-secondary btn-sm"><i class="bi bi-x-circle"></i> Clear All</button>
-                          <div class="form-check form-switch ms-3 d-flex align-items-center">
+                          <button type="button" id="zoneCaptureBtn" class="btn btn-info btn-sm">
+                            <i class="bi bi-camera"></i> Capture Frame
+                          </button>
+                          <button type="button" id="zoneStreamBtn" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-broadcast"></i> Live Stream
+                          </button>
+                          <div class="zone-mode-indicator streaming" id="zoneModeIndicator">
+                            <i class="bi bi-broadcast"></i> <span id="zoneModeText">Live Streaming</span>
+                          </div>
+                          <button type="button" id="zoneUndoBtn" class="btn btn-warning btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo (U)</button>
+                          <button type="button" id="zoneClearBtn" class="btn btn-secondary btn-sm"><i class="bi bi-x-circle"></i> Clear (C)</button>
+                        </div>
+                        <div class="zone-toolbar">
+                          <div class="form-check form-switch d-flex align-items-center">
                             <input class="form-check-input" type="checkbox" id="zoneMagnifierToggle" checked>
-                            <label class="form-check-label ms-2" for="zoneMagnifierToggle">Magnifier</label>
+                            <label class="form-check-label ms-2" for="zoneMagnifierToggle">Magnifier (3x zoom)</label>
+                          </div>
+                          <div class="form-check form-switch ms-3 d-flex align-items-center">
+                            <input class="form-check-input" type="checkbox" id="zoneSnapGrid">
+                            <label class="form-check-label ms-2" for="zoneSnapGrid">Snap to Grid (10px)</label>
                           </div>
                         </div>
                         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                          <div class="zone-canvas-container" id="zoneCanvasContainer">
-                            <img id="zoneLiveImg" src="" style="position:absolute; left:0; top:0; z-index:1; border:1px solid #444; border-radius: 4px; display:block;">
-                            <canvas id="zoneCanvas" style="position:absolute; left:0; top:0; z-index:2;"></canvas>
-                            <div class="zone-coords-display" id="zoneCoordsDisplay">Click to add points</div>
-                            <div class="frozen-indicator" id="frozenIndicator" style="display:none;"><i class="bi bi-pause-fill"></i> FROZEN</div>
-                            <div class="zone-magnifier" id="zoneMagnifier">
-                              <canvas id="zoneMagnifierCanvas" width="300" height="300"></canvas>
+                          <div>
+                            <div class="capture-loading" id="captureLoading">
+                              <div class="spinner-border text-info" role="status"></div>
+                              <span>Capturing frame...</span>
+                            </div>
+                            <div class="zone-canvas-container" id="zoneCanvasContainer">
+                              <img id="zoneLiveImg" src="" width="640" height="360"
+                                   style="position:absolute; left:0; top:0; z-index:1; border:2px solid #444; border-radius: 4px; display:block; background:#000;">
+                              <canvas id="zoneCanvas" width="640" height="360"
+                                      style="position:absolute; left:0; top:0; z-index:2;"></canvas>
+                              <div class="zone-coords-display" id="zoneCoordsDisplay">X: 0, Y: 0</div>
+                              <div class="zone-magnifier" id="zoneMagnifier">
+                                <canvas id="zoneMagnifierCanvas" width="300" height="300"></canvas>
+                              </div>
                             </div>
                           </div>
                           <div style="flex: 1; min-width: 220px;">
-                            <h6 class="text-warning mb-2"><i class="bi bi-list-ol"></i> Zone Points (<span id="zonePointCount">0</span>)</h6>
+                            <h6 class="text-warning mb-2"><i class="bi bi-list-ol"></i> Zone Points (<span id="zonePointCount">0</span>/20)</h6>
                             <div class="zone-point-list" id="zonePointList">
-                              <div class="text-muted small text-center py-3">No points added yet</div>
+                              <div class="text-muted small text-center py-3">No points added yet.<br>Click on the image to add points.</div>
                             </div>
                             <div class="zone-resolution-info mt-2">
-                              <i class="bi bi-info-circle"></i> Points are saved in actual frame coordinates
+                              <i class="bi bi-aspect-ratio"></i> Coordinates saved at actual resolution: <strong>1280×720</strong>
+                            </div>
+                            <div class="mt-3">
+                              <small class="text-muted">
+                                <i class="bi bi-lightbulb"></i> Tips:<br>
+                                • Minimum 3 points required<br>
+                                • Points are auto-scaled to camera resolution<br>
+                                • Use Capture mode for precision
+                              </small>
                             </div>
                           </div>
                         </div>
                       </div>
                       <div class="modal-footer">
                         <span id="zoneStatus" class="me-auto text-muted small"></span>
-                        <button type="button" id="zoneSaveBtn" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Save Zone</button>
+                        <button type="button" id="zoneSaveBtn" class="btn btn-primary" disabled>
+                          <i class="bi bi-check2-circle"></i> Save Zone
+                        </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                       </div>
                     </div>
@@ -504,13 +531,16 @@
     let piPublicUrl = "";
     let currentSettings = {};
 
-    // Zone selector - dynamic dimensions
-    let ACTUAL_WIDTH = 1280;
-    let ACTUAL_HEIGHT = 720;
-    let DISPLAY_WIDTH = 800;  // Max display width
-    let DISPLAY_HEIGHT = 450;
-    let SCALE_FACTOR = 1;
+    // Zone selector configuration - matching zone_selector.py
+    const DISPLAY_WIDTH = 640;
+    const DISPLAY_HEIGHT = 360;
+    const ACTUAL_WIDTH = 1280;
+    const ACTUAL_HEIGHT = 720;
+    const SCALE_X = ACTUAL_WIDTH / DISPLAY_WIDTH;
+    const SCALE_Y = ACTUAL_HEIGHT / DISPLAY_HEIGHT;
+    const MAX_POINTS = 20;
 
+    // Fetch Pi public URL on load
     function fetchPiUrl() {
         return fetch('/api/get_pi_url')
             .then(r => r.json())
@@ -524,11 +554,11 @@
         if (zone && Array.isArray(zone) && zone.length > 0) {
             const formattedZone = zone.map(p => `[${p[0]}, ${p[1]}]`).join(', ');
             document.getElementById('zoneDisplay').innerHTML = 
-                `<span class="badge bg-info text-dark">Zone: ${zone.length} points</span>
-                 <div class="small text-muted mt-1" style="font-family: monospace; word-break: break-all;">[${formattedZone}]</div>`;
+                `<span class="badge bg-info text-dark"><i class="bi bi-check-circle"></i> Zone: ${zone.length} points</span>
+                 <div class="small text-muted mt-1" style="font-family: monospace; word-break: break-all; max-height: 60px; overflow-y: auto;">[${formattedZone}]</div>`;
         } else {
             document.getElementById('zoneDisplay').innerHTML = 
-                `<span class="badge bg-secondary">No zone selected</span>`;
+                `<span class="badge bg-secondary"><i class="bi bi-x-circle"></i> No zone selected</span>`;
         }
     }
 
@@ -547,13 +577,30 @@
     function loadSettings() {
         fetch('/api/settings')
             .then(async r => {
-                if (!r.ok) throw new Error("HTTP " + r.status);
-                let data = await r.json();
-                injectSettingsToForm(data);
+                if (!r.ok) {
+                    throw new Error("HTTP " + r.status + " " + r.statusText);
+                }
+                let text = await r.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                    injectSettingsToForm(data);
+                    return;
+                } catch (err) {
+                    document.getElementById('status').innerHTML =
+                        '<div class="alert alert-danger">Failed to parse settings JSON.<br><small>' +
+                        text.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                        '</small></div>';
+                    console.error("Failed to parse JSON from /api/settings:", text);
+                    throw err;
+                }
             })
             .catch((err) => {
                 document.getElementById('status').innerHTML =
-                    '<div class="alert alert-warning">Could not load settings. Using defaults.</div>';
+                    '<div class="alert alert-warning">Could not load settings from Pi. Using defaults.<br><small>' +
+                    (err && err.message ? err.message : err) +
+                    '</small></div>';
+                console.error("Failed to load settings:", err);
                 document.getElementById('violation_time').value = 100;
                 document.getElementById('repeat_capture').value = 60;
             });
@@ -601,11 +648,11 @@
         const repeatCapture = parseInt(document.getElementById('repeat_capture').value);
         
         if (isNaN(violationTime) || violationTime < 1) {
-            status.innerHTML = '<div class="alert alert-danger">Please enter a valid Violation Time Threshold</div>';
+            status.innerHTML = '<div class="alert alert-danger">Please enter a valid Violation Time Threshold (minimum 1 second)</div>';
             return;
         }
         if (isNaN(repeatCapture) || repeatCapture < 1) {
-            status.innerHTML = '<div class="alert alert-danger">Please enter a valid Repeat Capture Interval</div>';
+            status.innerHTML = '<div class="alert alert-danger">Please enter a valid Repeat Capture Interval (minimum 1 second)</div>';
             return;
         }
         
@@ -618,7 +665,7 @@
             body.PARKING_ZONES = { [cam]: lastZone };
         }
         
-        status.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Saving...</div>';
+        status.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Saving settings to database and syncing to Pi...</div>';
         
         fetch('/api/settings', {
             method: 'POST',
@@ -628,19 +675,23 @@
         .then(r => r.json())
         .then(result => {
             if (result.success) {
-                status.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Settings saved!</div>';
-                setTimeout(() => { loadSettings(); loadDbStatus(); status.innerHTML = ''; }, 1500);
+                status.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Settings saved to database and synced to Pi!</div>';
+                setTimeout(() => {
+                    loadSettings();
+                    loadDbStatus();
+                    status.innerHTML = '';
+                }, 1500);
             } else {
-                status.innerHTML = '<div class="alert alert-danger">Error: ' + (result.error || 'Unknown') + '</div>';
+                status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (result.error || 'Unknown error') + '</div>';
             }
         })
         .catch(err => {
-            status.innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>';
+            status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (err.message || err) + '</div>';
         });
     });
 
-    // --- Zone Selector Logic ---
-    let zonePoints = [];  // Stores ACTUAL coordinates (real frame pixels)
+    // --- Enhanced Zone Selector Modal Logic (based on zone_selector.py) ---
+    let zonePoints = [];  // Stores ACTUAL coordinates (scaled to 1280x720)
     let zoneCanvas = null;
     let zoneCtx = null;
     let zoneModal = null;
@@ -648,58 +699,34 @@
     let zoneImgRefreshInterval = null;
     let zoneLiveImg = null;
     let zoneMagnifierEnabled = true;
-    let zoneFrozen = false;
-    let frozenImageData = null;
-
-    async function fetchFrameInfo(camName) {
-        try {
-            const resp = await fetch(`/api/frame_info/${camName}`);
-            const data = await resp.json();
-            if (data.success) {
-                return { width: data.width, height: data.height };
-            }
-        } catch (e) {
-            console.warn("Could not fetch frame info:", e);
-        }
-        return { width: 1280, height: 720 };  // Default
-    }
-
-    function calculateDisplaySize(actualW, actualH, maxW, maxH) {
-        const aspectRatio = actualW / actualH;
-        let displayW = actualW;
-        let displayH = actualH;
-        
-        if (displayW > maxW) {
-            displayW = maxW;
-            displayH = displayW / aspectRatio;
-        }
-        if (displayH > maxH) {
-            displayH = maxH;
-            displayW = displayH * aspectRatio;
-        }
-        
-        return {
-            width: Math.round(displayW),
-            height: Math.round(displayH),
-            scale: actualW / displayW
-        };
-    }
+    let zoneSnapToGrid = false;
+    let zoneMode = 'stream';  // 'stream' or 'capture'
+    let capturedImageData = null;
 
     function displayToActual(x, y) {
-        return [Math.round(x * SCALE_FACTOR), Math.round(y * SCALE_FACTOR)];
+        // Convert display coordinates to actual camera coordinates (like zone_selector.py)
+        return [Math.round(x * SCALE_X), Math.round(y * SCALE_Y)];
     }
 
     function actualToDisplay(x, y) {
-        return [x / SCALE_FACTOR, y / SCALE_FACTOR];
+        // Convert actual camera coordinates to display coordinates
+        return [x / SCALE_X, y / SCALE_Y];
+    }
+
+    function snapToGrid(val, gridSize) {
+        return Math.round(val / gridSize) * gridSize;
     }
 
     function updatePointList() {
         const listEl = document.getElementById('zonePointList');
         const countEl = document.getElementById('zonePointCount');
+        const saveBtn = document.getElementById('zoneSaveBtn');
+        
         countEl.textContent = zonePoints.length;
+        saveBtn.disabled = zonePoints.length < 3;
         
         if (zonePoints.length === 0) {
-            listEl.innerHTML = '<div class="text-muted small text-center py-3">No points added yet.<br>Click on the frame to add points.</div>';
+            listEl.innerHTML = '<div class="text-muted small text-center py-3">No points added yet.<br>Click on the image to add points.</div>';
             return;
         }
         
@@ -707,7 +734,7 @@
         zonePoints.forEach((pt, idx) => {
             html += `<div class="zone-point-item">
                 <span><span class="point-num">P${idx + 1}</span> <span class="point-coords">(${pt[0]}, ${pt[1]})</span></span>
-                <button type="button" class="btn btn-danger btn-remove-point" onclick="removeZonePoint(${idx})">
+                <button type="button" class="btn btn-danger btn-remove-point" onclick="removeZonePoint(${idx})" title="Remove point">
                     <i class="bi bi-x"></i>
                 </button>
             </div>`;
@@ -723,15 +750,54 @@
 
     function updateZoneStatus() {
         const statusEl = document.getElementById('zoneStatus');
-        if (zonePoints.length < 3) {
+        if (zonePoints.length === 0) {
+            statusEl.innerHTML = `<i class="bi bi-info-circle text-info"></i> Click on the image to add zone points`;
+        } else if (zonePoints.length < 3) {
             statusEl.innerHTML = `<i class="bi bi-exclamation-triangle text-warning"></i> Need at least 3 points (have ${zonePoints.length})`;
         } else {
             statusEl.innerHTML = `<i class="bi bi-check-circle text-success"></i> Valid zone with ${zonePoints.length} points - Ready to save`;
         }
     }
 
+    function updateModeIndicator() {
+        const indicator = document.getElementById('zoneModeIndicator');
+        const modeText = document.getElementById('zoneModeText');
+        const captureBtn = document.getElementById('zoneCaptureBtn');
+        const streamBtn = document.getElementById('zoneStreamBtn');
+        
+        if (zoneMode === 'capture') {
+            indicator.className = 'zone-mode-indicator captured';
+            indicator.innerHTML = '<i class="bi bi-camera"></i> <span>Captured Frame (Precise Mode)</span>';
+            captureBtn.className = 'btn btn-info btn-sm';
+            streamBtn.className = 'btn btn-outline-success btn-sm';
+        } else {
+            indicator.className = 'zone-mode-indicator streaming';
+            indicator.innerHTML = '<i class="bi bi-broadcast"></i> <span>Live Streaming</span>';
+            captureBtn.className = 'btn btn-outline-info btn-sm';
+            streamBtn.className = 'btn btn-success btn-sm';
+        }
+    }
+
     function drawZonePoints() {
         zoneCtx.clearRect(0, 0, zoneCanvas.width, zoneCanvas.height);
+        
+        // Draw grid if snap is enabled
+        if (zoneSnapToGrid) {
+            zoneCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+            zoneCtx.lineWidth = 0.5;
+            for (let x = 0; x < DISPLAY_WIDTH; x += 10) {
+                zoneCtx.beginPath();
+                zoneCtx.moveTo(x, 0);
+                zoneCtx.lineTo(x, DISPLAY_HEIGHT);
+                zoneCtx.stroke();
+            }
+            for (let y = 0; y < DISPLAY_HEIGHT; y += 10) {
+                zoneCtx.beginPath();
+                zoneCtx.moveTo(0, y);
+                zoneCtx.lineTo(DISPLAY_WIDTH, y);
+                zoneCtx.stroke();
+            }
+        }
         
         // Convert actual points to display for drawing
         const displayPoints = zonePoints.map(pt => actualToDisplay(pt[0], pt[1]));
@@ -744,11 +810,11 @@
                 zoneCtx.lineTo(displayPoints[i][0], displayPoints[i][1]);
             }
             zoneCtx.closePath();
-            zoneCtx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+            zoneCtx.fillStyle = 'rgba(0, 255, 255, 0.2)';
             zoneCtx.fill();
         }
         
-        // Draw polygon outline (like cv2.polylines)
+        // Draw polygon outline
         if (displayPoints.length > 1) {
             zoneCtx.beginPath();
             zoneCtx.moveTo(displayPoints[0][0], displayPoints[0][1]);
@@ -758,31 +824,48 @@
             if (displayPoints.length > 2) {
                 zoneCtx.closePath();
             }
-            zoneCtx.strokeStyle = "#00ff00";  // Green like zone_selector.py
+            zoneCtx.strokeStyle = "#0ff";
             zoneCtx.lineWidth = 2;
             zoneCtx.stroke();
         }
         
-        // Draw points with numbers (like cv2.circle)
-        displayPoints.forEach((pt, idx) => {
-            // Red filled circle
+        // Draw closing line preview (dashed)
+        if (displayPoints.length > 2) {
+            zoneCtx.setLineDash([5, 5]);
+            zoneCtx.strokeStyle = "rgba(0, 255, 255, 0.5)";
+            zoneCtx.lineWidth = 1;
             zoneCtx.beginPath();
-            zoneCtx.arc(pt[0], pt[1], 5, 0, 2 * Math.PI);
-            zoneCtx.fillStyle = "#ff0000";  // Red like zone_selector.py
+            const last = displayPoints[displayPoints.length - 1];
+            const first = displayPoints[0];
+            zoneCtx.moveTo(last[0], last[1]);
+            zoneCtx.lineTo(first[0], first[1]);
+            zoneCtx.stroke();
+            zoneCtx.setLineDash([]);
+        }
+        
+        // Draw points with numbers (like zone_selector.py)
+        displayPoints.forEach((pt, idx) => {
+            // Outer circle
+            zoneCtx.beginPath();
+            zoneCtx.arc(pt[0], pt[1], 10, 0, 2 * Math.PI);
+            zoneCtx.fillStyle = "#ff9800";
             zoneCtx.fill();
+            zoneCtx.strokeStyle = "#fff";
+            zoneCtx.lineWidth = 2;
+            zoneCtx.stroke();
             
-            // Point number label
-            zoneCtx.fillStyle = "#fff";
-            zoneCtx.font = "bold 12px Arial";
-            zoneCtx.textAlign = "left";
-            zoneCtx.textBaseline = "bottom";
-            zoneCtx.fillText((idx + 1).toString(), pt[0] + 8, pt[1] - 2);
+            // Point number
+            zoneCtx.fillStyle = "#000";
+            zoneCtx.font = "bold 11px Arial";
+            zoneCtx.textAlign = "center";
+            zoneCtx.textBaseline = "middle";
+            zoneCtx.fillText((idx + 1).toString(), pt[0], pt[1]);
         });
         
         updateZoneStatus();
     }
 
-    function updateMagnifier(e, imgElement) {
+    function updateMagnifier(e, sourceImage) {
         if (!zoneMagnifierEnabled) return;
         
         const magnifier = document.getElementById('zoneMagnifier');
@@ -794,7 +877,7 @@
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        // Position magnifier
+        // Position magnifier (avoid edges)
         let magX = x + 25;
         let magY = y - 75;
         
@@ -806,166 +889,188 @@
         magnifier.style.top = magY + 'px';
         magnifier.style.display = 'block';
         
-        // Draw magnified area (3x zoom)
+        // Draw magnified area (3x zoom like zone_selector.py)
         const zoom = 3;
         const sourceSize = 50;
         
-        magCtx.clearRect(0, 0, 300, 300);
-        magCtx.imageSmoothingEnabled = false;  // Crisp pixels
+        magCtx.fillStyle = '#000';
+        magCtx.fillRect(0, 0, 300, 300);
         
-        // Use frozen image if available, else live
-        const sourceImg = frozenImageData || imgElement;
-        magCtx.drawImage(
-            sourceImg,
-            (x - sourceSize/2) * SCALE_FACTOR, (y - sourceSize/2) * SCALE_FACTOR, 
-            sourceSize * SCALE_FACTOR, sourceSize * SCALE_FACTOR,
-            0, 0, 300, 300
-        );
+        if (sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
+            // Scale source coordinates for the actual image
+            const srcX = (x / DISPLAY_WIDTH) * sourceImage.naturalWidth;
+            const srcY = (y / DISPLAY_HEIGHT) * sourceImage.naturalHeight;
+            const srcSize = (sourceSize / DISPLAY_WIDTH) * sourceImage.naturalWidth;
+            
+            magCtx.drawImage(
+                sourceImage,
+                srcX - srcSize / 2, srcY - srcSize / 2, srcSize, srcSize,
+                0, 0, 300, 300
+            );
+        }
         
         // Draw crosshair
         magCtx.strokeStyle = '#ff0000';
         magCtx.lineWidth = 1;
         magCtx.beginPath();
-        magCtx.moveTo(150, 0); magCtx.lineTo(150, 300);
-        magCtx.moveTo(0, 150); magCtx.lineTo(300, 150);
+        magCtx.moveTo(150, 0);
+        magCtx.lineTo(150, 300);
+        magCtx.moveTo(0, 150);
+        magCtx.lineTo(300, 150);
         magCtx.stroke();
         
-        // Center point
+        // Draw center circle
         magCtx.beginPath();
-        magCtx.arc(150, 150, 4, 0, 2 * Math.PI);
+        magCtx.arc(150, 150, 8, 0, 2 * Math.PI);
         magCtx.strokeStyle = '#0ff';
         magCtx.lineWidth = 2;
         magCtx.stroke();
+        
+        // Draw coordinate text in magnifier
+        const [actualX, actualY] = displayToActual(x, y);
+        magCtx.fillStyle = '#0ff';
+        magCtx.font = '12px monospace';
+        magCtx.textAlign = 'center';
+        magCtx.fillText(`(${actualX}, ${actualY})`, 150, 290);
     }
 
-    function toggleFreeze() {
-        zoneFrozen = !zoneFrozen;
-        const btn = document.getElementById('zoneFreezeBtn');
-        const indicator = document.getElementById('frozenIndicator');
+    async function captureFrame(camName) {
+        const loadingEl = document.getElementById('captureLoading');
+        const containerEl = document.getElementById('zoneCanvasContainer');
         
-        if (zoneFrozen) {
-            // Freeze: capture current frame
-            if (zoneImgRefreshInterval) {
-                clearInterval(zoneImgRefreshInterval);
-                zoneImgRefreshInterval = null;
+        loadingEl.style.display = 'flex';
+        containerEl.style.opacity = '0.5';
+        
+        try {
+            const response = await fetch(`/api/capture_frame/${camName}`);
+            const data = await response.json();
+            
+            if (data.success && data.image) {
+                // Stop live stream
+                if (zoneImgRefreshInterval) {
+                    clearInterval(zoneImgRefreshInterval);
+                    zoneImgRefreshInterval = null;
+                }
+                
+                // Set captured image
+                zoneLiveImg.src = 'data:image/jpeg;base64,' + data.image;
+                capturedImageData = data.image;
+                zoneMode = 'capture';
+                updateModeIndicator();
+                
+                console.log(`Captured frame: ${data.width}x${data.height}`);
+            } else {
+                throw new Error(data.error || 'Failed to capture frame');
             }
-            frozenImageData = zoneLiveImg;
-            btn.innerHTML = '<i class="bi bi-play-fill"></i> Resume';
-            btn.classList.remove('btn-info');
-            btn.classList.add('btn-success');
-            indicator.style.display = 'block';
-        } else {
-            // Unfreeze: resume live feed
-            frozenImageData = null;
-            startLiveFeed();
-            btn.innerHTML = '<i class="bi bi-pause-fill"></i> Freeze Frame';
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-info');
-            indicator.style.display = 'none';
+        } catch (err) {
+            console.error('Capture frame error:', err);
+            alert('Failed to capture frame: ' + err.message + '\nFalling back to live stream.');
+            startLiveStream(camName);
+        } finally {
+            loadingEl.style.display = 'none';
+            containerEl.style.opacity = '1';
         }
     }
 
-    function startLiveFeed() {
-        const streamUrl = piPublicUrl
-            ? (zoneCamName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
-            : (zoneCamName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
+    function startLiveStream(camName) {
+        // Stop any existing interval
+        if (zoneImgRefreshInterval) {
+            clearInterval(zoneImgRefreshInterval);
+        }
+        
+        let streamUrl = piPublicUrl
+            ? (camName === "Camera_1" ? piPublicUrl + "/video_feed_c1" : piPublicUrl + "/video_feed_c2")
+            : (camName === "Camera_1" ? "/video_feed_c1" : "/video_feed_c2");
         
         zoneLiveImg.src = streamUrl + "?t=" + Date.now();
         
-        if (zoneImgRefreshInterval) clearInterval(zoneImgRefreshInterval);
         zoneImgRefreshInterval = setInterval(() => {
-            if (!zoneFrozen) {
-                zoneLiveImg.src = streamUrl + "?t=" + Date.now();
-            }
-        }, 200);
+            zoneLiveImg.src = streamUrl + "?t=" + Date.now();
+        }, 300);
+        
+        zoneMode = 'stream';
+        capturedImageData = null;
+        updateModeIndicator();
     }
 
-    async function openZoneSelector(camName) {
+    function openZoneSelector(camName) {
         zonePoints = [];
         zoneCamName = camName;
-        zoneFrozen = false;
-        frozenImageData = null;
-        
         zoneCanvas = document.getElementById('zoneCanvas');
         zoneCtx = zoneCanvas.getContext('2d');
         zoneLiveImg = document.getElementById('zoneLiveImg');
         
         document.getElementById('zoneModalCamName').textContent = camName;
-        document.getElementById('frozenIndicator').style.display = 'none';
-        document.getElementById('zoneFreezeBtn').innerHTML = '<i class="bi bi-pause-fill"></i> Freeze Frame';
-        document.getElementById('zoneFreezeBtn').classList.remove('btn-success');
-        document.getElementById('zoneFreezeBtn').classList.add('btn-info');
         
-        // Fetch actual frame dimensions
-        const frameInfo = await fetchFrameInfo(camName);
-        ACTUAL_WIDTH = frameInfo.width;
-        ACTUAL_HEIGHT = frameInfo.height;
-        
-        // Calculate display size (max 800x500 to fit modal)
-        const displaySize = calculateDisplaySize(ACTUAL_WIDTH, ACTUAL_HEIGHT, 800, 500);
-        DISPLAY_WIDTH = displaySize.width;
-        DISPLAY_HEIGHT = displaySize.height;
-        SCALE_FACTOR = displaySize.scale;
-        
-        // Update display info
-        document.getElementById('frameResDisplay').textContent = `${ACTUAL_WIDTH}×${ACTUAL_HEIGHT}`;
-        document.getElementById('displayResDisplay').textContent = `${DISPLAY_WIDTH}×${DISPLAY_HEIGHT}`;
-        document.getElementById('scaleDisplay').textContent = SCALE_FACTOR === 1 ? '1:1' : `${SCALE_FACTOR.toFixed(2)}:1`;
-        
-        // Set container and canvas sizes
+        // Set container size
         const container = document.getElementById('zoneCanvasContainer');
         container.style.width = DISPLAY_WIDTH + 'px';
         container.style.height = DISPLAY_HEIGHT + 'px';
-        
-        zoneLiveImg.width = DISPLAY_WIDTH;
-        zoneLiveImg.height = DISPLAY_HEIGHT;
-        zoneCanvas.width = DISPLAY_WIDTH;
-        zoneCanvas.height = DISPLAY_HEIGHT;
         
         // Load existing zone if available
         if (currentSettings.PARKING_ZONES && currentSettings.PARKING_ZONES[camName]) {
             zonePoints = JSON.parse(JSON.stringify(currentSettings.PARKING_ZONES[camName]));
         }
         
-        // Start live feed
-        startLiveFeed();
+        // Start with live stream, user can switch to capture mode
+        startLiveStream(camName);
 
-        // Mouse click handler
+        // Mouse click handler (like zone_selector.py)
         zoneCanvas.onmousedown = function(e) {
             if (e.button === 2) {
-                zonePoints.pop();
-                updatePointList();
-                drawZonePoints();
+                // Right click - undo (like zone_selector.py 'u' key)
+                if (zonePoints.length > 0) {
+                    zonePoints.pop();
+                    updatePointList();
+                    drawZonePoints();
+                    console.log(`Point removed. Total: ${zonePoints.length}`);
+                }
                 return false;
             }
             
+            if (zonePoints.length >= MAX_POINTS) {
+                alert(`Maximum ${MAX_POINTS} points allowed.`);
+                return;
+            }
+            
             const rect = zoneCanvas.getBoundingClientRect();
-            const displayX = e.clientX - rect.left;
-            const displayY = e.clientY - rect.top;
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
             
-            // Clamp to bounds
-            const clampedX = Math.max(0, Math.min(displayX, DISPLAY_WIDTH - 1));
-            const clampedY = Math.max(0, Math.min(displayY, DISPLAY_HEIGHT - 1));
+            // Snap to grid if enabled
+            if (zoneSnapToGrid) {
+                x = snapToGrid(x, 10);
+                y = snapToGrid(y, 10);
+            }
             
-            // Convert to actual frame coordinates
-            const [actualX, actualY] = displayToActual(clampedX, clampedY);
+            // Clamp to canvas bounds
+            x = Math.max(0, Math.min(x, DISPLAY_WIDTH - 1));
+            y = Math.max(0, Math.min(y, DISPLAY_HEIGHT - 1));
+            
+            // Convert to actual coordinates (like zone_selector.py)
+            const [actualX, actualY] = displayToActual(x, y);
             
             zonePoints.push([actualX, actualY]);
+            console.log(`Point added: (${actualX}, ${actualY}). Total: ${zonePoints.length}`);
             updatePointList();
             drawZonePoints();
-            
-            console.log(`Point added: display(${Math.round(clampedX)}, ${Math.round(clampedY)}) -> actual(${actualX}, ${actualY})`);
         };
         
-        // Mouse move handler
+        // Mouse move handler for coordinate display and magnifier
         zoneCanvas.onmousemove = function(e) {
             const rect = zoneCanvas.getBoundingClientRect();
-            const displayX = e.clientX - rect.left;
-            const displayY = e.clientY - rect.top;
-            const [actualX, actualY] = displayToActual(displayX, displayY);
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+            
+            if (zoneSnapToGrid) {
+                x = snapToGrid(x, 10);
+                y = snapToGrid(y, 10);
+            }
+            
+            const [actualX, actualY] = displayToActual(x, y);
             
             document.getElementById('zoneCoordsDisplay').textContent = 
-                `Actual: (${actualX}, ${actualY})` + (SCALE_FACTOR !== 1 ? ` | Display: (${Math.round(displayX)}, ${Math.round(displayY)})` : '');
+                `X: ${actualX}, Y: ${actualY}`;
             
             updateMagnifier(e, zoneLiveImg);
         };
@@ -979,19 +1084,33 @@
             return false; 
         };
         
-        // Toolbar handlers
-        document.getElementById('zoneFreezeBtn').onclick = toggleFreeze;
+        // Capture button
+        document.getElementById('zoneCaptureBtn').onclick = function() {
+            captureFrame(zoneCamName);
+        };
         
+        // Stream button
+        document.getElementById('zoneStreamBtn').onclick = function() {
+            startLiveStream(zoneCamName);
+        };
+        
+        // Toolbar handlers (like zone_selector.py 'u' and 'c' keys)
         document.getElementById('zoneUndoBtn').onclick = function() {
-            zonePoints.pop();
-            updatePointList();
-            drawZonePoints();
+            if (zonePoints.length > 0) {
+                zonePoints.pop();
+                updatePointList();
+                drawZonePoints();
+                console.log(`Undo. Points remaining: ${zonePoints.length}`);
+            }
         };
         
         document.getElementById('zoneClearBtn').onclick = function() {
-            zonePoints = [];
-            updatePointList();
-            drawZonePoints();
+            if (zonePoints.length > 0 && confirm('Clear all points?')) {
+                zonePoints = [];
+                updatePointList();
+                drawZonePoints();
+                console.log('All points cleared');
+            }
         };
         
         document.getElementById('zoneMagnifierToggle').onchange = function() {
@@ -1001,5 +1120,114 @@
             }
         };
         
+        document.getElementById('zoneSnapGrid').onchange = function() {
+            zoneSnapToGrid = this.checked;
+            drawZonePoints();
+        };
+        
         document.getElementById('zoneSaveBtn').onclick = async function() {
-            if
+            if (zonePoints.length < 3) {
+                alert("Please select at least 3 points to define a zone.");
+                return;
+            }
+            
+            updateZoneDisplay(zonePoints);
+            lastZone = zonePoints;
+            
+            // Log the zone data like zone_selector.py does
+            console.log('Saving zone:', JSON.stringify(zonePoints));
+            
+            try {
+                const resp = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ PARKING_ZONES: { [zoneCamName]: zonePoints } })
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Zone saved for ' + zoneCamName + '!</div>';
+                    loadSettings();
+                } else {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="alert alert-danger">Failed to save zone.<br>' + (result.error || '') + '</div>';
+                }
+            } catch (err) {
+                document.getElementById('status').innerHTML = 
+                    '<div class="alert alert-danger">Failed to save zone.<br>' + (err.message || err) + '</div>';
+            }
+            
+            zoneModal.hide();
+            if (zoneImgRefreshInterval) {
+                clearInterval(zoneImgRefreshInterval);
+                zoneImgRefreshInterval = null;
+            }
+        };
+        
+        // Keyboard shortcuts (like zone_selector.py)
+        zoneCanvas.tabIndex = 0;
+        zoneCanvas.onkeydown = function(e) {
+            if (e.key === 'u' || e.key === 'U') {
+                // Undo - like zone_selector.py
+                if (zonePoints.length > 0) {
+                    zonePoints.pop();
+                    updatePointList();
+                    drawZonePoints();
+                }
+                e.preventDefault();
+            } else if (e.key === 'c' || e.key === 'C') {
+                // Clear - like zone_selector.py
+                if (zonePoints.length > 0) {
+                    zonePoints = [];
+                    updatePointList();
+                    drawZonePoints();
+                }
+                e.preventDefault();
+            } else if (e.key === 'Enter') {
+                // Save - like zone_selector.py 'q' to quit and save
+                document.getElementById('zoneSaveBtn').click();
+                e.preventDefault();
+            } else if (e.key === 'Escape') {
+                zoneModal.hide();
+                e.preventDefault();
+            }
+        };
+        
+        zoneLiveImg.onload = function() {
+            updatePointList();
+            drawZonePoints();
+        };
+        
+        if (!zoneModal) {
+            zoneModal = new bootstrap.Modal(document.getElementById('zoneSelectorModal'), {});
+            
+            // Cleanup on modal close
+            document.getElementById('zoneSelectorModal').addEventListener('hidden.bs.modal', function() {
+                if (zoneImgRefreshInterval) {
+                    clearInterval(zoneImgRefreshInterval);
+                    zoneImgRefreshInterval = null;
+                }
+                zoneMode = 'stream';
+                capturedImageData = null;
+            });
+        }
+        
+        zoneModal.show();
+        
+        // Focus canvas for keyboard shortcuts
+        setTimeout(() => {
+            zoneCanvas.focus();
+            updateModeIndicator();
+        }, 300);
+    }
+
+    // Make removeZonePoint available globally
+    window.removeZonePoint = removeZonePoint;
+
+    document.getElementById('selectZoneBtn').addEventListener('click', function() {
+        const cam = document.getElementById('cameraSelect').value;
+        openZoneSelector(cam);
+    });
+</script>
+</body>
+</html>

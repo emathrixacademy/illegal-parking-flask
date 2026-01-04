@@ -37,6 +37,10 @@ logger = logging.getLogger("PiCameraServer")
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
+# Constants for resolution (add near top of file after imports)
+ACTUAL_WIDTH = 1280
+ACTUAL_HEIGHT = 720
+
 # --------------------------------------------------
 # Sync settings from Railway database
 # --------------------------------------------------
@@ -564,44 +568,32 @@ def api_list_images():
                 image_files.append(rel_path.replace("\\", "/"))
     return jsonify(sorted(image_files, reverse=True))
 
-@app.route('/api/snapshot/<cam_name>')
-def api_snapshot(cam_name):
-    """
-    Return a single JPEG frame from the specified camera with actual resolution info.
-    Usage: /api/snapshot/Camera_1 or /api/snapshot/Camera_2
-    """
-    stream = c1 if cam_name == "Camera_1" else c2 if cam_name == "Camera_2" else None
-    if stream is None:
-        return jsonify({"success": False, "error": "Invalid camera"}), 400
-    
-    frame = stream.get_frame()
-    if frame is None:
-        return jsonify({"success": False, "error": "No frame available"}), 503
-    
-    # Return actual frame dimensions in headers
-    h, w = frame.shape[:2]
-    _, buf = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-    response = Response(buf.tobytes(), mimetype="image/jpeg")
-    response.headers['X-Frame-Width'] = str(w)
-    response.headers['X-Frame-Height'] = str(h)
-    response.headers['Access-Control-Expose-Headers'] = 'X-Frame-Width, X-Frame-Height'
-    return response
-
-@app.route('/api/frame_info/<cam_name>')
-def api_frame_info(cam_name):
-    """
-    Return the actual frame dimensions for a camera.
-    """
-    stream = c1 if cam_name == "Camera_1" else c2 if cam_name == "Camera_2" else None
-    if stream is None:
-        return jsonify({"success": False, "error": "Invalid camera"}), 400
-    
-    frame = stream.get_frame()
-    if frame is None:
-        return jsonify({"success": False, "error": "No frame available", "width": 1280, "height": 720})
-    
-    h, w = frame.shape[:2]
-    return jsonify({"success": True, "width": w, "height": h})
+@app.route('/api/capture_frame/<camera>')
+def capture_frame(camera):
+    """Capture a single frame from the specified camera for zone selection."""
+    try:
+        stream = c1 if camera == "Camera_1" else c2
+        frame = stream.get_frame()
+        if frame is None:
+            return jsonify({"success": False, "error": "No frame available"}), 500
+        
+        # Resize to actual camera resolution (1280x720)
+        frame = cv2.resize(frame, (ACTUAL_WIDTH, ACTUAL_HEIGHT))
+        
+        # Encode as JPEG with high quality for accurate selection
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 95]
+        _, buf = cv2.imencode('.jpg', frame, encode_param)
+        img_b64 = base64.b64encode(buf).decode('utf-8')
+        
+        return jsonify({
+            "success": True,
+            "image": img_b64,
+            "width": ACTUAL_WIDTH,
+            "height": ACTUAL_HEIGHT
+        })
+    except Exception as e:
+        logger.error(f"Capture frame error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
