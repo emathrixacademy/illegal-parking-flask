@@ -1023,9 +1023,30 @@
     // Make removeZonePoint available globally
     window.removeZonePoint = removeZonePoint;
 
-    document.getElementById('selectZoneBtn').addEventListener('click', function() {
+    // When clicking "Select Zone Area" run zone_selector.py on the Pi (via proxy) and update zone
+    document.getElementById('selectZoneBtn').addEventListener('click', async function() {
         const cam = document.getElementById('cameraSelect').value;
-        openZoneSelector(cam);
+        const status = document.getElementById('status');
+        status.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Launching zone selector on Raspberry Pi... Complete selection on the Pi and then close the window.</div>';
+        try {
+            const resp = await fetch('/api/run_zone_selector', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ camera: cam })
+            });
+            const result = await resp.json();
+            if (result.success && Array.isArray(result.zone) && result.zone.length >= 3) {
+                updateZoneDisplay(result.zone);
+                lastZone = result.zone;
+                status.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Zone updated from Pi.</div>';
+                // refresh local settings view
+                loadSettings();
+            } else {
+                status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Failed to get zone from Pi. ' + (result.error || '') + '</div>';
+            }
+        } catch (err) {
+            status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error launching selector: ' + (err.message || err) + '</div>';
+        }
     });
 </script>
 </body>

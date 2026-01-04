@@ -15,6 +15,7 @@ from app_detect import detect
 import signal
 from cloudlink import start_cloudflared
 from db import insert_violation_event  # (You can remove this import if not used elsewhere)
+import sys
 
 app = Flask(__name__)
 
@@ -593,6 +594,60 @@ def capture_frame(camera):
         })
     except Exception as e:
         logger.error(f"Capture frame error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/run_zone_selector', methods=['POST'])
+def api_run_zone_selector():
+    """
+    Run zone_selector.py on the Pi as an interactive subprocess.
+    Expects JSON: { "camera": "Camera_1" | "Camera_2" | "1" | "2" }
+    Returns JSON: { success: bool, zone: [[x,y], ...], stdout: "...", stderr: "..." }
+    """
+    try:
+        data = request.get_json(force=True)
+        cam = data.get("camera")
+        if cam in ("Camera_1", "1"):
+            arg = "1"
+        elif cam in ("Camera_2", "2"):
+            arg = "2"
+        else:
+            return jsonify({"success": False, "error": "Invalid camera"}), 400
+
+        script = os.path.join(os.path.dirname(__file__), "zone_selector.py")
+        # Run script interactively on the Pi; user must interact with OpenCV window on the Pi host.
+        proc = subprocess.run([sys.executable, script, arg], capture_output=True, text=True, timeout=300)
+        out = proc.stdout or ""
+        err = proc.stderr or ""
+
+        # Try to extract the last JSON array/object printed by the script
+        import re as _re, ast as _ast
+        json_match = None
+        # find last [...] or {...}
+        arrs = _re.findall(r'(\[.*\]|\{.*\})', out, flags=_re.S)
+        if arrs:
+            json_text = arrs[-1]
+            try:
+                parsed = _ast.literal_eval(json_text)
+            except Exception:
+                parsed = None
+        else:
+            parsed = None
+
+        # Reload local config and update monitor zones if running
+        try:
+            import importlib
+            import config as cfg_mod
+            importlib.reload(cfg_mod)
+            if 'monitor' in globals() and hasattr(monitor, 'zones'):
+                monitor.zones = {cam_k: np.array(points) for cam_k, points in getattr(cfg_mod, "PARKING_ZONES", {}).items()}
+        except Exception as e:
+            logger.warning(f"Could not reload config after zone selector: {e}")
+
+        return jsonify({"success": True, "zone": parsed, "stdout": out, "stderr": err})
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "Zone selector timed out"}), 500
+    except Exception as e:
+        logger.error(f"run_zone_selector error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
