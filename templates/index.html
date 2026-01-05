@@ -693,6 +693,18 @@
                 <div>
                     <div class="analytics-grid">
                         <div class="analytics-box">
+                    <div class="basic-stats" style="margin-top:0.75rem;">
+                        <div style="color:var(--accent); font-weight:700; margin-bottom:0.5rem;">BASIC VIOLATION STATISTICS</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; color:#bfc7d5;">
+                            <div><small>Total Violations</small><div id="stat-total-violations" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Active Cameras</small><div id="stat-active-cameras" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Affected Barangays</small><div id="stat-affected-barangays" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Enforced Count</small><div id="stat-enforced-count" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Avg Confidence</small><div id="stat-avg-confidence" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
+                            <div><small>Avg Duration (min)</small><div id="stat-avg-duration" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
+                            <div style="grid-column:1 / -1;"><small>Total Fines Collected</small><div id="stat-total-fines" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
+                        </div>
+                    </div>
                             <div class="box-header"><span class="color-dot dot-blue"></span> CARS</div>
                             <div id="count-CAR" class="box-count">0</div>
                         </div>
@@ -1026,6 +1038,19 @@ function fetchAnalyticsAjax(){
         }
     };
     xhr.send();
+    // Fetch basic violation statistics and update the left panel
+    fetch('/api/violation_stats')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('stat-total-violations').textContent = data.total_violations || 0;
+            document.getElementById('stat-active-cameras').textContent = data.active_cameras || 0;
+            document.getElementById('stat-affected-barangays').textContent = data.affected_barangays || 0;
+            document.getElementById('stat-avg-confidence').textContent = (data.avg_confidence || 0).toFixed(2);
+            document.getElementById('stat-avg-duration').textContent = (data.avg_duration_minutes || 0).toFixed(2);
+            document.getElementById('stat-enforced-count').textContent = data.enforced_count || 0;
+            document.getElementById('stat-total-fines').textContent = (data.total_fines_collected || 0).toFixed(2);
+        })
+        .catch(() => {});
 }
 
 // Replace fetchAnalytics polling with AJAX version

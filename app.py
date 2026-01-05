@@ -531,6 +531,64 @@ def api_violation_counts():
         logger.error(f"Failed to query violation counts: {e}")
         return jsonify({"CAR":0, "MOTORCYCLE":0, "TRUCK":0, "BUS":0})
 
+
+@app.route('/api/violation_stats', methods=['GET'])
+def api_violation_stats():
+    """
+    Return basic violation statistics from the local PostgreSQL `violations` table.
+    """
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                COUNT(*) AS total_violations,
+                COUNT(DISTINCT camera) AS active_cameras,
+                COUNT(DISTINCT barangay) AS affected_barangays,
+                AVG(confidence_score) AS avg_confidence,
+                AVG(duration_minutes) AS avg_duration_minutes,
+                SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count,
+                SUM(COALESCE(fine_amount,0.0)) AS total_fines_collected
+            FROM violations;
+        """)
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not row:
+            return jsonify({
+                "total_violations": 0,
+                "active_cameras": 0,
+                "affected_barangays": 0,
+                "avg_confidence": 0.0,
+                "avg_duration_minutes": 0.0,
+                "enforced_count": 0,
+                "total_fines_collected": 0.0
+            })
+
+        total_violations, active_cameras, affected_barangays, avg_confidence, avg_duration_minutes, enforced_count, total_fines_collected = row
+
+        return jsonify({
+            "total_violations": int(total_violations or 0),
+            "active_cameras": int(active_cameras or 0),
+            "affected_barangays": int(affected_barangays or 0),
+            "avg_confidence": float(avg_confidence or 0.0),
+            "avg_duration_minutes": float(avg_duration_minutes or 0.0),
+            "enforced_count": int(enforced_count or 0),
+            "total_fines_collected": float(total_fines_collected or 0.0)
+        })
+    except Exception as e:
+        logger.error(f"Failed to query violation stats: {e}")
+        return jsonify({
+            "total_violations": 0,
+            "active_cameras": 0,
+            "affected_barangays": 0,
+            "avg_confidence": 0.0,
+            "avg_duration_minutes": 0.0,
+            "enforced_count": 0,
+            "total_fines_collected": 0.0
+        })
+
 # Optional: Serve static files directly (for debugging or fallback)
 @app.route('/static/<path:filename>')
 def static_files(filename):
