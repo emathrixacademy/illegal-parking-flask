@@ -352,12 +352,32 @@ class ParkingMonitor:
                         try:
                             _, buf = cv2.imencode('.jpg', frame)
                             img_b64 = base64.b64encode(buf).decode('utf-8')
+                            # compute duration across cameras for the same tracker id (in minutes)
+                            start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
+                            if start_times:
+                                min_start = min(start_times)
+                                duration_minutes = round((now - min_start) / 60.0, 2)
+                            else:
+                                duration_minutes = round(dur / 60.0, 2)
+
+                            # determine fine amount based on vehicle label
+                            fine_map = {
+                                'CAR': 100,
+                                'MOTORCYCLE': 50,
+                                'TRUCK': 200,
+                                'BUS': 250
+                            }
+                            fine_amount = float(fine_map.get(label.upper(), 0))
+
                             payload = {
                                 "camera_id": name,
                                 "tracker_id": tid,
                                 "label": label,
                                 "timestamp": now_dt.isoformat(),
                                 "image": img_b64,
+                                "duration_minutes": duration_minutes,
+                                "fine_amount": fine_amount,
+                                "enforced": False,
                                 "meta": {}
                             }
                             api_url = f"{RAILWAY_API_URL}/api/upload_event"

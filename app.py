@@ -178,7 +178,9 @@ def ensure_violations_table():
                 tracker_id INTEGER,
                 label VARCHAR(32),
                 timestamp TIMESTAMP,
-                image_path TEXT
+                image_path TEXT,
+                confidence_score REAL DEFAULT 0.0,
+                barangay TEXT DEFAULT 'Bgry. Kanluran'
             );
         """)
         conn.commit()
@@ -316,10 +318,23 @@ def upload_event():
         try:
             conn = psycopg2.connect(POSTGRES_URL)
             cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO violations (camera, tracker_id, label, timestamp, image_path)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (camera_id, tracker_id, label, timestamp, img_path))
+            # include optional fields if provided by the Pi
+            confidence_score = data.get('confidence_score', 0.0)
+            duration_minutes = data.get('duration_minutes', 0.0)
+            fine_amount = data.get('fine_amount', 0.0)
+            barangay = data.get('barangay', None)
+            enforced = data.get('enforced', False)
+
+            if barangay is not None:
+                cur.execute("""
+                    INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (camera_id, tracker_id, label, timestamp, img_path, confidence_score, duration_minutes, fine_amount, barangay, enforced))
+            else:
+                cur.execute("""
+                    INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, enforced)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (camera_id, tracker_id, label, timestamp, img_path, confidence_score, duration_minutes, fine_amount, enforced))
             conn.commit()
             cur.close()
             conn.close()

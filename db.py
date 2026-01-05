@@ -51,7 +51,12 @@ def ensure_tables():
                     tracker_id INTEGER,
                     label VARCHAR(32),
                     timestamp TIMESTAMP,
-                    image_path TEXT
+                    image_path TEXT,
+                    confidence_score REAL DEFAULT 0.0,
+                    duration_minutes REAL DEFAULT 0.0,
+                    fine_amount REAL DEFAULT 0.0,
+                    barangay TEXT DEFAULT 'Bgry. Kanluran',
+                    enforced BOOLEAN DEFAULT FALSE
                 );
             """)
             logger.info("Created 'violations' table.")
@@ -75,6 +80,49 @@ def ensure_tables():
                 logger.info("Added 'updated_at' column to config table.")
             except Exception as e:
                 logger.warning(f"Could not add updated_at column: {e}")
+
+        # Check and add confidence_score, duration_minutes and barangay columns to violations if they don't exist
+        if table_exists(cur, 'violations'):
+            if not column_exists(cur, 'violations', 'confidence_score'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN confidence_score REAL DEFAULT 0.0;
+                    """)
+                    logger.info("Added 'confidence_score' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add confidence_score column to violations: {e}")
+            if not column_exists(cur, 'violations', 'duration_minutes'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN duration_minutes REAL DEFAULT 0.0;
+                    """)
+                    logger.info("Added 'duration_minutes' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add duration_minutes column to violations: {e}")
+            if not column_exists(cur, 'violations', 'fine_amount'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN fine_amount REAL DEFAULT 0.0;
+                    """)
+                    logger.info("Added 'fine_amount' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add fine_amount column to violations: {e}")
+            if not column_exists(cur, 'violations', 'enforced'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN enforced BOOLEAN DEFAULT FALSE;
+                    """)
+                    logger.info("Added 'enforced' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add enforced column to violations: {e}")
+            if not column_exists(cur, 'violations', 'barangay'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN barangay TEXT DEFAULT 'Bgry. Kanluran';
+                    """)
+                    logger.info("Added 'barangay' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add barangay column to violations: {e}")
         
         conn.commit()
         cur.close()
@@ -83,7 +131,7 @@ def ensure_tables():
     except Exception as e:
         logger.error(f"Failed to ensure tables: {e}")
 
-def insert_violation_event(camera, tracker_id, label, timestamp, image_path):
+def insert_violation_event(camera, tracker_id, label, timestamp, image_path, confidence_score=0.0, duration_minutes=0.0, fine_amount=0.0, barangay='Bgry. Kanluran', enforced=False):
     if not POSTGRES_URL:
         logging.warning("POSTGRES_URL not set, skipping DB insert.")
         return
@@ -91,9 +139,9 @@ def insert_violation_event(camera, tracker_id, label, timestamp, image_path):
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO violations (camera, tracker_id, label, timestamp, image_path)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (camera, tracker_id, label, timestamp, image_path))
+            INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced))
         conn.commit()
         cur.close()
         conn.close()
