@@ -691,42 +691,36 @@
             <h2><i class="bi bi-bar-chart-fill"></i> Analytics</h2>
             <div class="analytics-panel">
                 <div>
-                    <div style="display:flex; gap:1rem; align-items:flex-start;">
-                        <div class="analytics-grid" style="flex:1; min-width:260px;">
-                            <div class="analytics-box">
-                                <div class="box-header"><span class="color-dot dot-blue"></span> CARS</div>
-                                <div id="count-CAR" class="box-count">0</div>
-                            </div>
-                            <div class="analytics-box">
-                                <div class="box-header"><span class="color-dot dot-yellow"></span> MOTORCYCLES</div>
-                                <div id="count-MOTORCYCLE" class="box-count">0</div>
-                            </div>
-                            <div class="analytics-box">
-                                <div class="box-header"><span class="color-dot dot-red"></span> TRUCKS</div>
-                                <div id="count-TRUCK" class="box-count">0</div>
-                            </div>
-                            <div class="analytics-box">
-                                <div class="box-header"><span class="color-dot dot-purple"></span> BUS</div>
-                                <div id="count-BUS" class="box-count">0</div>
-                            </div>
-                        </div>
-
-                        <div style="width:320px;">
-                            <div class="basic-stats" style="">
-                                <div style="color:var(--accent); font-weight:700; margin-bottom:0.5rem;">BASIC VIOLATION STATISTICS</div>
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; color:#bfc7d5;">
-                                    <div><small>Total Violations</small><div id="stat-total-violations" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                                    <div><small>Active Cameras</small><div id="stat-active-cameras" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                                    <div><small>Affected Barangays</small><div id="stat-affected-barangays" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                                    <div><small>Enforced Count</small><div id="stat-enforced-count" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                                    <div><small>Avg Confidence</small><div id="stat-avg-confidence" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
-                                    <div><small>Avg Duration (min)</small><div id="stat-avg-duration" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
-                                    <div style="grid-column:1 / -1;"><small>Total Fines Collected</small><div id="stat-total-fines" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
-                                </div>
-                            </div>
+                    <div class="analytics-grid">
+                        <div class="analytics-box">
+                    <div class="basic-stats" style="margin-top:0.75rem;">
+                        <div style="color:var(--accent); font-weight:700; margin-bottom:0.5rem;">BASIC VIOLATION STATISTICS</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; color:#bfc7d5;">
+                            <div><small>Total Violations</small><div id="stat-total-violations" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Active Cameras</small><div id="stat-active-cameras" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Affected Barangays</small><div id="stat-affected-barangays" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Enforced Count</small><div id="stat-enforced-count" style="font-weight:700; font-size:1.05rem;">0</div></div>
+                            <div><small>Avg Confidence</small><div id="stat-avg-confidence" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
+                            <div><small>Avg Duration (min)</small><div id="stat-avg-duration" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
+                            <div style="grid-column:1 / -1;"><small>Total Fines Collected</small><div id="stat-total-fines" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
                         </div>
                     </div>
-
+                            <div class="box-header"><span class="color-dot dot-blue"></span> CARS</div>
+                            <div id="count-CAR" class="box-count">0</div>
+                        </div>
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-yellow"></span> MOTORCYCLES</div>
+                            <div id="count-MOTORCYCLE" class="box-count">0</div>
+                        </div>
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-red"></span> TRUCKS</div>
+                            <div id="count-TRUCK" class="box-count">0</div>
+                        </div>
+                        <div class="analytics-box">
+                            <div class="box-header"><span class="color-dot dot-purple"></span> BUS</div>
+                            <div id="count-BUS" class="box-count">0</div>
+                        </div>
+                    </div>
                     <div class="analytics-stats" style="margin-top:0.75rem;">
                         <div class="analytics-box">
                             <div class="box-header" style="color:#fff">Total Unique Violations</div>
@@ -738,9 +732,8 @@
                         </div>
                     </div>
                 </div>
-
-                <div style="flex:0 0 380px; max-width:380px; min-width:260px; display:flex; justify-content:center; align-items:flex-start;">
-                    <canvas id="analyticsChart" width="220" height="220" style="width:220px;height:220px;display:block;border-radius:50%;overflow:hidden;"></canvas>
+                <div style="flex:0 0 380px; max-width:380px; min-width:260px;">
+                    <canvas id="analyticsChart" width="380" height="280" style="width:100%;height:280px;display:block;"></canvas>
                 </div>
             </div>
         </div>
