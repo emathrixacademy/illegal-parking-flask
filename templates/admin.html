@@ -30,8 +30,12 @@
                 <th><input id="selectAll" type="checkbox"></th>
                 <th>ID</th>
                 <th>Camera</th>
+                <th>Tracker</th>
                 <th>Label</th>
                 <th>Timestamp</th>
+                <th>Confidence</th>
+                <th>Duration (min)</th>
+                <th>Fine</th>
                 <th>Image</th>
                 <th>Barangay</th>
                 <th>Enforced</th>
@@ -60,14 +64,17 @@
         const rows = await r.json();
         for(const row of rows){
           const tr = document.createElement('tr');
-          const checked = row.enforced ? 'checked' : '';
+          const disabled = row.enforced ? 'disabled' : '';
           tr.innerHTML = `
-            <td><input class="rowChk" data-id="${row.id}" type="checkbox" ${row.enforced ? 'disabled' : ''}></td>
+            <td><input class="rowChk" data-id="${row.id}" type="checkbox" ${disabled}></td>
             <td>${row.id}</td>
             <td>${row.camera || ''}</td>
-            <td>${row.tracker_id || ''}</td>
+            <td>${row.tracker_id ?? ''}</td>
             <td>${row.label || ''}</td>
             <td>${row.timestamp || ''}</td>
+            <td>${row.confidence_score !== undefined && row.confidence_score !== null ? Number(row.confidence_score).toFixed(3) : ''}</td>
+            <td>${row.duration_minutes !== undefined && row.duration_minutes !== null ? Number(row.duration_minutes).toFixed(1) : ''}</td>
+            <td>${row.fine_amount !== undefined && row.fine_amount !== null ? Number(row.fine_amount).toFixed(2) : ''}</td>
             <td>${row.image_path ? '<a target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
             <td>${row.barangay || ''}</td>
             <td>${row.enforced ? 'Yes' : 'No'}</td>
