@@ -19,29 +19,7 @@
         <h3>Admin</h3>
         <a class="btn btn-outline-light" href="/">Back</a>
       </div>
-
-      <div class="card p-3 mb-3">
-        <h5>Database Settings (read / write)</h5>
-        <p class="small-muted">These are the raw settings stored in the config table. Edit JSON then click Save.</p>
-        <div class="mb-2">
-          <textarea id="settingsJson" rows="8" class="form-control"></textarea>
-        </div>
-        <div class="d-flex gap-2">
-          <button id="saveBtn" class="btn btn-primary">Save</button>
-          <button id="reloadBtn" class="btn btn-secondary">Reload</button>
-          <div id="status" class="align-self-center text-success small"></div>
-        </div>
-      </div>
-
-      <div class="card p-3 mb-3">
-        <h5>Actions</h5>
-        <div class="mt-2 d-flex gap-2">
-          <button id="syncBtn" class="btn btn-warning">Trigger Sync (Pi server)</button>
-          <button id="clearEventsBtn" class="btn btn-danger">Clear Local Events Table</button>
-          <div id="actionMsg" class="align-self-center small-muted"></div>
-        </div>
-      </div>
-
+      
       <div class="card p-3">
         <h5>Violations</h5>
         <p class="small-muted">List of violation records from the local DB. Select rows and mark them enforced.</p>
@@ -72,34 +50,6 @@
     </div>
 
     <script>
-    // Settings functions
-    async function fetchSettings(){
-      document.getElementById('status').textContent = '';
-      try{
-        const r = await fetch('/api/db_settings');
-        const data = await r.json();
-        document.getElementById('settingsJson').value = JSON.stringify(data, null, 2);
-      }catch(e){
-        document.getElementById('settingsJson').value = '{\n  "error": "failed to fetch"\n}';
-      }
-    }
-
-    async function saveSettings(){
-      const txt = document.getElementById('settingsJson').value;
-      try{
-        const payload = JSON.parse(txt);
-        const r = await fetch('/api/db_settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        if(r.ok){
-          document.getElementById('status').textContent = 'Saved';
-          setTimeout(()=>document.getElementById('status').textContent='',1500);
-        }else{
-          document.getElementById('status').textContent = 'Save failed';
-        }
-      }catch(e){
-        document.getElementById('status').textContent = 'Invalid JSON';
-      }
-    }
-
     // Violations functions
     async function fetchViolations(){
       const tbody = document.querySelector('#violationsTable tbody');
