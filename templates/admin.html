@@ -65,6 +65,7 @@
             <td><input class="rowChk" data-id="${row.id}" type="checkbox" ${row.enforced ? 'disabled' : ''}></td>
             <td>${row.id}</td>
             <td>${row.camera || ''}</td>
+            <td>${row.tracker_id || ''}</td>
             <td>${row.label || ''}</td>
             <td>${row.timestamp || ''}</td>
             <td>${row.image_path ? '<a target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
