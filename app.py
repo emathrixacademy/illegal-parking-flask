@@ -18,6 +18,7 @@ import threading
 import time
 from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection
 from analytics import analytics_bp
+from admin_config import list_violations, mark_enforced
 
 # --------------------------------------------------
 # Logging
@@ -638,18 +639,7 @@ def api_list_images():
 def api_violations_list():
     """Return all rows from local `violations` table as JSON."""
     try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced
-            FROM violations
-            ORDER BY timestamp DESC
-        """)
-        rows = cur.fetchall()
-        cols = ['id','camera','tracker_id','label','timestamp','image_path','confidence_score','duration_minutes','fine_amount','barangay','enforced']
-        result = [dict(zip(cols, r)) for r in rows]
-        cur.close()
-        conn.close()
+        result = list_violations()
         resp = jsonify(result)
         resp.headers.update(cors_headers())
         return resp
@@ -674,14 +664,8 @@ def api_mark_enforced():
             ids = [ids]
         if not isinstance(ids, (list, tuple)) or not ids:
             return jsonify({'success': False, 'error': 'ids must be a non-empty list'}), 400
-
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE violations SET enforced = TRUE WHERE id = ANY(%s)", (ids,))
-        conn.commit()
-        cur.close()
-        conn.close()
-        resp = jsonify({'success': True, 'updated': len(ids)})
+        updated = mark_enforced(ids)
+        resp = jsonify({'success': True, 'updated': updated})
         resp.headers.update(cors_headers())
         return resp
     except Exception as e:

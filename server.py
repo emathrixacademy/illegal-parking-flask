@@ -15,6 +15,7 @@ from app_detect import detect
 import signal
 from cloudlink import start_cloudflared
 from db import insert_violation_event  # (You can remove this import if not used elsewhere)
+from admin_config import get_fine_map
 import sys
 
 app = Flask(__name__)
@@ -360,13 +361,8 @@ class ParkingMonitor:
                             else:
                                 duration_minutes = round(dur / 60.0, 2)
 
-                            # determine fine amount based on vehicle label
-                            fine_map = {
-                                'CAR': 100,
-                                'MOTORCYCLE': 50,
-                                'TRUCK': 200,
-                                'BUS': 250
-                            }
+                            # determine fine amount based on vehicle label (configurable)
+                            fine_map = get_fine_map()
                             fine_amount = float(fine_map.get(label.upper(), 0))
 
                             payload = {
