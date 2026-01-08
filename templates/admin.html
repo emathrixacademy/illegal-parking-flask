@@ -94,14 +94,6 @@
       }catch(e){ document.getElementById('violationsMsg').textContent = 'Error during request'; }
     }
 
-    document.getElementById('saveBtn').addEventListener('click', saveSettings);
-    document.getElementById('reloadBtn').addEventListener('click', fetchSettings);
-    document.getElementById('syncBtn').addEventListener('click', async ()=>{
-      try{ const r = await fetch('/api/sync_from_railway', {method:'POST'}); document.getElementById('actionMsg').textContent = r.ok ? 'Sync triggered' : 'Sync failed'; }catch(e){document.getElementById('actionMsg').textContent='Sync error';}
-    });
-    document.getElementById('clearEventsBtn').addEventListener('click', async ()=>{
-      try{ const r = await fetch('/api/clear_events', {method:'POST'}); document.getElementById('actionMsg').textContent = r.ok ? 'Cleared' : 'Clear failed'; }catch(e){document.getElementById('actionMsg').textContent='Clear error';}
-    });
     document.getElementById('enforceBtn').addEventListener('click', markSelectedEnforced);
     document.getElementById('refreshViolations').addEventListener('click', fetchViolations);
     document.getElementById('selectAll').addEventListener('change', function(){
@@ -109,7 +101,6 @@
     });
 
     // Load initial data
-    fetchSettings();
     fetchViolations();
     </script>
     </body>
