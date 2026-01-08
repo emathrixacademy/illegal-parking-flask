@@ -227,6 +227,12 @@ def index():
 def settings_page():
     return render_template('settings.html')
 
+
+@app.route('/admin')
+def admin_page():
+    """Simple admin UI page."""
+    return render_template('admin.html', public_url=PI_PUBLIC_URL or "")
+
 @app.route('/violations')
 def violations_page():
     return render_template('violations.html')

@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Illegal Parking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#121216; color:#fff; font-family:Segoe UI, Roboto, Arial; }
+    .card { background:#1f2228; border-radius:12px; }
+    textarea { font-family:monospace; color:#0f1720; }
+  </style>
+</head>
+<body>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Admin</h3>
+    <a class="btn btn-outline-light" href="/">Back</a>
+  </div>
+
+  <div class="card p-3 mb-3">
+    <h5>Database Settings (read / write)</h5>
+    <p class="small text-muted">These are the raw settings stored in the `config` table. Edit JSON then click Save.</p>
+    <div class="mb-2">
+      <textarea id="settingsJson" rows="12" class="form-control"></textarea>
+    </div>
+    <div class="d-flex gap-2">
+      <button id="saveBtn" class="btn btn-primary">Save</button>
+      <button id="reloadBtn" class="btn btn-secondary">Reload</button>
+      <div id="status" class="align-self-center text-success small"></div>
+    </div>
+  </div>
+
+  <div class="card p-3">
+    <h5>Actions</h5>
+    <div class="mt-2 d-flex gap-2">
+      <button id="syncBtn" class="btn btn-warning">Trigger Sync (Pi server)</button>
+      <button id="clearEventsBtn" class="btn btn-danger">Clear Local Events Table</button>
+      <div id="actionMsg" class="align-self-center small text-muted"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function fetchSettings(){
+  document.getElementById('status').textContent = '';
+  try{
+    const r = await fetch('/api/db_settings');
+    const data = await r.json();
+    document.getElementById('settingsJson').value = JSON.stringify(data, null, 2);
+  }catch(e){
+    document.getElementById('settingsJson').value = '{\n  "error": "failed to fetch"\n}';
+  }
+}
+
+async function saveSettings(){
+  const txt = document.getElementById('settingsJson').value;
+  try{
+    const payload = JSON.parse(txt);
+    const r = await fetch('/api/db_settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    if(r.ok){
+      document.getElementById('status').textContent = 'Saved';
+      setTimeout(()=>document.getElementById('status').textContent='',1500);
+    }else{
+      document.getElementById('status').textContent = 'Save failed';
+    }
+  }catch(e){
+    document.getElementById('status').textContent = 'Invalid JSON';
+  }
+}
+
+// Optional actions (best-effort; server endpoints may not exist)
+async function triggerSync(){
+  try{
+    const r = await fetch('/api/sync_from_railway', {method:'POST'});
+    if(r.ok){
+      document.getElementById('actionMsg').textContent = 'Sync triggered';
+    }else{
+      document.getElementById('actionMsg').textContent = 'Sync endpoint failed';
+    }
+  }catch(e){ document.getElementById('actionMsg').textContent = 'Sync error'; }
+}
+
+async function clearEvents(){
+  try{
+    // Attempt to call a delete endpoint if available; otherwise show message
+    const r = await fetch('/api/clear_events', {method:'POST'});
+    if(r.ok) document.getElementById('actionMsg').textContent = 'Cleared events';
+    else document.getElementById('actionMsg').textContent = 'Clear failed or endpoint missing';
+  }catch(e){ document.getElementById('actionMsg').textContent = 'Clear error'; }
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveSettings);
+document.getElementById('reloadBtn').addEventListener('click', fetchSettings);
+document.getElementById('syncBtn').addEventListener('click', triggerSync);
+document.getElementById('clearEventsBtn').addEventListener('click', clearEvents);
+
+// Load on open
+fetchSettings();
+</script>
+</body>
+</html>
