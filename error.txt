@@ -1,6 +1,11 @@
-sudo apt install xserver-xorg-video-dummy -y
-sudo systemctl enable vncserver-x11-serviced
-sudo systemctl start vncserver-x11-serviced
+sudo apt update
+sudo apt install -y openssh-server
+sudo systemctl enable ssh
+sudo systemctl start ssh
 
+sudo apt install -y tigervnc-standalone-server
+vncserver
 
-100.127.142.52
+sudo apt install -y xrdp
+sudo systemctl enable xrdp
+sudo systemctl start xrdp
