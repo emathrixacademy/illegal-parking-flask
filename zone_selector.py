@@ -2,14 +2,15 @@ import cv2
 import numpy as np
 import json
 import sys
+import db  # ...existing code...
 
 # Camera RTSP URLs
 CAM1_URL = "rtsp://192.168.18.2:554/stream"
 CAM2_URL = "rtsp://192.168.18.199:554/stream"
 
-window_name = "Zone Selector"
+window_base = "Zone Selector"
 points = []
-zone_var_name = ""
+current_cam_key = None
 
 def mouse_callback(event, x, y, flags, param):
     global points
@@ -17,45 +18,38 @@ def mouse_callback(event, x, y, flags, param):
         points.append((x, y))
         print(f"Point added: ({x}, {y})")
 
-def main():
-    global points, zone_var_name
-    # Accept camera selection from command line argument
-    if len(sys.argv) > 1:
-        cam_choice = sys.argv[1]
-    else:
-        print("Select camera to use for zone selection:")
-        print("1 - Camera 1")
-        print("2 - Camera 2")
-        cam_choice = input("Enter 1 or 2: ").strip()
-    if cam_choice == "1":
-        cam_url = CAM1_URL
-        zone_var_name = "ZONE_CAM1"
-    elif cam_choice == "2":
-        cam_url = CAM2_URL
-        zone_var_name = "ZONE_CAM2"
-    else:
-        print("Invalid selection.")
-        return
-
-    cap = cv2.VideoCapture(cam_url)
-    if not cap.isOpened():
-        print("Failed to open camera or image.")
-        return
-
+def run_for_camera(cam_key, cam_url, existing_points):
+    global points, current_cam_key
+    points = [tuple(p) for p in existing_points] if existing_points else []
+    current_cam_key = cam_key
+    window_name = f"{window_base} - {cam_key}"
     cv2.namedWindow(window_name)
     cv2.setMouseCallback(window_name, mouse_callback)
-
+    print(f"\n--- Selecting zone for {cam_key} ---")
     print("Instructions:")
     print("- Click to add points for the zone polygon.")
     print("- Press 'u' to undo last point.")
     print("- Press 'c' to clear all points.")
-    print("- Press 'q' to quit and print the coordinates.")
+    print("- Press 'n' to finish this camera and move to next.")
+    print("- Press 'q' to quit without saving.")
+
+    cap = cv2.VideoCapture(cam_url)
+    if not cap.isOpened():
+        print(f"Failed to open camera {cam_key}. Using blank canvas.")
+        # create a blank frame to allow drawing if stream not available
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        ret = False
+    else:
+        ret = True
 
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame.")
-            break
+        if ret:
+            ok, frame = cap.read()
+            if not ok:
+                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        else:
+            # keep blank frame
+            pass
 
         # Draw points and polygon
         for pt in points:
@@ -70,70 +64,57 @@ def main():
             points.pop()
         elif key == ord('c'):
             points = []
+        elif key == ord('n'):
+            break
         elif key == ord('q'):
+            # signal to abort entire flow
+            points = None
             break
 
-    cap.release()
-    cv2.destroyAllWindows()
+    if ret:
+        cap.release()
+    cv2.destroyWindow(window_name)
+    return None if points is None else [ [int(x), int(y)] for (x,y) in points ]
 
-    if points:
-        print(json.dumps(points))  # Print only the coordinates as JSON array
+def main():
+    # Load existing zones from DB (if present)
+    try:
+        existing = db.get_config_value("PARKING_ZONES", {})
+        if not isinstance(existing, dict):
+            existing = {}
+    except Exception:
+        existing = {}
 
-        # --- Save to config.py ---
-        import os
-        import re
-        import ast
-        config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    cameras = {
+        "Camera_1": CAM1_URL,
+        "Camera_2": CAM2_URL
+    }
 
-        # Read config.py
-        with open(config_path, "r") as f:
-            lines = f.readlines()
+    zones = existing.copy()
 
-        # Find and update PARKING_ZONES robustly
-        zones = {}
-        start_idx = None
-        for i, line in enumerate(lines):
-            if line.strip().startswith("PARKING_ZONES"):
-                start_idx = i
-                break
-
-        if start_idx is not None:
-            # Collect all lines of the dict
-            dict_lines = []
-            for line in lines[start_idx:]:
-                dict_lines.append(line)
-                if "}" in line:
-                    break
-            dict_str = "".join(dict_lines)
-            try:
-                zones = ast.literal_eval(dict_str.split("=",1)[1].strip())
-            except Exception:
-                zones = {}
+    # Iterate all cameras automatically
+    for cam_key, cam_url in cameras.items():
+        existing_pts = zones.get(cam_key, [])
+        selected = run_for_camera(cam_key, cam_url, existing_pts)
+        if selected is None:
+            print("Aborted by user. Exiting without saving.")
+            return
+        # If user selected nothing and there were existing points, keep them; otherwise store selected (may be empty list)
+        if selected:
+            zones[cam_key] = selected
         else:
-            zones = {}
+            # keep existing if exists, else set empty list
+            if cam_key not in zones:
+                zones[cam_key] = []
 
-        # Update the selected camera
-        cam_key = "Camera_1" if zone_var_name == "ZONE_CAM1" else "Camera_2"
-        zones[cam_key] = points
-
-        # Replace or append PARKING_ZONES in config.py
-        new_zones_str = f'PARKING_ZONES = {json.dumps(zones, separators=(",", ":"))}\n'
-        if start_idx is not None:
-            # Remove old PARKING_ZONES block
-            end_idx = start_idx
-            for i in range(start_idx, len(lines)):
-                if "}" in lines[i]:
-                    end_idx = i
-                    break
-            lines = lines[:start_idx] + [new_zones_str] + lines[end_idx+1:]
-        else:
-            lines.append(new_zones_str)
-
-        # Write back to config.py
-        with open(config_path, "w") as f:
-            f.writelines(lines)
-    else:
-        print("[]")
+    # Save to Railway DB
+    try:
+        db.set_config_value("PARKING_ZONES", zones)
+        print(json.dumps(zones))
+        print("Saved PARKING_ZONES to Railway DB.")
+    except Exception as e:
+        print(f"Failed to save to DB: {e}")
+        print(json.dumps(zones))
 
 if __name__ == "__main__":
     main()
