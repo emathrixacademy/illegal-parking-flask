@@ -96,13 +96,13 @@ def api_violation_stats():
         cur = conn.cursor()
         cur.execute("""
             SELECT
-                COUNT(*) AS total_violations,
+                COUNT(DISTINCT (camera, tracker_id)) AS total_violations,
                 COUNT(DISTINCT camera) AS active_cameras,
                 COUNT(DISTINCT barangay) AS affected_barangays,
                 AVG(confidence_score) AS avg_confidence,
                 AVG(duration_minutes) AS avg_duration_minutes,
                 SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count,
-                SUM(COALESCE(fine_amount,0.0)) AS total_fines_collected
+                SUM(CASE WHEN enforced = TRUE THEN COALESCE(fine_amount, 0.0) ELSE 0.0 END) AS total_fines_collected
             FROM violations;
         """)
         row = cur.fetchone()
