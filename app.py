@@ -635,6 +635,44 @@ def api_list_images():
         logger.error(f"Proxy list_images error: {e}")
         return jsonify([])
 
+@app.route('/api/violations_list')
+def api_violations_list():
+    """Return all rows from local `violations` table as JSON."""
+    try:
+        result = list_violations()
+        resp = jsonify(result)
+        resp.headers.update(cors_headers())
+        return resp
+    except Exception as e:
+        logger.error(f"Failed to fetch violations: {e}")
+        resp = jsonify({'error': 'failed to fetch violations'})
+        resp.headers.update(cors_headers())
+        return resp, 500
+
+
+@app.route('/api/mark_enforced', methods=['POST'])
+def api_mark_enforced():
+    """Mark one or more violation ids as enforced=True.
+    Expects JSON: { "ids": [1,2,3] }
+    """
+    try:
+        data = request.get_json(force=True)
+        ids = data.get('ids') if data else None
+        if ids is None:
+            return jsonify({'success': False, 'error': 'missing ids'}), 400
+        if isinstance(ids, int):
+            ids = [ids]
+        if not isinstance(ids, (list, tuple)) or not ids:
+            return jsonify({'success': False, 'error': 'ids must be a non-empty list'}), 400
+        updated = mark_enforced(ids)
+        resp = jsonify({'success': True, 'updated': updated})
+        resp.headers.update(cors_headers())
+        return resp
+    except Exception as e:
+        logger.error(f"Failed to mark enforced: {e}")
+        resp = jsonify({'success': False, 'error': str(e)})
+        resp.headers.update(cors_headers())
+        return resp, 500
 
 
 # --------------------------------------------------
