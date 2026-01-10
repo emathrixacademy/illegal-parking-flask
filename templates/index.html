@@ -683,6 +683,11 @@
     .basic-stats{display:grid;grid-template-columns:1fr;gap:0.5rem}
     .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
 }
+/* For smaller phones, make analytics boxes a 2x2 grid */
+@media (max-width:600px){
+    .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.5rem}
+    .analytics-box{min-height:72px}
+}
 @media (max-width:480px){
     .header-bar h1{font-size:0.95rem}
     .hamburger-menu{font-size:1.2rem}
