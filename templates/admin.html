@@ -67,6 +67,34 @@
         </div>
       </div>
 
+      <div class="card p-3 mt-3">
+        <h5>Fines</h5>
+        <p class="small-muted">Update fine amounts for vehicle types.</p>
+        <div class="row g-2">
+          <div class="col-6 col-md-3">
+            <label class="form-label">CAR</label>
+            <input id="fine_car" type="number" class="form-control" step="0.01">
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">MOTORCYCLE</label>
+            <input id="fine_motorcycle" type="number" class="form-control" step="0.01">
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">TRUCK</label>
+            <input id="fine_truck" type="number" class="form-control" step="0.01">
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">BUS</label>
+            <input id="fine_bus" type="number" class="form-control" step="0.01">
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button id="saveFines" class="btn btn-primary">Save Fines</button>
+          <button id="refreshFines" class="btn btn-secondary">Refresh</button>
+          <div id="finesMsg" class="align-self-center small-muted"></div>
+        </div>
+      </div>
+
     </div>
 
     <script>
@@ -126,6 +154,44 @@
 
     // Load initial data
     fetchViolations();
+    // Fines UI
+    async function fetchFines(){
+      document.getElementById('finesMsg').textContent = '';
+      try{
+        const r = await fetch('/api/fine_map');
+        const j = await r.json();
+        if(j && j.fine_map){
+          const fm = j.fine_map;
+          document.getElementById('fine_car').value = fm.CAR ?? fm.car ?? '';
+          document.getElementById('fine_motorcycle').value = fm.MOTORCYCLE ?? fm.motorcycle ?? '';
+          document.getElementById('fine_truck').value = fm.TRUCK ?? fm.truck ?? '';
+          document.getElementById('fine_bus').value = fm.BUS ?? fm.bus ?? '';
+        }
+      }catch(e){ document.getElementById('finesMsg').textContent = 'Failed to load fines'; }
+    }
+
+    async function saveFines(){
+      const car = parseFloat(document.getElementById('fine_car').value) || 0;
+      const motorcycle = parseFloat(document.getElementById('fine_motorcycle').value) || 0;
+      const truck = parseFloat(document.getElementById('fine_truck').value) || 0;
+      const bus = parseFloat(document.getElementById('fine_bus').value) || 0;
+      const payload = { fine_map: { CAR: car, MOTORCYCLE: motorcycle, TRUCK: truck, BUS: bus } };
+      try{
+        const r = await fetch('/api/set_fine_map', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        const j = await r.json();
+        if(r.ok && j.success){
+          document.getElementById('finesMsg').textContent = 'Fines saved';
+          setTimeout(()=>document.getElementById('finesMsg').textContent='',1500);
+        }else{
+          document.getElementById('finesMsg').textContent = 'Failed to save fines';
+        }
+      }catch(e){ document.getElementById('finesMsg').textContent = 'Error saving fines'; }
+      fetchFines();
+    }
+
+    document.getElementById('saveFines').addEventListener('click', saveFines);
+    document.getElementById('refreshFines').addEventListener('click', fetchFines);
+    fetchFines();
     </script>
     </body>
     </html>

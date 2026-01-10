@@ -18,7 +18,7 @@ import threading
 import time
 from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection
 from analytics import analytics_bp
-from admin_config import list_violations, mark_enforced
+from admin_config import list_violations, mark_enforced, get_fine_map, set_fine_map
 
 # --------------------------------------------------
 # Logging
@@ -374,6 +374,31 @@ def api_image_from_db():
     if not os.path.exists(abs_path):
         return jsonify({"success": False, "error": "Image not found"}), 404
     return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
+
+
+@app.route('/api/fine_map')
+def api_get_fine_map():
+    try:
+        fm = get_fine_map()
+        return jsonify({"success": True, "fine_map": fm})
+    except Exception as e:
+        logger.error(f"Failed to get fine map: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/set_fine_map', methods=['POST'])
+def api_set_fine_map():
+    try:
+        data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"success": False, "error": "Invalid payload"}), 400
+        # allow payload to contain a `fine_map` key or be the map directly
+        mapping = data.get('fine_map') if 'fine_map' in data else data
+        cleaned = set_fine_map(mapping)
+        return jsonify({"success": True, "fine_map": cleaned})
+    except Exception as e:
+        logger.error(f"Failed to set fine map: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/proxy_image')
 def api_proxy_image():
