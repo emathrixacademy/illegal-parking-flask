@@ -362,6 +362,21 @@
         }
     </style>
 </head>
+<!-- Responsive overrides for small and modern mobile devices -->
+<style>
+@media (max-width:900px){
+    body{font-size:14px}
+    .sidebar{position:fixed;top:0;left:0;right:0;height:56px;padding:0 .6rem;border-radius:0 0 8px 8px}
+    .sidebar .nav-link{display:none}
+    .main-content{margin-top:64px}
+    .settings-section{margin:1rem;padding:1rem;max-width:100%}
+    .zone-point-list{max-height:120px}
+}
+@media (max-width:480px){
+    .settings-section h2{font-size:1rem}
+    .form-label, .form-control{font-size:.95rem}
+}
+</style>
 <body>
 <div class="dashboard-container">
     <nav class="sidebar">

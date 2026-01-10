@@ -638,6 +638,27 @@
         .dot-purple { background:#a76bff; }
     </style>
 </head>
+<!-- Additional responsive overrides for modern mobile devices -->
+<style>
+@media (max-width:1200px){
+    .analytics-box .box-count{font-size:1.05rem}
+}
+@media (max-width:900px){
+    body{font-size:14px}
+    .sidebar{position:fixed;top:0;left:0;right:0;height:56px;border-radius:0 0 10px 10px;display:flex;align-items:center;padding:0 .6rem;}
+    .sidebar .nav-link{display:none}
+    .sidebar .sidebar-header{display:block;font-size:1rem;padding:0 .6rem}
+    .main-content{margin-top:64px}
+    .video-container, .violations-section{margin:0.8rem;padding:0.8rem}
+    .video-frame, .violation-card img{width:100%;height:auto}
+    .violation-card{flex-direction:column}
+    .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media (max-width:480px){
+    h1{font-size:1.05rem}
+    .legend-box{font-size:.9rem}
+}
+</style>
 <body>
 <div class="dashboard-container">
     <div class="sidebar-overlay" id="sidebarOverlay"></div>

@@ -347,6 +347,23 @@
         }
     </style>
 </head>
+<!-- Small-device responsive overrides -->
+<style>
+@media (max-width:900px){
+    body{font-size:14px}
+    .sidebar{position:fixed;top:0;left:0;right:0;height:56px;padding:0 .6rem;border-radius:0 0 8px 8px}
+    .sidebar .nav-link{display:none}
+    .main-content{margin-top:64px}
+    .violations-section{margin:0.8rem;padding:0.8rem;max-width:100%}
+    .violation-card{flex-direction:column}
+    .violation-card img{width:100%;height:auto}
+    .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media (max-width:480px){
+    .violation-card-title{font-size:1rem}
+    .violation-card-meta{font-size:0.85rem}
+}
+</style>
 <body>
 <div class="dashboard-container">
     <nav class="sidebar">
