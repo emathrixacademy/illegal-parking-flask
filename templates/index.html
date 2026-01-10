@@ -700,6 +700,24 @@
     .analytics-box .box-count{font-size:1rem}
 }
 </style>
+<style>
+/* Chart column default (desktop) — controlled via class instead of inline style */
+.analytics-chart-col{flex:0 0 380px; max-width:380px; min-width:260px;}
+
+/* Tablet: use 2-column grid for analytics boxes and make chart column fluid */
+@media (max-width:1024px){
+    .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.6rem}
+    .analytics-chart-col{flex:0 0 auto;width:100% !important;max-width:100% !important;min-width:0 !important}
+    .analytics-panel{gap:0.6rem}
+}
+
+/* Small phones: 2x2 grid for boxes, ensure chart occupies full width */
+@media (max-width:600px){
+    .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.5rem}
+    .analytics-box{min-height:72px}
+    .analytics-chart-col{width:100% !important;max-width:100% !important}
+}
+</style>
 <body>
 <div class="dashboard-container">
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -782,7 +800,7 @@
                         </div>
                     </div>
                 </div>
-                <div style="flex:0 0 380px; max-width:380px; min-width:260px;">
+                <div class="analytics-chart-col">
                     <canvas id="analyticsChart" width="380" height="280" style="width:100%;height:280px;display:block;"></canvas>
                 </div>
                   <div class="basic-stats" style="margin-top:0.75rem;">
