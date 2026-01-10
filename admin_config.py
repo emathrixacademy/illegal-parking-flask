@@ -31,18 +31,33 @@ def set_fine_map(mapping):
 
 
 def list_violations() -> List[Dict[str, Any]]:
-    """Return all rows from local `violations` table as list of dicts."""
+    """Return latest row per (camera, tracker_id) from local `violations` table.
+
+    If multiple rows exist for the same camera and tracker_id, the newest
+    capture (by `timestamp`) is returned and older rows are omitted.
+    The returned list is sorted by `timestamp` descending.
+    """
     conn = get_connection()
     try:
         cur = conn.cursor()
+        # Use DISTINCT ON to keep only the newest row per (camera, tracker_id).
+        # This relies on PostgreSQL's DISTINCT ON feature.
         cur.execute("""
-            SELECT id, camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced
+            SELECT DISTINCT ON (camera, tracker_id)
+                id, camera, tracker_id, label, timestamp, image_path,
+                confidence_score, duration_minutes, fine_amount, barangay, enforced
             FROM violations
-            ORDER BY timestamp DESC
+            ORDER BY camera, tracker_id, timestamp DESC
         """)
         rows = cur.fetchall()
-        cols = ['id','camera','tracker_id','label','timestamp','image_path','confidence_score','duration_minutes','fine_amount','barangay','enforced']
+        cols = ['id', 'camera', 'tracker_id', 'label', 'timestamp', 'image_path',
+                'confidence_score', 'duration_minutes', 'fine_amount', 'barangay', 'enforced']
         result = [dict(zip(cols, r)) for r in rows]
+        # Sort results by timestamp descending for presentation
+        try:
+            result.sort(key=lambda r: r.get('timestamp') or 0, reverse=True)
+        except Exception:
+            pass
         cur.close()
         return result
     finally:
