@@ -194,6 +194,20 @@ def api_settings():
             
             # Update local config
             update_local_config(data)
+            # Reset monitor countdowns so new thresholds take effect immediately
+            if 'monitor' in globals():
+                try:
+                    mlock = getattr(monitor, 'lock', None)
+                    if mlock:
+                        with mlock:
+                            monitor.timers.clear()
+                            monitor.last_upload_time.clear()
+                    else:
+                        monitor.timers.clear()
+                        monitor.last_upload_time.clear()
+                    logger.info("Monitor timers and last_upload_time cleared after settings change.")
+                except Exception as e:
+                    logger.warning(f"Failed to reset monitor timers after settings change: {e}")
             
             # Sync to Railway database
             sync_data = {
@@ -308,13 +322,17 @@ class ParkingMonitor:
         self.timers = {}
         self.last_upload_time = {}
         self.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+        # lock to protect timers/last_upload_time across threads when resetting on config changes
+        import threading as _threading
+        self.lock = _threading.Lock()
 
     def process(self, name, res, frame):
         # Reload thresholds from config each time (to pick up changes)
         violation_threshold = getattr(config, "VIOLATION_TIME_THRESHOLD", 100)
         repeat_interval = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
         
-        if name not in self.zones: return
+        if name not in self.zones:
+            return
         fh, fw = frame.shape[:2]
         cv2.polylines(frame, [self.zones[name]], True, (0, 0, 255), 2)
         pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
@@ -329,14 +347,20 @@ class ParkingMonitor:
                 continue
             in_zone = cv2.pointPolygonTest(self.zones[name], center, False) >= 0
             if in_zone:
-                self.timers.setdefault((name, tid), now)
-                dur = int(now - self.timers[(name, tid)])
+                # set/start timer and compute duration under lock to avoid races with settings-reset
+                with self.lock:
+                    if (name, tid) not in self.timers:
+                        self.timers[(name, tid)] = now
+                    dur = int(now - self.timers[(name, tid)])
                 is_violation = dur >= violation_threshold
                 color = (0, 0, 255) if is_violation else (0, 255, 255)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, color, 2)
                 if is_violation:
-                    last_up = self.last_upload_time.get((name, tid), 0)
+                    # check repeat/upload timing under lock where needed
+                    last_up = 0
+                    with self.lock:
+                        last_up = self.last_upload_time.get((name, tid), 0)
                     if now - last_up > repeat_interval:
                         import datetime
                         now_dt = datetime.datetime.now()
@@ -354,7 +378,8 @@ class ParkingMonitor:
                             _, buf = cv2.imencode('.jpg', frame)
                             img_b64 = base64.b64encode(buf).decode('utf-8')
                             # compute duration across cameras for the same tracker id (in minutes)
-                            start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
+                            with self.lock:
+                                start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
                             if start_times:
                                 min_start = min(start_times)
                                 duration_minutes = round((now - min_start) / 60.0, 2)
@@ -385,10 +410,12 @@ class ParkingMonitor:
                         except Exception as e:
                             logger.error(f"Exception uploading event to Railway: {e}")
 
-                        self.last_upload_time[(name, tid)] = now
+                        with self.lock:
+                            self.last_upload_time[(name, tid)] = now
             else:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                self.timers.pop((name, tid), None)
+                with self.lock:
+                    self.timers.pop((name, tid), None)
 
 
 # --- Stream handler ---
