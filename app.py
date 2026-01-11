@@ -38,7 +38,7 @@ app.register_blueprint(analytics_bp)
 # Environment / Defaults
 # --------------------------------------------------
 DEFAULT_PORT = int(os.environ.get("PORT", 5000))
-DEFAULT_RASPI_IP = os.environ.get("RASPI_IP", "192.168.18.32")
+DEFAULT_RASPI_IP = os.environ.get("RASPI_IP", "192.168.8.101")
 DEFAULT_RASPI_PORT = os.environ.get("RASPI_PORT", "5000")
 DEFAULT_RAILWAY_API_URL = os.environ.get(
     "RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app"
