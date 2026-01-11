@@ -636,6 +636,28 @@
         .dot-yellow { background:#ffd11a; }
         .dot-red { background:#ff4d4d; }
         .dot-purple { background:#a76bff; }
+        /* Chart column default (desktop) — controlled via class instead of inline style */
+        .analytics-chart-col{flex:0 0 380px; max-width:380px; min-width:260px;}
+
+        /* Tablet: use 2-column grid for analytics boxes, center contents, and make chart column fluid */
+        @media (max-width:1024px){
+            .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.6rem; justify-items:center}
+            .analytics-chart-col{flex:0 0 auto;width:100% !important;max-width:100% !important;min-width:0 !important;text-align:center}
+            .analytics-panel{gap:0.6rem;align-items:center}
+            .analytics-box{width:100%;max-width:420px;box-sizing:border-box;text-align:center}
+            .analytics-box .box-header{justify-content:center}
+            .analytics-box .box-count{margin:0.2rem auto 0;display:inline-block}
+            #analyticsChart{max-width:380px;margin:0 auto;width:100% !important;height:auto !important}
+        }
+
+        /* Small phones: 2x2 grid for boxes, ensure chart occupies full width and center contents */
+        @media (max-width:600px){
+            .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.5rem;justify-items:center}
+            .analytics-box{min-height:72px;width:100%;max-width:320px}
+            .analytics-chart-col{width:100% !important;max-width:100% !important;text-align:center}
+            .analytics-box .box-count{font-size:1.05rem}
+            #analyticsChart{max-width:360px;margin:0 auto;width:100% !important;height:auto !important}
+        }
     </style>
 </head>
 <!-- Improved responsive overrides for header, feeds, and analytics -->
