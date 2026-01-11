@@ -5,8 +5,8 @@ import sys
 import db  # ...existing code...
 
 # Camera RTSP URLs
-CAM1_URL = "rtsp://192.168.18.2:554/stream"
-CAM2_URL = "rtsp://192.168.18.199:554/stream"
+CAM1_URL = "rtsp://192.168.8.107:554/stream"
+CAM2_URL = "rtsp://192.168.8.108:554/stream"
 
 window_base = "Zone Selector"
 points = []
