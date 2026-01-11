@@ -700,30 +700,6 @@
     .analytics-box .box-count{font-size:1rem}
 }
 </style>
-<style>
-/* Chart column default (desktop) — controlled via class instead of inline style */
-.analytics-chart-col{flex:0 0 380px; max-width:380px; min-width:260px;}
-
-/* Tablet: use 2-column grid for analytics boxes, center contents, and make chart column fluid */
-@media (max-width:1024px){
-    .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.6rem; justify-items:center}
-    .analytics-chart-col{flex:0 0 auto;width:100% !important;max-width:100% !important;min-width:0 !important;text-align:center}
-    .analytics-panel{gap:0.6rem;align-items:center}
-    .analytics-box{width:100%;max-width:420px;box-sizing:border-box;text-align:center}
-    .analytics-box .box-header{justify-content:center}
-    .analytics-box .box-count{margin:0.2rem auto 0;display:inline-block}
-    #analyticsChart{max-width:380px;margin:0 auto;width:100% !important;height:auto !important}
-}
-
-/* Small phones: 2x2 grid for boxes, ensure chart occupies full width and center contents */
-@media (max-width:600px){
-    .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.5rem;justify-items:center}
-    .analytics-box{min-height:72px;width:100%;max-width:320px}
-    .analytics-chart-col{width:100% !important;max-width:100% !important;text-align:center}
-    .analytics-box .box-count{font-size:1.05rem}
-    #analyticsChart{max-width:360px;margin:0 auto;width:100% !important;height:auto !important}
-}
-</style>
 <body>
 <div class="dashboard-container">
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -822,6 +798,11 @@
                         </div>
                     </div>
             </div>
+        </div>
+
+        <!-- New violator notification banner (hidden by default) -->
+        <div id="newViolationBanner" class="alert alert-warning" role="alert"
+             style="display:none; position: fixed; bottom: 6rem; right: 2rem; z-index:10001; border-radius:12px; padding:0.8rem 1rem; color:#111; background:#ffd966;">
         </div>
     </div>
 </div>
@@ -1139,11 +1120,77 @@ function fetchAnalyticsAjax(){
         .catch(() => {});
 }
 
-// Replace fetchAnalytics polling with AJAX version
+// --- New: Poll DB for total violations and show banner when new ones appear ---
+function setupViolatorNotification() {
+    let lastKnown = Number(localStorage.getItem('lastKnownViolatorCount') || 0);
+    const banner = document.getElementById('newViolationBanner');
+
+    async function poll() {
+        try {
+            const resp = await fetch('/api/db_violations_count');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const count = Number(data.count || 0);
+            const prev = Number(localStorage.getItem('lastKnownViolatorCount') || lastKnown);
+
+            if (count > prev) {
+                const delta = count - prev;
+                showBanner(delta, count);
+            }
+
+            // update stored value (keep in sync)
+            localStorage.setItem('lastKnownViolatorCount', String(count));
+            lastKnown = count;
+        } catch (e) {
+            // fail silently
+        }
+    }
+
+    function showBanner(delta, absoluteCount) {
+        if (!banner) return;
+        banner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <i class="bi bi-exclamation-circle-fill" style="font-size:1.2rem;color:#8a4b00;"></i>
+                <div style="font-weight:700;color:#332200;">
+                    ${delta} new violator${delta > 1 ? 's' : ''} added
+                </div>
+                <button id="dismissNewViolator" class="btn btn-sm btn-light" style="margin-left:8px;">Dismiss</button>
+            </div>`;
+        banner.style.display = 'block';
+
+        const dismiss = document.getElementById('dismissNewViolator');
+        if (dismiss) {
+            dismiss.addEventListener('click', () => {
+                banner.style.display = 'none';
+                localStorage.setItem('lastKnownViolatorCount', String(absoluteCount));
+                lastKnown = absoluteCount;
+            }, { once: true });
+        }
+
+        // auto-hide after 10s and update last known
+        setTimeout(() => {
+            if (banner.style.display !== 'none') {
+                banner.style.display = 'none';
+                localStorage.setItem('lastKnownViolatorCount', String(absoluteCount));
+                lastKnown = absoluteCount;
+            }
+        }, 10000);
+    }
+
+    // initial poll and periodic
+    poll();
+    setInterval(poll, 5000);
+}
+
+// Integrate into existing onload initialization
+// ...existing code...
 window.onload = function() {
     fetchRaspiBaseAndInit();
     fetchAnalyticsAjax();
     setInterval(fetchAnalyticsAjax, 5000);
+
+    // start violator notification polling
+    setupViolatorNotification();
 };
 </script>
 

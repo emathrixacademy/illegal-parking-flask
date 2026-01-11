@@ -624,6 +624,21 @@ def api_db_settings():
     
     return jsonify(get_all_settings())
 
+@app.route('/api/db_violations_count')
+def api_db_violations_count():
+    """Return total number of violation rows in the local DB."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM violations;")
+        count = cur.fetchone()[0] if cur.rowcount != 0 else 0
+        cur.close()
+        conn.close()
+        return jsonify({"count": int(count)})
+    except Exception as e:
+        logger.error(f"Failed to get violations count: {e}")
+        return jsonify({"count": 0}), 500
+
 # --------------------------------------------------
 # Error Handling
 # --------------------------------------------------
