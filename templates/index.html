@@ -1180,6 +1180,9 @@ function setupViolatorNotification() {
             </div>`;
         banner.style.display = 'block';
 
+        // Play short notification beep
+        playNotificationBeep();
+
         const dismiss = document.getElementById('dismissNewViolator');
         if (dismiss) {
             dismiss.addEventListener('click', () => {
@@ -1214,6 +1217,47 @@ window.onload = function() {
     // start violator notification polling
     setupViolatorNotification();
 };
+</script>
+
+<script>
+// NEW: WebAudio notification helper (resume on first user gesture)
+let _audioCtx = null;
+function _ensureAudioContext() {
+		if (!_audioCtx) {
+			_audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+		}
+		return _audioCtx;
+}
+function unlockAudioOnGesture() {
+	// Resume AudioContext on first user interaction to satisfy browser autoplay policies
+	document.addEventListener('click', function _once() {
+		try { const ctx = _ensureAudioContext(); if (ctx.state === 'suspended') ctx.resume(); } catch(e) {}
+		document.removeEventListener('click', _once);
+	}, { once: true });
+}
+unlockAudioOnGesture();
+
+function playNotificationBeep() {
+	try {
+		const ctx = _ensureAudioContext();
+		if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
+		const o = ctx.createOscillator();
+		const g = ctx.createGain();
+		o.type = 'sine';
+		o.frequency.value = 880;
+		g.gain.value = 0.0001;
+		o.connect(g);
+		g.connect(ctx.destination);
+		const now = ctx.currentTime;
+		g.gain.setValueAtTime(0.0001, now);
+		g.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+		o.start(now);
+		g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+		o.stop(now + 0.25);
+	} catch (e) {
+		// ignore if audio fails
+	}
+}
 </script>
 
 <!--
