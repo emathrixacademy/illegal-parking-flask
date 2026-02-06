@@ -3,9 +3,7 @@ from typing import List, Dict, Any
 
 DEFAULT_FINE_MAP = {
     'CAR': 100,
-    'MOTORCYCLE': 50,
-    'TRUCK': 200,
-    'BUS': 250
+    'MOTORCYCLE': 50
 }
 
 _CONFIG_KEY = 'FINE_MAP'

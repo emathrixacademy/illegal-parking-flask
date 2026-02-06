@@ -20,7 +20,22 @@ import sys
 
 app = Flask(__name__)
 
-CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
+# Vehicle classes from yolov8s (COCO IDs) — bus(5) and truck(7) removed
+CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE"}
+
+# CCTV AI classes (offset by +100 to avoid ID conflicts with COCO)
+CCTV_AI_CLASS_NAMES = {
+    100: "BASKET", 101: "BOTTLE", 102: "BOX", 103: "BUCKET",
+    104: "CAN", 105: "CANAL", 106: "CARDBOARD", 107: "CHAIR",
+    108: "CONTAINER", 109: "CRATE", 110: "CUP", 111: "FALLEN_TREE",
+    112: "GARBAGE", 113: "GROCERY_BAG", 114: "LEAVES", 115: "OPEN_CANAL",
+    116: "PAPER", 117: "PLASTIC", 118: "PLASTIC_BOTTLE", 119: "PLASTIC_CONTAINER",
+    120: "PLASTIC_BAG", 121: "POT", 122: "ROCK", 123: "SACK",
+    124: "TISSUE", 125: "TRASH", 126: "TRASH_CAN", 127: "VENDOR"
+}
+
+# Combined lookup for all class names
+ALL_CLASS_NAMES = {**CLASS_NAMES, **CCTV_AI_CLASS_NAMES}
 
 # --- CONFIGURABLE VARIABLES (edit these as needed) ---
 CAM1_URL = getattr(config, "CAM1_URL", None)
@@ -340,10 +355,15 @@ class ParkingMonitor:
         now = time.time()
         for tid, d in tracked.items():
             x1, y1, x2, y2 = map(int, d['box'])
-            label = CLASS_NAMES.get(d['cls'], "OBJ")
+            label = ALL_CLASS_NAMES.get(d['cls'], "OBJ")
             center = ((x1+x2)//2, (y1+y2)//2)
             if d['cls'] == 0:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 1)
+                continue
+            # CCTV AI classes (>=100): draw on frame only, no violation tracking
+            if d['cls'] >= 100:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
+                cv2.putText(frame, f"{label}", (x1, y1-8), 0, 0.6, (0, 165, 255), 2)
                 continue
             in_zone = cv2.pointPolygonTest(self.zones[name], center, False) >= 0
             if in_zone:

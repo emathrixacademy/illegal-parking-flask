@@ -20,11 +20,23 @@ def api_violation_counts():
     """
     try:
         CLASS_MAP = {
-            2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK",
-            "2": "CAR", "3": "MOTORCYCLE", "5": "BUS", "7": "TRUCK",
-            "car": "CAR", "motorcycle": "MOTORCYCLE", "bus": "BUS", "truck": "TRUCK",
-            "CAR": "CAR", "MOTORCYCLE": "MOTORCYCLE", "BUS": "BUS", "TRUCK": "TRUCK"
+            2: "CAR", 3: "MOTORCYCLE",
+            "2": "CAR", "3": "MOTORCYCLE",
+            "car": "CAR", "motorcycle": "MOTORCYCLE",
+            "CAR": "CAR", "MOTORCYCLE": "MOTORCYCLE"
         }
+        # Also map CCTV AI labels stored as strings in the database
+        CCTV_AI_LABELS = [
+            "BASKET", "BOTTLE", "BOX", "BUCKET", "CAN", "CANAL",
+            "CARDBOARD", "CHAIR", "CONTAINER", "CRATE", "CUP",
+            "FALLEN_TREE", "GARBAGE", "GROCERY_BAG", "LEAVES",
+            "OPEN_CANAL", "PAPER", "PLASTIC", "PLASTIC_BOTTLE",
+            "PLASTIC_CONTAINER", "PLASTIC_BAG", "POT", "ROCK",
+            "SACK", "TISSUE", "TRASH", "TRASH_CAN", "VENDOR"
+        ]
+        for lbl in CCTV_AI_LABELS:
+            CLASS_MAP[lbl] = lbl
+            CLASS_MAP[lbl.lower()] = lbl
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("""
@@ -38,7 +50,10 @@ def api_violation_counts():
         cur.close()
         conn.close()
 
-        counts = {"CAR": 0, "MOTORCYCLE": 0, "TRUCK": 0, "BUS": 0}
+        counts = {"CAR": 0, "MOTORCYCLE": 0}
+        # Initialize CCTV AI class counts
+        for lbl in CCTV_AI_LABELS:
+            counts[lbl] = 0
         for label, distinct_ids, null_count in rows:
             mapped = CLASS_MAP.get(label)
             if mapped is None:
@@ -83,7 +98,7 @@ def api_violation_counts():
         return jsonify(counts)
     except Exception as e:
         logger.error(f"Failed to query violation counts: {e}")
-        return jsonify({"CAR":0, "MOTORCYCLE":0, "TRUCK":0, "BUS":0})
+        return jsonify({"CAR":0, "MOTORCYCLE":0})
 
 
 @analytics_bp.route('/api/violation_stats', methods=['GET'])

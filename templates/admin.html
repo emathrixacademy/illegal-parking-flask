@@ -88,20 +88,6 @@
               <input id="fine_motorcycle" type="number" class="form-control" step="0.01" placeholder="e.g. 50">
             </div>
           </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label fw-bold text-white">TRUCK</label>
-            <div class="input-group">
-              <span class="input-group-text">₱</span>
-              <input id="fine_truck" type="number" class="form-control" step="0.01" placeholder="e.g. 200">
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label fw-bold text-white">BUS</label>
-            <div class="input-group">
-              <span class="input-group-text">₱</span>
-              <input id="fine_bus" type="number" class="form-control" step="0.01" placeholder="e.g. 250">
-            </div>
-          </div>
         </div>
         <div class="d-flex gap-2 mt-3">
           <button id="saveFines" class="btn btn-primary">Save Fines</button>
@@ -179,8 +165,6 @@
           const fm = j.fine_map;
           document.getElementById('fine_car').value = fm.CAR ?? fm.car ?? '';
           document.getElementById('fine_motorcycle').value = fm.MOTORCYCLE ?? fm.motorcycle ?? '';
-          document.getElementById('fine_truck').value = fm.TRUCK ?? fm.truck ?? '';
-          document.getElementById('fine_bus').value = fm.BUS ?? fm.bus ?? '';
         }
       }catch(e){ document.getElementById('finesMsg').textContent = 'Failed to load fines'; }
     }
@@ -188,9 +172,7 @@
     async function saveFines(){
       const car = parseFloat(document.getElementById('fine_car').value) || 0;
       const motorcycle = parseFloat(document.getElementById('fine_motorcycle').value) || 0;
-      const truck = parseFloat(document.getElementById('fine_truck').value) || 0;
-      const bus = parseFloat(document.getElementById('fine_bus').value) || 0;
-      const payload = { fine_map: { CAR: car, MOTORCYCLE: motorcycle, TRUCK: truck, BUS: bus } };
+      const payload = { fine_map: { CAR: car, MOTORCYCLE: motorcycle } };
       try{
         const r = await fetch('/api/set_fine_map', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
         const j = await r.json();
