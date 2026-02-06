@@ -784,14 +784,6 @@
                             <div class="box-header"><span class="color-dot dot-yellow"></span> MOTORCYCLES</div>
                             <div id="count-MOTORCYCLE" class="box-count">0</div>
                         </div>
-                        <div class="analytics-box">
-                            <div class="box-header"><span class="color-dot dot-red"></span> GARBAGE</div>
-                            <div id="count-GARBAGE" class="box-count">0</div>
-                        </div>
-                        <div class="analytics-box">
-                            <div class="box-header"><span class="color-dot dot-purple"></span> TRASH</div>
-                            <div id="count-TRASH" class="box-count">0</div>
-                        </div>
                     </div>
                     <div class="analytics-stats" style="margin-top:0.75rem;">
                         <div class="analytics-box">
@@ -1017,7 +1009,7 @@ function fetchAnalyticsAjax(){
     xhr.open('GET', '/api/violation_counts', true);
     xhr.onreadystatechange = function() {
         if(xhr.readyState === 4) {
-            const labels = ['CAR','MOTORCYCLE','GARBAGE','TRASH'];
+            const labels = ['CAR','MOTORCYCLE'];
             if(xhr.status === 200) {
                 try {
                     const data = JSON.parse(xhr.responseText);
@@ -1035,7 +1027,7 @@ function fetchAnalyticsAjax(){
                                 labels: labels,
                                 datasets: [{
                                     data: counts,
-                                    backgroundColor: ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6']
+                                    backgroundColor: ['#4da6ff','#ffd11a']
                                 }]
                             },
                             options: { plugins: { legend: { display: false } } }
@@ -1061,7 +1053,7 @@ function fetchAnalyticsAjax(){
                         if(el) el.textContent = data && data[l] ? data[l] : 0;
                     });
                     // Also populate the analytics grid boxes (new IDs)
-                    const idMap = { 'CAR':'count-CAR', 'MOTORCYCLE':'count-MOTORCYCLE', 'GARBAGE':'count-GARBAGE', 'TRASH':'count-TRASH' };
+                    const idMap = { 'CAR':'count-CAR', 'MOTORCYCLE':'count-MOTORCYCLE' };
                     labels.forEach(l => {
                         const el2 = document.getElementById(idMap[l]);
                         if(el2) el2.textContent = data && data[l] ? data[l] : 0;
