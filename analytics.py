@@ -355,21 +355,15 @@ def api_generate_report():
         summary_lines = [
             f"Total Violations: {unique_violations}",
             f"Total Records: {total_records}",
-            f"Enforced: {enforced_count}",
-            f"Total Fines: ${total_fines:,.2f}",
-            f"Avg Confidence: {avg_conf:.1f}%",
-            f"Avg Duration: {avg_dur:.1f} min"
+            f"Enforced: {enforced_count}"
         ]
         
         line_y = y - 50
         col1_x = 92
-        col2_x = width / 2 + 36
         
+        # Now we have only 3 items - display them in a single column
         for i, line in enumerate(summary_lines):
-            if i < 3:
-                c.drawString(col1_x, line_y - (i * 20), line)
-            else:
-                c.drawString(col2_x, line_y - ((i - 3) * 20), line)
+            c.drawString(col1_x, line_y - (i * 20), line)
         
         y -= 150
         
