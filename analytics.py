@@ -387,7 +387,7 @@ def api_generate_report():
                 table_data.append([day_name, str(unique_count), str(total_count)])
             
             # Calculate table dimensions
-            col_widths = [280, 80, 100]
+            col_widths = [230, 100, 140]
             row_height = 22
             table_height = len(table_data) * row_height
             
