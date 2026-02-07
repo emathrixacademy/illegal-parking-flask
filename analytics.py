@@ -355,7 +355,7 @@ def api_generate_report():
         
         summary_lines = [
             f"Total Violations: {unique_violations}",
-            f"Total Records: {total_records}",
+            f"Total Captures Recorded: {total_records}",
             f"Enforced: {enforced_count}"
         ]
         
@@ -381,7 +381,7 @@ def api_generate_report():
         # Daily breakdown for week/month/custom
         if period in ['week', 'month', 'custom'] and daily_data:
             # Build table data
-            table_data = [['Date', 'Violators', 'Total Records']]
+            table_data = [['Date', 'Violators', 'Total Captures Recorded']]
             for date_val, unique_count, total_count in daily_data:
                 day_name = date_val.strftime('%A, %B %d, %Y')
                 table_data.append([day_name, str(unique_count), str(total_count)])
