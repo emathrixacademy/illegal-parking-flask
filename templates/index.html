@@ -795,15 +795,35 @@
                             <div id="recent-violators" class="box-count">0</div>
                         </div>
 
-                        <!-- Report generator controls -->
-                        <div style="margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center;">
-                            <label style="color:#bfc7d5; font-weight:600;">Report:</label>
+                        <!-- Redesigned Report generator controls -->
+                        <div id="reportControls" style="margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                            <label style="color:#bfc7d5; font-weight:600; margin-right:6px;">Report</label>
                             <select id="reportPeriod" class="form-select form-select-sm" style="width:auto; min-width:120px;">
                                 <option value="day">Day</option>
                                 <option value="week">Week</option>
                                 <option value="month">Month</option>
+                                <option value="range">Range</option>
                             </select>
+
+                            <!-- single date input (used for day/week/month) -->
                             <input id="reportDate" type="date" class="form-control form-control-sm" style="width:auto;" />
+
+                            <!-- range inputs (hidden by default) -->
+                            <input id="reportStartDate" type="date" class="form-control form-control-sm" style="width:auto; display:none;" />
+                            <input id="reportEndDate" type="date" class="form-control form-control-sm" style="width:auto; display:none;" />
+
+                            <!-- type filters -->
+                            <div style="display:flex; gap:0.5rem; align-items:center; margin-left:6px;">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="filterCar" checked>
+                                    <label class="form-check-label text-muted" for="filterCar">Car</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="filterMotor" checked>
+                                    <label class="form-check-label text-muted" for="filterMotor">Motorcycle</label>
+                                </div>
+                            </div>
+
                             <button id="generateReportBtn" class="btn btn-sm btn-primary">Generate PDF</button>
                         </div>
                     </div>
@@ -1213,27 +1233,45 @@ function setupViolatorNotification() {
 
 // Generate PDF report and trigger download
 document.getElementById('generateReportBtn').addEventListener('click', async () => {
-    const period = document.getElementById('reportPeriod').value;
-    const date = document.getElementById('reportDate').value; // optional
+    const period = reportPeriod.value;
     let url = '/api/generate_report?period=' + encodeURIComponent(period);
-    if (date) url += '&date=' + encodeURIComponent(date);
+
+    if (period === 'range') {
+        const s = reportStartDate.value;
+        const e = reportEndDate.value;
+        if (!s || !e) { alert('Please select start and end dates for the range.'); return; }
+        url += '&start_date=' + encodeURIComponent(s) + '&end_date=' + encodeURIComponent(e);
+    } else {
+        const d = reportDate.value || new Date().toISOString().slice(0,10);
+        url += '&date=' + encodeURIComponent(d);
+    }
+
+    // Types filter
+    const includeCar = document.getElementById('filterCar').checked;
+    const includeMotor = document.getElementById('filterMotor').checked;
+    const labels = [];
+    if (includeCar) labels.push('CAR');
+    if (includeMotor) labels.push('MOTORCYCLE');
+    if (labels.length) {
+        url += '&labels=' + encodeURIComponent(labels.join(','));
+    }
+
     try {
-        const resp = await apiFetch(url);
+        const resp = await fetch(url, { credentials: 'same-origin' });
         if (!resp.ok) {
-            // try to read JSON error
             try { const err = await resp.json(); alert(err.error || 'Failed to generate report'); } catch(e){ alert('Failed to generate report'); }
             return;
         }
         const blob = await resp.blob();
-        const downloadUrl = URL.createObjectURL(blob);
+        const dlUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = downloadUrl;
-        const fileDate = date || new Date().toISOString().slice(0,10);
+        a.href = dlUrl;
+        const fileDate = (period === 'range' ? `${reportStartDate.value}_${reportEndDate.value}` : (reportDate.value || new Date().toISOString().slice(0,10)));
         a.download = `violations_${period}_${fileDate}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        setTimeout(() => URL.revokeObjectURL(dlUrl), 1500);
     } catch (e) {
         console.error(e);
         alert('Failed to fetch report');
