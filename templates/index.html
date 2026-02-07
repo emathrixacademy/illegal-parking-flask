@@ -1452,7 +1452,7 @@ document.getElementById('generateReportBtn').addEventListener('click', async () 
     }
     
     try {
-        const resp = await apiFetch(url);
+        const resp = await fetch(url);
         if (!resp.ok) {
             try { 
                 const err = await resp.json(); 
