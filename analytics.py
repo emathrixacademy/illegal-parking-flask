@@ -282,6 +282,7 @@ def api_generate_report():
         from reportlab.pdfgen import canvas
         from reportlab.lib.units import inch
         from reportlab.lib.colors import HexColor
+        from reportlab.platypus import Table, TableStyle
     except Exception:
         return jsonify({"error": "reportlab library required (pip install reportlab)"}), 500
 
@@ -379,19 +380,59 @@ def api_generate_report():
         
         # Daily breakdown for week/month/custom
         if period in ['week', 'month', 'custom'] and daily_data:
-            c.setFont("Helvetica", 10)
-            c.setFillColor(HexColor('#000000'))
-            
+            # Build table data
+            table_data = [['Date', 'Violators', 'Total Records']]
             for date_val, unique_count, total_count in daily_data:
-                if y < 100:
-                    c.showPage()
-                    y = height - 72
-                    c.setFont("Helvetica", 10)
-                    c.setFillColor(HexColor('#000000'))
-                
                 day_name = date_val.strftime('%A, %B %d, %Y')
-                c.drawString(92, y, f"{day_name}: {unique_count} violators ({total_count} total records)")
-                y -= 18
+                table_data.append([day_name, str(unique_count), str(total_count)])
+            
+            # Calculate table dimensions
+            col_widths = [280, 80, 100]
+            row_height = 22
+            table_height = len(table_data) * row_height
+            
+            # Check if table fits on current page
+            if y - table_height < 100:
+                c.showPage()
+                y = height - 72
+            
+            table = Table(table_data, colWidths=col_widths, rowHeights=[row_height] * len(table_data))
+            
+            table_style = TableStyle([
+                # Header row
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor('#232733')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ff9800')),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                # Data rows
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('TEXTCOLOR', (0, 1), (-1, -1), HexColor('#000000')),
+                # Alternating row colors
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [HexColor('#ffffff'), HexColor('#f0f0f0')]),
+                # Alignment
+                ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                # Borders
+                ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#cccccc')),
+                ('LINEBELOW', (0, 0), (-1, 0), 1.5, HexColor('#ff9800')),
+                # Padding
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ])
+            table.setStyle(table_style)
+            
+            # Draw table
+            table_width = sum(col_widths)
+            table_x = 72
+            table_y = y - table_height
+            table.wrapOn(c, table_width, table_height)
+            table.drawOn(c, table_x, table_y)
+            
+            y = table_y - 10
         else:
             # Single day
             c.setFont("Helvetica", 10)
