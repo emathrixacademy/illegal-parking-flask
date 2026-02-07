@@ -375,30 +375,31 @@
 
         /* Chart takes prominent left position */
         .analytics-chart-wrapper {
-            grid-column: span 5;
+            grid-column: span 4;
             background: var(--primary-bg);
             border: 1px solid #2d3342;
             border-radius: 14px;
-            padding: 1.5rem;
+            padding: 1rem 1.25rem;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 320px;
+            min-height: 220px;
+            max-height: 300px;
         }
 
         .chart-title {
             color: var(--accent);
             font-weight: 700;
-            font-size: 1.1rem;
-            margin-bottom: 1rem;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
             text-align: center;
             letter-spacing: 0.5px;
         }
 
         /* Vehicle type cards - stacked vertically on right of chart */
         .vehicle-counts-wrapper {
-            grid-column: span 3;
+            grid-column: span 4;
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -637,13 +638,13 @@
         /* Responsive adjustments */
         @media (max-width: 1400px) {
             .analytics-chart-wrapper {
-                grid-column: span 6;
+                grid-column: span 4;
             }
             .vehicle-counts-wrapper {
-                grid-column: span 3;
+                grid-column: span 4;
             }
             .summary-stats-wrapper {
-                grid-column: span 3;
+                grid-column: span 4;
             }
         }
 
@@ -656,10 +657,10 @@
                 min-height: 280px;
             }
             .vehicle-counts-wrapper {
-                grid-column: span 3;
+                grid-column: span 4;
             }
             .summary-stats-wrapper {
-                grid-column: span 3;
+                grid-column: span 4;
             }
             .detailed-stats-grid {
                 grid-column: span 6;
@@ -964,7 +965,7 @@
                 <!-- Chart Card -->
                 <div class="analytics-chart-wrapper">
                     <div class="chart-title">Vehicle Distribution</div>
-                    <canvas id="analyticsChart" width="320" height="240"></canvas>
+                    <canvas id="analyticsChart" width="220" height="220"></canvas>
                 </div>
 
                 <!-- Vehicle Type Cards -->
