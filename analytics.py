@@ -2,6 +2,9 @@ import os
 import logging
 from flask import Blueprint, jsonify
 import psycopg2
+from flask import request, make_response  # added
+import io
+import datetime
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -157,3 +160,140 @@ def api_violation_stats():
             "enforced_count": 0,
             "total_fines_collected": 0.0
         })
+
+
+@analytics_bp.route('/api/generate_report', methods=['GET'])
+def api_generate_report():
+    """
+    Generate a simple PDF report for violations for the requested period.
+    Query params:
+      - period: 'day'|'week'|'month'  (defaults to 'day')
+      - date: optional ISO date YYYY-MM-DD (defaults to today)
+    """
+    period = (request.args.get('period') or 'day').lower()
+    date_str = request.args.get('date')
+    try:
+        if date_str:
+            date_obj = datetime.date.fromisoformat(date_str)
+        else:
+            date_obj = datetime.date.today()
+    except Exception:
+        return jsonify({"error": "invalid date format, use YYYY-MM-DD"}), 400
+
+    date_param = date_obj.isoformat()
+    if period == 'day':
+        where = "timestamp::date = %s"
+    elif period == 'week':
+        where = "date_trunc('week', timestamp)::date = date_trunc('week', %s::date)::date"
+    elif period == 'month':
+        where = "date_trunc('month', timestamp)::date = date_trunc('month', %s::date)::date"
+    else:
+        return jsonify({"error": "invalid period, use day|week|month"}), 400
+
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        # per-label counts
+        cur.execute(f"SELECT COALESCE(label,'UNKNOWN'), COUNT(*) FROM violations WHERE {where} GROUP BY label ORDER BY COUNT(*) DESC;", (date_param,))
+        label_rows = cur.fetchall()
+        # summary stats
+        cur.execute(f"""
+            SELECT
+                COUNT(DISTINCT (camera, tracker_id)) AS unique_violations,
+                COUNT(*) AS total_records,
+                SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count,
+                SUM(COALESCE(fine_amount, 0.0)) AS total_fines,
+                AVG(confidence_score) AS avg_confidence,
+                AVG(duration_minutes) AS avg_duration
+            FROM violations
+            WHERE {where};
+        """, (date_param,))
+        stats_row = cur.fetchone()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logging.error(f"Failed to query DB for PDF report: {e}")
+        return jsonify({"error": "database query failed"}), 500
+
+    # Try to import reportlab and generate PDF
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+    except Exception:
+        return jsonify({"error": "reportlab library required (pip install reportlab)"}), 500
+
+    buf = io.BytesIO()
+    try:
+        c = canvas.Canvas(buf, pagesize=letter)
+        width, height = letter
+        x = 72
+        y = height - 72
+
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(x, y, f"Violations Report - {period.title()}")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        c.drawString(x, y, f"Period Date: {date_param}")
+        y -= 16
+        c.drawString(x, y, f"Generated: {datetime.datetime.utcnow().isoformat()} UTC")
+        y -= 24
+
+        # summary
+        unique_violations = int(stats_row[0] or 0)
+        total_records = int(stats_row[1] or 0)
+        enforced_count = int(stats_row[2] or 0)
+        total_fines = float(stats_row[3] or 0.0)
+        avg_conf = float(stats_row[4] or 0.0)
+        avg_dur = float(stats_row[5] or 0.0)
+
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(x, y, "Summary")
+        y -= 16
+        c.setFont("Helvetica", 10)
+        lines = [
+            f"Total records: {total_records}",
+            f"Unique violations (camera+tracker): {unique_violations}",
+            f"Enforced count: {enforced_count}",
+            f"Total fines collected: {total_fines:.2f}",
+            f"Avg confidence: {avg_conf:.2f}",
+            f"Avg duration (min): {avg_dur:.2f}"
+        ]
+        for ln in lines:
+            c.drawString(x+8, y, ln)
+            y -= 14
+
+        y -= 8
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(x, y, "Counts by Label")
+        y -= 16
+        c.setFont("Helvetica", 10)
+        if not label_rows:
+            c.drawString(x+8, y, "No data for this period.")
+            y -= 14
+        else:
+            for lbl, cnt in label_rows:
+                if y < 80:
+                    c.showPage()
+                    y = height - 72
+                    c.setFont("Helvetica", 10)
+                c.drawString(x+8, y, f"{lbl}: {int(cnt)}")
+                y -= 14
+
+        c.showPage()
+        c.save()
+        buf.seek(0)
+        pdf_bytes = buf.getvalue()
+    except Exception as e:
+        logging.error(f"Failed to build PDF: {e}")
+        return jsonify({"error": "PDF generation failed"}), 500
+    finally:
+        try:
+            buf.close()
+        except Exception:
+            pass
+
+    resp = make_response(pdf_bytes)
+    resp.headers['Content-Type'] = 'application/pdf'
+    filename = f"violations_{period}_{date_param}.pdf"
+    resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return resp

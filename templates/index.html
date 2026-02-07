@@ -794,6 +794,18 @@
                             <div class="box-header" style="color:#fff">Recent Violators (today)</div>
                             <div id="recent-violators" class="box-count">0</div>
                         </div>
+
+                        <!-- Report generator controls -->
+                        <div style="margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center;">
+                            <label style="color:#bfc7d5; font-weight:600;">Report:</label>
+                            <select id="reportPeriod" class="form-select form-select-sm" style="width:auto; min-width:120px;">
+                                <option value="day">Day</option>
+                                <option value="week">Week</option>
+                                <option value="month">Month</option>
+                            </select>
+                            <input id="reportDate" type="date" class="form-control form-control-sm" style="width:auto;" />
+                            <button id="generateReportBtn" class="btn btn-sm btn-primary">Generate PDF</button>
+                        </div>
                     </div>
                 </div>
                 <div class="analytics-chart-col">
@@ -1199,8 +1211,35 @@ function setupViolatorNotification() {
     setInterval(poll, 5000);
 }
 
-// Integrate into existing onload initialization
-// ...existing code...
+// Generate PDF report and trigger download
+document.getElementById('generateReportBtn').addEventListener('click', async () => {
+    const period = document.getElementById('reportPeriod').value;
+    const date = document.getElementById('reportDate').value; // optional
+    let url = '/api/generate_report?period=' + encodeURIComponent(period);
+    if (date) url += '&date=' + encodeURIComponent(date);
+    try {
+        const resp = await apiFetch(url);
+        if (!resp.ok) {
+            // try to read JSON error
+            try { const err = await resp.json(); alert(err.error || 'Failed to generate report'); } catch(e){ alert('Failed to generate report'); }
+            return;
+        }
+        const blob = await resp.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        const fileDate = date || new Date().toISOString().slice(0,10);
+        a.download = `violations_${period}_${fileDate}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (e) {
+        console.error(e);
+        alert('Failed to fetch report');
+    }
+});
+
 window.onload = function() {
     fetchRaspiBaseAndInit();
     fetchAnalyticsAjax();
