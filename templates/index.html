@@ -245,7 +245,7 @@
             color: var(--accent);
             font-size: 1.3rem;
             font-weight: bold;
-            margin-bottom: 1.2rem;
+            margin-bottom: 1.5rem;
             letter-spacing: 1px;
         }
         .violation-timeline {
@@ -255,7 +255,6 @@
             gap: 1.5rem;
             width: 100%;
         }
-
         .legend-box {
             background: transparent;
             border-radius: 0;
@@ -365,69 +364,351 @@
                 transform: translateX(0);
             }
         }
-        .analytics-panel {
+
+        /* REDESIGNED ANALYTICS SECTION */
+        .analytics-container {
             display: grid;
-            grid-template-columns: 380px 1fr;
+            grid-template-columns: repeat(12, 1fr);
             gap: 1.25rem;
-            align-items: start;
+            margin-bottom: 1.5rem;
         }
-        .analytics-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            grid-template-rows: repeat(2, auto);
-            gap: 0.75rem;
-        }
-        .analytics-box {
-            background: var(--card-bg);
+
+        /* Chart takes prominent left position */
+        .analytics-chart-wrapper {
+            grid-column: span 5;
+            background: var(--primary-bg);
             border: 1px solid #2d3342;
-            border-radius: 12px;
-            padding: 0.8rem 1rem;
+            border-radius: 14px;
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
+            align-items: center;
             justify-content: center;
-            min-height: 68px;
-            color: #bfc7d5;
+            min-height: 320px;
         }
-        .analytics-box .box-header { font-weight:700; color: var(--accent); display:flex; align-items:center; gap:0.6rem; }
-        .analytics-box .box-count { font-size:1.25rem; font-weight:700; color:#fff; margin-top:0.35rem; }
-        .analytics-stats {
+
+        .chart-title {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* Vehicle type cards - stacked vertically on right of chart */
+        .vehicle-counts-wrapper {
+            grid-column: span 3;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .vehicle-count-card {
+            background: var(--primary-bg);
+            border: 1px solid #2d3342;
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .vehicle-count-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        .vehicle-count-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #bfc7d5;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .vehicle-count-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+            margin-top: 0.25rem;
+        }
+
+        .color-indicator {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .color-indicator.blue { background: #4da6ff; }
+        .color-indicator.yellow { background: #ffd11a; }
+
+        /* Summary stats - spans full width below */
+        .summary-stats-wrapper {
+            grid-column: span 4;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .summary-stat-card {
+            background: var(--primary-bg);
+            border: 1px solid #2d3342;
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .summary-stat-card:hover {
+            transform: translateX(4px);
+            box-shadow: -4px 0 12px rgba(255, 152, 0, 0.15);
+        }
+
+        .summary-stat-label {
+            font-size: 0.9rem;
+            color: #bfc7d5;
+            font-weight: 600;
+        }
+
+        .summary-stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        /* Detailed stats grid */
+        .detailed-stats-grid {
+            grid-column: span 12;
+            background: var(--primary-bg);
+            border: 1px solid #2d3342;
+            border-radius: 14px;
+            padding: 1.5rem;
+        }
+
+        .detailed-stats-title {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .detailed-stats-content {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .detailed-stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .detailed-stat-label {
+            font-size: 0.85rem;
+            color: #8a92a6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .detailed-stat-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* Report Generator */
+        .report-generator-wrapper {
+            grid-column: span 12;
+            background: var(--primary-bg);
+            border: 1px solid #2d3342;
+            border-radius: 14px;
+            padding: 1.5rem;
+        }
+
+        .report-generator-title {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .report-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .report-form-group {
+            display: flex;
+            flex-direction: column;
             gap: 0.5rem;
         }
-        .color-dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
-        .dot-blue { background:#4da6ff; }
-        .dot-yellow { background:#ffd11a; }
-        .dot-red { background:#ff4d4d; }
-        .dot-purple { background:#a76bff; }
-        .analytics-chart-col{flex:0 0 380px; max-width:380px; min-width:260px;}
-        
-        /* Report Generator Styles */
-        .report-generator-card {
-            margin-top: 0.75rem;
-            background: #232733;
-            border-radius: 12px;
-            padding: 1rem;
-            border: 1px solid #2d3342;
-        }
-        .report-generator-card label {
+
+        .report-form-label {
             color: #bfc7d5;
-            font-size: 0.9rem;
-            margin-bottom: 0.3rem;
-            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .report-generator-card .form-control,
-        .report-generator-card .form-select {
+
+        .report-form-control,
+        .report-form-select {
             background: #181c23;
             color: #fff;
             border: 1px solid #2d3342;
+            border-radius: 8px;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .report-generator-card .form-control:focus,
-        .report-generator-card .form-select:focus {
+
+        .report-form-control:focus,
+        .report-form-select:focus {
             background: #1a1f28;
             color: #fff;
             border-color: var(--accent);
-            box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
+            box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.15);
+            outline: none;
+        }
+
+        .date-range-inputs {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .date-range-separator {
+            color: #bfc7d5;
+            font-weight: 600;
+        }
+
+        .report-submit-wrapper {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.5rem;
+        }
+
+        .report-generate-btn {
+            background: var(--accent);
+            color: #000;
+            font-weight: 700;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .report-generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+        }
+
+        .report-generate-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1400px) {
+            .analytics-chart-wrapper {
+                grid-column: span 6;
+            }
+            .vehicle-counts-wrapper {
+                grid-column: span 3;
+            }
+            .summary-stats-wrapper {
+                grid-column: span 3;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .analytics-container {
+                grid-template-columns: repeat(6, 1fr);
+            }
+            .analytics-chart-wrapper {
+                grid-column: span 6;
+                min-height: 280px;
+            }
+            .vehicle-counts-wrapper {
+                grid-column: span 3;
+            }
+            .summary-stats-wrapper {
+                grid-column: span 3;
+            }
+            .detailed-stats-grid {
+                grid-column: span 6;
+            }
+            .report-generator-wrapper {
+                grid-column: span 6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .analytics-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .analytics-chart-wrapper,
+            .vehicle-counts-wrapper,
+            .summary-stats-wrapper,
+            .detailed-stats-grid,
+            .report-generator-wrapper {
+                grid-column: span 1;
+            }
+            .vehicle-counts-wrapper {
+                flex-direction: row;
+            }
+            .summary-stats-wrapper {
+                flex-direction: column;
+            }
+            .detailed-stats-content {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            .report-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .detailed-stats-content {
+                grid-template-columns: 1fr;
+            }
+            .vehicle-counts-wrapper {
+                flex-direction: column;
+            }
+            .vehicle-count-number {
+                font-size: 2rem;
+            }
+            .summary-stat-value {
+                font-size: 1.25rem;
+            }
         }
         
         @media (max-width: 1200px) {
@@ -467,15 +748,6 @@
                 gap: 1rem; 
             }
         }
-        @media (max-width:1024px){
-            .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.6rem; justify-items:center}
-            .analytics-chart-col{flex:0 0 auto;width:100% !important;max-width:100% !important;min-width:0 !important;text-align:center}
-            .analytics-panel{gap:0.6rem;align-items:center}
-            .analytics-box{width:100%;max-width:420px;box-sizing:border-box;text-align:center}
-            .analytics-box .box-header{justify-content:center}
-            .analytics-box .box-count{margin:0.2rem auto 0;display:inline-block}
-            #analyticsChart{max-width:380px;margin:0 auto;width:100% !important;height:auto !important}
-        }
         @media (max-width: 600px) {
             .sidebar { flex-direction: column; width: 100%; }
             .main-content { padding: 0; }
@@ -484,11 +756,6 @@
             .camera-label { font-size: 1rem; padding: 0.4rem 0.8rem; top: 0.5rem; left: 0.5rem; }
             .camera-frame-wrapper { min-width: unset; max-width: unset; }
             #serverStatusBanner { left: 0; width: 100%; }
-            .analytics-grid{grid-template-columns:repeat(2,1fr);gap:0.5rem;justify-items:center}
-            .analytics-box{min-height:72px;width:100%;max-width:320px}
-            .analytics-chart-col{width:100% !important;max-width:100% !important;text-align:center}
-            .analytics-box .box-count{font-size:1.05rem}
-            #analyticsChart{max-width:360px;margin:0 auto;width:100% !important;height:auto !important}
         }
         @media (max-width: 768px) {
             .main-content {
@@ -688,116 +955,153 @@
             <div class="legend-item"><span class="legend-dot yellow"></span> Warning</div>
             <div class="legend-item"><span class="legend-dot red"></span> Violator</div>
         </div>
-
+        
+        <!-- REDESIGNED ANALYTICS SECTION -->
         <div class="violations-section">
-            <h2><i class="bi bi-bar-chart-fill"></i> Analytics</h2>
-            <div class="analytics-panel">
-                <div>
-                    <div class="analytics-grid">
-                        <div class="analytics-box">
-                            <div class="box-header"><span class="color-dot dot-blue"></span> CARS</div>
-                            <div id="count-CAR" class="box-count">0</div>
-                        </div>
-                        <div class="analytics-box">
-                            <div class="box-header"><span class="color-dot dot-yellow"></span> MOTORCYCLES</div>
-                            <div id="count-MOTORCYCLE" class="box-count">0</div>
-                        </div>
-                    </div>
-                    <div class="analytics-stats" style="margin-top:0.75rem;">
-                        <div class="analytics-box">
-                            <div class="box-header" style="color:#fff">Total Unique Violations</div>
-                            <div id="total-violators" class="box-count">0</div>
-                        </div>
-                        <div class="analytics-box">
-                            <div class="box-header" style="color:#fff">Recent Violators (today)</div>
-                            <div id="recent-violators" class="box-count">0</div>
-                        </div>
+            <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h2>
+            
+            <div class="analytics-container">
+                <!-- Chart Card -->
+                <div class="analytics-chart-wrapper">
+                    <div class="chart-title">Vehicle Distribution</div>
+                    <canvas id="analyticsChart" width="320" height="240"></canvas>
+                </div>
 
-                        <!-- Enhanced Report generator controls -->
-                        <div class="report-generator-card">
-                            <div style="color:var(--accent); font-weight:700; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
-                                <i class="bi bi-file-earmark-pdf-fill"></i> Generate Report
-                            </div>
-                            
-                            <div style="display:grid; gap:0.75rem;">
-                                <!-- Period Selection -->
-                                <div>
-                                    <label>Report Period</label>
-                                    <select id="reportPeriod" class="form-select form-select-sm">
-                                        <option value="day">Single Day</option>
-                                        <option value="week">Week</option>
-                                        <option value="month">Month</option>
-                                        <option value="custom">Custom Range</option>
-                                    </select>
-                                </div>
-                                
-                                <!-- Date Selection -->
-                                <div id="singleDateContainer">
-                                    <label>Select Date</label>
-                                    <input id="reportDate" type="date" class="form-control form-control-sm" />
-                                </div>
-                                
-                                <!-- Custom Range -->
-                                <div id="customRangeContainer" style="display:none;">
-                                    <label>Date Range</label>
-                                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                                        <input id="reportStartDate" type="date" class="form-control form-control-sm" style="flex:1;" placeholder="Start Date" />
-                                        <span style="color:#bfc7d5;">to</span>
-                                        <input id="reportEndDate" type="date" class="form-control form-control-sm" style="flex:1;" placeholder="End Date" />
-                                    </div>
-                                </div>
-                                
-                                <!-- Filters -->
-                                <div>
-                                    <label>Vehicle Type Filter</label>
-                                    <select id="reportVehicleType" class="form-select form-select-sm">
-                                        <option value="all">All Vehicles</option>
-                                        <option value="CAR">Cars Only</option>
-                                        <option value="MOTORCYCLE">Motorcycles Only</option>
-                                    </select>
-                                </div>
-                                
-                                <div>
-                                    <label>Camera Filter</label>
-                                    <select id="reportCamera" class="form-select form-select-sm">
-                                        <option value="all">All Cameras</option>
-                                        <option value="Camera_1">Camera 1 Only</option>
-                                        <option value="Camera_2">Camera 2 Only</option>
-                                    </select>
-                                </div>
-                                
-                                <!-- Generate Button -->
-                                <button id="generateReportBtn" class="btn btn-sm" style="background:var(--accent); color:#000; font-weight:700; padding:0.5rem; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-                                    <i class="bi bi-download"></i> Generate PDF Report
-                                </button>
-                            </div>
+                <!-- Vehicle Type Cards -->
+                <div class="vehicle-counts-wrapper">
+                    <div class="vehicle-count-card">
+                        <div class="vehicle-count-header">
+                            <span class="color-indicator blue"></span>
+                            <span>Cars</span>
+                        </div>
+                        <div id="count-CAR" class="vehicle-count-number">0</div>
+                    </div>
+                    
+                    <div class="vehicle-count-card">
+                        <div class="vehicle-count-header">
+                            <span class="color-indicator yellow"></span>
+                            <span>Motorcycles</span>
+                        </div>
+                        <div id="count-MOTORCYCLE" class="vehicle-count-number">0</div>
+                    </div>
+                </div>
+
+                <!-- Summary Stats -->
+                <div class="summary-stats-wrapper">
+                    <div class="summary-stat-card">
+                        <span class="summary-stat-label">Total Unique Violations</span>
+                        <span id="total-violators" class="summary-stat-value">0</span>
+                    </div>
+                    
+                    <div class="summary-stat-card">
+                        <span class="summary-stat-label">Recent Violators (Today)</span>
+                        <span id="recent-violators" class="summary-stat-value">0</span>
+                    </div>
+                </div>
+
+                <!-- Detailed Statistics Grid -->
+                <div class="detailed-stats-grid">
+                    <div class="detailed-stats-title">
+                        <i class="bi bi-clipboard-data"></i> Detailed Statistics
+                    </div>
+                    <div class="detailed-stats-content">
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Total Violations</span>
+                            <span id="stat-total-violations" class="detailed-stat-value">0</span>
+                        </div>
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Active Cameras</span>
+                            <span id="stat-active-cameras" class="detailed-stat-value">0</span>
+                        </div>
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Affected Barangays</span>
+                            <span id="stat-affected-barangays" class="detailed-stat-value">0</span>
+                        </div>
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Enforced Count</span>
+                            <span id="stat-enforced-count" class="detailed-stat-value">0</span>
+                        </div>
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Avg Confidence</span>
+                            <span id="stat-avg-confidence" class="detailed-stat-value">0.00</span>
+                        </div>
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Avg Duration (min)</span>
+                            <span id="stat-avg-duration" class="detailed-stat-value">0.00</span>
+                        </div>
+                        <div class="detailed-stat-item">
+                            <span class="detailed-stat-label">Total Fines Collected</span>
+                            <span id="stat-total-fines" class="detailed-stat-value">₱0.00</span>
                         </div>
                     </div>
                 </div>
-                <div class="analytics-chart-col">
-                    <canvas id="analyticsChart" width="380" height="280" style="width:100%;height:280px;display:block;"></canvas>
-                </div>
-                  <div class="basic-stats" style="margin-top:0.75rem;">
-                        <div style="color:var(--accent); font-weight:700; margin-bottom:0.5rem;">BASIC VIOLATION STATISTICS</div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; color:#bfc7d5;">
-                            <div><small>Total Violations</small><div id="stat-total-violations" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                            <div><small>Active Cameras</small><div id="stat-active-cameras" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                            <div><small>Affected Barangays</small><div id="stat-affected-barangays" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                            <div><small>Enforced Count</small><div id="stat-enforced-count" style="font-weight:700; font-size:1.05rem;">0</div></div>
-                            <div><small>Avg Confidence</small><div id="stat-avg-confidence" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
-                            <div><small>Avg Duration (min)</small><div id="stat-avg-duration" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
-                            <div style="grid-column:1 / -1;"><small>Total Fines Collected</small><div id="stat-total-fines" style="font-weight:700; font-size:1.05rem;">0.00</div></div>
+
+                <!-- Report Generator -->
+                <div class="report-generator-wrapper">
+                    <div class="report-generator-title">
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                        Generate Report
+                    </div>
+                    
+                    <div class="report-form-grid">
+                        <div class="report-form-group">
+                            <label class="report-form-label">Report Period</label>
+                            <select id="reportPeriod" class="report-form-select">
+                                <option value="day">Single Day</option>
+                                <option value="week">Week</option>
+                                <option value="month">Month</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                        </div>
+                        
+                        <div class="report-form-group" id="singleDateContainer">
+                            <label class="report-form-label">Select Date</label>
+                            <input id="reportDate" type="date" class="report-form-control" />
+                        </div>
+                        
+                        <div class="report-form-group" id="customRangeContainer" style="display:none;">
+                            <label class="report-form-label">Date Range</label>
+                            <div class="date-range-inputs">
+                                <input id="reportStartDate" type="date" class="report-form-control" style="flex:1;" />
+                                <span class="date-range-separator">to</span>
+                                <input id="reportEndDate" type="date" class="report-form-control" style="flex:1;" />
+                            </div>
+                        </div>
+                        
+                        <div class="report-form-group">
+                            <label class="report-form-label">Vehicle Type</label>
+                            <select id="reportVehicleType" class="report-form-select">
+                                <option value="all">All Vehicles</option>
+                                <option value="CAR">Cars Only</option>
+                                <option value="MOTORCYCLE">Motorcycles Only</option>
+                            </select>
+                        </div>
+                        
+                        <div class="report-form-group">
+                            <label class="report-form-label">Camera Filter</label>
+                            <select id="reportCamera" class="report-form-select">
+                                <option value="all">All Cameras</option>
+                                <option value="Camera_1">Camera 1 Only</option>
+                                <option value="Camera_2">Camera 2 Only</option>
+                            </select>
+                        </div>
+                        
+                        <div class="report-submit-wrapper">
+                            <button id="generateReportBtn" class="report-generate-btn">
+                                <i class="bi bi-download"></i>
+                                Generate PDF Report
+                            </button>
                         </div>
                     </div>
+                </div>
             </div>
         </div>
-
+        
         <div id="newViolationBanner" class="alert alert-warning" role="alert"
              style="display:none; position: fixed; bottom: 6rem; right: 2rem; z-index:10001; border-radius:12px; padding:0.8rem 1rem; color:#111; background:#ffd966;">
         </div>
     </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -805,27 +1109,22 @@
 const hamburgerMenu = document.getElementById('hamburgerMenu');
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
-
 hamburgerMenu.addEventListener('click', () => {
     sidebar.classList.toggle('open');
     sidebarOverlay.classList.toggle('active');
 });
-
 sidebarOverlay.addEventListener('click', () => {
     sidebar.classList.remove('open');
     sidebarOverlay.classList.remove('active');
 });
-
 sidebar.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', () => {
         sidebar.classList.remove('open');
         sidebarOverlay.classList.remove('active');
     });
 });
-
 let RASPI_BASE = "";
 let cloudLinkActive = true;
-
 async function updateVideoFeeds() {
     try {
         const resp = await fetch('/api/get_pi_url');
@@ -839,7 +1138,6 @@ async function updateVideoFeeds() {
     if (c1 && RASPI_BASE) c1.src = RASPI_BASE + '/video_feed_c1';
     if (c2 && RASPI_BASE) c2.src = RASPI_BASE + '/video_feed_c2';
 }
-
 function pollRaspiBase() {
     fetch('/api/get_pi_url')
         .then(resp => resp.json())
@@ -852,7 +1150,6 @@ function pollRaspiBase() {
         .catch(() => {});
 }
 setInterval(pollRaspiBase, 3000);
-
 function apiFetch(path, options = {}) {
     if (!RASPI_BASE && path === '/api/get_pi_url') {
         return fetch(path, options);
@@ -860,7 +1157,6 @@ function apiFetch(path, options = {}) {
     let url = path.startsWith('/') ? (RASPI_BASE + path) : path;
     return fetch(url, options);
 }
-
 function updateReconnectingOverlays(camStatus) {
     const overlayC1 = document.getElementById('reconnectingOverlayC1');
     const overlayC2 = document.getElementById('reconnectingOverlayC2');
@@ -905,7 +1201,6 @@ function updateReconnectingOverlays(camStatus) {
             spanC2.style.display = "";
         });
 }
-
 function checkCameraStatus() {
     apiFetch('/api/camera_status')
         .then(async r => {
@@ -919,7 +1214,6 @@ function checkCameraStatus() {
         })
         .catch(() => {});
 }
-
 function startClock() {
     function updateClock() {
         const now = new Date();
@@ -929,7 +1223,6 @@ function startClock() {
     updateClock();
     setInterval(updateClock, 1000);
 }
-
 function fetchRaspiBaseAndInit() {
     fetch('/api/get_pi_url')
         .then(resp => resp.json())
@@ -955,7 +1248,6 @@ function fetchRaspiBaseAndInit() {
             }
         });
 }
-
 let analyticsChart;
 function fetchAnalyticsAjax(){
     var xhr = new XMLHttpRequest();
@@ -968,7 +1260,6 @@ function fetchAnalyticsAjax(){
                     const data = JSON.parse(xhr.responseText);
                     const counts = labels.map(l => Number(data[l] || 0));
                     const total = counts.reduce((a,b)=>a+b,0);
-
                     const canvas = document.getElementById('analyticsChart');
                     if (!canvas) return;
                     const ctx = canvas.getContext('2d');
@@ -982,10 +1273,17 @@ function fetchAnalyticsAjax(){
                                     backgroundColor: ['#4da6ff','#ffd11a']
                                 }]
                             },
-                            options: { plugins: { legend: { display: false } } }
+                            options: { 
+                                plugins: { 
+                                    legend: { 
+                                        display: false 
+                                    } 
+                                },
+                                maintainAspectRatio: true,
+                                responsive: true
+                            }
                         });
                     }
-
                     if(analyticsChart){
                         if(total === 0){
                             analyticsChart.data.labels = ['No data'];
@@ -994,15 +1292,10 @@ function fetchAnalyticsAjax(){
                         } else {
                             analyticsChart.data.labels = labels;
                             analyticsChart.data.datasets[0].data = counts;
-                            analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a','#ff4d4d','#9b59b6'];
+                            analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a'];
                         }
                         analyticsChart.update();
                     }
-
-                    labels.forEach(l => {
-                        const el = document.getElementById('legend-' + l);
-                        if(el) el.textContent = data && data[l] ? data[l] : 0;
-                    });
                     const idMap = { 'CAR':'count-CAR', 'MOTORCYCLE':'count-MOTORCYCLE' };
                     labels.forEach(l => {
                         const el2 = document.getElementById(idMap[l]);
@@ -1010,22 +1303,13 @@ function fetchAnalyticsAjax(){
                     });
                     try {
                         const uniq = data && (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) ? (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) : total;
-                        const totalEl = document.getElementById('legend-TOTAL');
                         const totalBox = document.getElementById('total-violators');
-                        if(totalEl) totalEl.textContent = uniq;
                         if(totalBox) totalBox.textContent = uniq;
-
                         const recent = data && (data.RECENT_VIOLATORS_TODAY || data.recent) ? (data.RECENT_VIOLATORS_TODAY || data.recent) : total;
-                        const recentEl = document.getElementById('legend-RECENT');
                         const recentBox = document.getElementById('recent-violators');
-                        if(recentEl) recentEl.textContent = recent;
                         if(recentBox) recentBox.textContent = recent;
                     } catch(e) {}
                 } catch(e) {
-                    labels.forEach(l => {
-                        const el = document.getElementById('legend-' + l);
-                        if(el) el.textContent = 0;
-                    });
                     labels.forEach(l => {
                         const el2 = document.getElementById('count-' + l);
                         if(el2) el2.textContent = 0;
@@ -1042,10 +1326,6 @@ function fetchAnalyticsAjax(){
                     }
                 }
             } else {
-                labels.forEach(l => {
-                    const el = document.getElementById('legend-' + l);
-                    if(el) el.textContent = 0;
-                });
                 labels.forEach(l => {
                     const el2 = document.getElementById('count-' + l);
                     if(el2) el2.textContent = 0;
@@ -1073,15 +1353,13 @@ function fetchAnalyticsAjax(){
             document.getElementById('stat-avg-confidence').textContent = (data.avg_confidence || 0).toFixed(2);
             document.getElementById('stat-avg-duration').textContent = (data.avg_duration_minutes || 0).toFixed(2);
             document.getElementById('stat-enforced-count').textContent = data.enforced_count || 0;
-            document.getElementById('stat-total-fines').textContent = (data.total_fines_collected || 0).toFixed(2);
+            document.getElementById('stat-total-fines').textContent = '₱' + (data.total_fines_collected || 0).toFixed(2);
         })
         .catch(() => {});
 }
-
 function setupViolatorNotification() {
     let lastKnown = Number(localStorage.getItem('lastKnownViolatorCount') || 0);
     const banner = document.getElementById('newViolationBanner');
-
     async function poll() {
         try {
             const resp = await fetch('/api/db_violations_count');
@@ -1089,17 +1367,14 @@ function setupViolatorNotification() {
             const data = await resp.json();
             const count = Number(data.count || 0);
             const prev = Number(localStorage.getItem('lastKnownViolatorCount') || lastKnown);
-
             if (count > prev) {
                 const delta = count - prev;
                 showBanner(delta, count);
             }
-
             localStorage.setItem('lastKnownViolatorCount', String(count));
             lastKnown = count;
         } catch (e) {}
     }
-
     function showBanner(delta, absoluteCount) {
         if (!banner) return;
         banner.innerHTML = `
@@ -1111,9 +1386,7 @@ function setupViolatorNotification() {
                 <button id="dismissNewViolator" class="btn btn-sm btn-light" style="margin-left:8px;">Dismiss</button>
             </div>`;
         banner.style.display = 'block';
-
         playNotificationBeep();
-
         const dismiss = document.getElementById('dismissNewViolator');
         if (dismiss) {
             dismiss.addEventListener('click', () => {
@@ -1122,7 +1395,6 @@ function setupViolatorNotification() {
                 lastKnown = absoluteCount;
             }, { once: true });
         }
-
         setTimeout(() => {
             if (banner.style.display !== 'none') {
                 banner.style.display = 'none';
@@ -1131,11 +1403,9 @@ function setupViolatorNotification() {
             }
         }, 10000);
     }
-
     poll();
     setInterval(poll, 5000);
 }
-
 // Period selector handling
 document.getElementById('reportPeriod').addEventListener('change', function() {
     const period = this.value;
@@ -1150,7 +1420,6 @@ document.getElementById('reportPeriod').addEventListener('change', function() {
         customRangeContainer.style.display = 'none';
     }
 });
-
 // Generate PDF report with enhanced filters
 document.getElementById('generateReportBtn').addEventListener('click', async () => {
     const period = document.getElementById('reportPeriod').value;
@@ -1207,7 +1476,6 @@ document.getElementById('generateReportBtn').addEventListener('click', async () 
         alert('Failed to fetch report');
     }
 });
-
 let _audioCtx = null;
 function _ensureAudioContext() {
     if (!_audioCtx) {
@@ -1225,7 +1493,6 @@ function unlockAudioOnGesture() {
     }, { once: true });
 }
 unlockAudioOnGesture();
-
 function playNotificationBeep() {
     try {
         const ctx = _ensureAudioContext();
@@ -1245,7 +1512,6 @@ function playNotificationBeep() {
         o.stop(now + 0.25);
     } catch (e) {}
 }
-
 window.onload = function() {
     fetchRaspiBaseAndInit();
     fetchAnalyticsAjax();
