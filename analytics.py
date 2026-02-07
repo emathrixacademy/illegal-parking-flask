@@ -1,10 +1,9 @@
 import os
 import logging
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, make_response
 import psycopg2
-from flask import request, make_response  # added
+from datetime import datetime, timedelta
 import io
-import datetime
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -28,7 +27,6 @@ def api_violation_counts():
             "car": "CAR", "motorcycle": "MOTORCYCLE",
             "CAR": "CAR", "MOTORCYCLE": "MOTORCYCLE"
         }
-        # Also map CCTV AI labels stored as strings in the database
         CCTV_AI_LABELS = [
             "BASKET", "BOTTLE", "BOX", "BUCKET", "CAN", "CANAL",
             "CARDBOARD", "CHAIR", "CONTAINER", "CRATE", "CUP",
@@ -54,7 +52,6 @@ def api_violation_counts():
         conn.close()
 
         counts = {"CAR": 0, "MOTORCYCLE": 0}
-        # Initialize CCTV AI class counts
         for lbl in CCTV_AI_LABELS:
             counts[lbl] = 0
         for label, distinct_ids, null_count in rows:
@@ -165,224 +162,309 @@ def api_violation_stats():
 @analytics_bp.route('/api/generate_report', methods=['GET'])
 def api_generate_report():
     """
-    Generate a PDF report for violations.
-
+    Generate a professional PDF report for violations with enhanced filtering.
     Query params:
-      - period: 'day'|'week'|'month'|'range'  (defaults to 'day')
-      - date: optional ISO date YYYY-MM-DD (for day/week/month; defaults to today)
-      - start_date, end_date: ISO dates for arbitrary range (used when period=range)
-      - labels: optional comma-separated labels to include (e.g. CAR,MOTORCYCLE)
-      - camera: optional camera id to filter
-      - barangay: optional barangay filter
+      - period: 'day'|'week'|'month'|'custom'  (defaults to 'day')
+      - date: optional ISO date YYYY-MM-DD (defaults to today) - for day/week/month
+      - start_date: start date for custom range
+      - end_date: end date for custom range
+      - vehicle_type: 'all'|'CAR'|'MOTORCYCLE' (defaults to 'all')
+      - camera: 'all'|'Camera_1'|'Camera_2' (defaults to 'all')
     """
     period = (request.args.get('period') or 'day').lower()
     date_str = request.args.get('date')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    labels_filter = request.args.get('labels')  # comma separated
-    camera_filter = request.args.get('camera')
-    barangay_filter = request.args.get('barangay')
-
-    # parse dates
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    vehicle_type = request.args.get('vehicle_type', 'all')
+    camera_filter = request.args.get('camera', 'all')
+    
+    # Parse dates
     try:
-        if period == 'range' and start_date and end_date:
-            start_obj = datetime.date.fromisoformat(start_date)
-            end_obj = datetime.date.fromisoformat(end_date)
-            date_param_vals = (start_obj.isoformat(), end_obj.isoformat())
-            where_clause = "timestamp::date BETWEEN %s AND %s"
+        if period == 'custom':
+            if not start_date_str or not end_date_str:
+                return jsonify({"error": "start_date and end_date required for custom range"}), 400
+            start_date = datetime.fromisoformat(start_date_str).date()
+            end_date = datetime.fromisoformat(end_date_str).date()
+            date_obj = start_date  # For filename
         else:
             if date_str:
-                date_obj = datetime.date.fromisoformat(date_str)
+                date_obj = datetime.fromisoformat(date_str).date()
             else:
-                date_obj = datetime.date.today()
-            date_param_vals = (date_obj.isoformat(),)
-            if period == 'day':
-                where_clause = "timestamp::date = %s"
-            elif period == 'week':
-                where_clause = "date_trunc('week', timestamp)::date = date_trunc('week', %s::date)::date"
-            elif period == 'month':
-                where_clause = "date_trunc('month', timestamp)::date = date_trunc('month', %s::date)::date"
-            else:
-                # fallback to day
-                where_clause = "timestamp::date = %s"
-    except Exception:
-        return jsonify({"error": "invalid date format, use YYYY-MM-DD"}), 400
+                date_obj = datetime.now().date()
+            start_date = date_obj
+            end_date = date_obj
+    except Exception as e:
+        return jsonify({"error": f"invalid date format: {str(e)}"}), 400
 
-    # additional filters
-    extra_clauses = []
-    params = list(date_param_vals)
-    if labels_filter:
-        # basic support: match exact label values OR comma-separated normalized names
-        lbls = [l.strip() for l in labels_filter.split(',') if l.strip()]
-        if lbls:
-            # use ILIKE for case-insensitive match
-            placeholders = ",".join(["%s"] * len(lbls))
-            extra_clauses.append(f"label IN ({placeholders})")
-            params.extend(lbls)
-    if camera_filter:
-        extra_clauses.append("camera = %s"); params.append(camera_filter)
-    if barangay_filter:
-        extra_clauses.append("barangay = %s"); params.append(barangay_filter)
+    # Build WHERE clause based on period
+    where_clauses = []
+    params = []
+    
+    if period == 'day':
+        where_clauses.append("timestamp::date = %s")
+        params.append(start_date)
+    elif period == 'week':
+        where_clauses.append("date_trunc('week', timestamp)::date = date_trunc('week', %s::date)::date")
+        params.append(start_date)
+    elif period == 'month':
+        where_clauses.append("date_trunc('month', timestamp)::date = date_trunc('month', %s::date)::date")
+        params.append(start_date)
+    elif period == 'custom':
+        where_clauses.append("timestamp::date BETWEEN %s AND %s")
+        params.extend([start_date, end_date])
+    else:
+        return jsonify({"error": "invalid period, use day|week|month|custom"}), 400
 
-    full_where = where_clause
-    if extra_clauses:
-        full_where = f"{full_where} AND " + " AND ".join(extra_clauses)
+    # Add vehicle type filter
+    if vehicle_type != 'all':
+        where_clauses.append("label = %s")
+        params.append(vehicle_type)
+
+    # Add camera filter
+    if camera_filter != 'all':
+        where_clauses.append("camera = %s")
+        params.append(camera_filter)
+
+    where_sql = " AND ".join(where_clauses)
 
     try:
         conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
-
-        # Per-day totals (for week/month/range). For single day this returns that date.
+        
+        # Per-label counts
         cur.execute(f"""
-            SELECT DATE(timestamp) AS day, COUNT(*) AS cnt
-            FROM violations
-            WHERE {full_where}
-            GROUP BY day
-            ORDER BY day;
-        """, tuple(params))
-        day_rows = cur.fetchall()
-
-        # Type breakdown by raw label -> later normalized to CAR/MOTORCYCLE where possible
-        cur.execute(f"""
-            SELECT COALESCE(label,'UNKNOWN') AS label, COUNT(*) AS cnt
-            FROM violations
-            WHERE {full_where}
-            GROUP BY label
-            ORDER BY cnt DESC;
-        """, tuple(params))
+            SELECT COALESCE(label,'UNKNOWN'), COUNT(*) 
+            FROM violations 
+            WHERE {where_sql} 
+            GROUP BY label 
+            ORDER BY COUNT(*) DESC;
+        """, params)
         label_rows = cur.fetchall()
-
-        # overall totals
-        cur.execute(f"SELECT COUNT(*) FROM violations WHERE {full_where};", tuple(params))
-        total_row = cur.fetchone()
-        total_violators = int(total_row[0] or 0)
-
+        
+        # Summary stats
+        cur.execute(f"""
+            SELECT
+                COUNT(DISTINCT (camera, tracker_id)) AS unique_violations,
+                COUNT(*) AS total_records,
+                SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count,
+                SUM(COALESCE(fine_amount, 0.0)) AS total_fines,
+                AVG(confidence_score) AS avg_confidence,
+                AVG(duration_minutes) AS avg_duration
+            FROM violations
+            WHERE {where_sql};
+        """, params)
+        stats_row = cur.fetchone()
+        
+        # Daily breakdown for week/month/custom
+        daily_data = []
+        if period in ['week', 'month', 'custom']:
+            cur.execute(f"""
+                SELECT 
+                    timestamp::date as date,
+                    COUNT(DISTINCT (camera, tracker_id)) as unique_count,
+                    COUNT(*) as total_count
+                FROM violations
+                WHERE {where_sql}
+                GROUP BY timestamp::date
+                ORDER BY timestamp::date;
+            """, params)
+            daily_data = cur.fetchall()
+        
         cur.close()
         conn.close()
     except Exception as e:
-        logger.error(f"Failed to query DB for PDF report: {e}")
+        logging.error(f"Failed to query DB for PDF report: {e}")
         return jsonify({"error": "database query failed"}), 500
 
-    # Normalize labels into main types
-    CLASS_MAP = {
-        2: "CAR", 3: "MOTORCYCLE",
-        "2": "CAR", "3": "MOTORCYCLE",
-        "car": "CAR", "motorcycle": "MOTORCYCLE",
-        "CAR": "CAR", "MOTORCYCLE": "MOTORCYCLE"
-    }
-    # include CCTV_AI_LABELS if needed (keeps original mapping behavior)
-    CCTV_AI_LABELS = [
-        "BASKET", "BOTTLE", "BOX", "BUCKET", "CAN", "CANAL",
-        "CARDBOARD", "CHAIR", "CONTAINER", "CRATE", "CUP",
-        "FALLEN_TREE", "GARBAGE", "GROCERY_BAG", "LEAVES",
-        "OPEN_CANAL", "PAPER", "PLASTIC", "PLASTIC_BOTTLE",
-        "PLASTIC_CONTAINER", "PLASTIC_BAG", "POT", "ROCK",
-        "SACK", "TISSUE", "TRASH", "TRASH_CAN", "VENDOR"
-    ]
-    for lbl in CCTV_AI_LABELS:
-        CLASS_MAP[lbl] = lbl
-        CLASS_MAP[lbl.lower()] = lbl
-
-    type_counts = {"CAR": 0, "MOTORCYCLE": 0}
-    other_types = {}
-    for label, cnt in label_rows:
-        mapped = CLASS_MAP.get(label) or CLASS_MAP.get(str(label).lower()) or str(label)
-        if mapped in type_counts:
-            type_counts[mapped] += int(cnt or 0)
-        else:
-            other_types[mapped] = other_types.get(mapped, 0) + int(cnt or 0)
-
-    # Build textual period description for title
-    if period == 'range' and start_date and end_date:
-        period_desc = f"{start_date} → {end_date}"
-    elif period in ("day", "week", "month"):
-        if date_str:
-            period_desc = f"{date_str}"
-        else:
-            period_desc = datetime.date.today().isoformat()
-    else:
-        period_desc = "All Time"
-
-    # Generate PDF using reportlab platypus for nicer layout
+    # Generate PDF using reportlab
     try:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        from reportlab.lib.units import mm
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import inch
+        from reportlab.lib.colors import HexColor
     except Exception:
         return jsonify({"error": "reportlab library required (pip install reportlab)"}), 500
 
     buf = io.BytesIO()
     try:
-        doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=20*mm, rightMargin=20*mm, topMargin=20*mm, bottomMargin=20*mm)
-        styles = getSampleStyleSheet()
-        title_style = styles['Title']
-        title_style.fontSize = 16
-        normal = styles['Normal']
-        normal.fontSize = 10
-
-        elements = []
-        title_text = f"Illegal Parking Detection — {period.title()} Report"
-        elements.append(Paragraph(title_text, title_style))
-        elements.append(Spacer(1, 6))
-        elements.append(Paragraph(f"Period: <b>{period_desc}</b>", normal))
-        elements.append(Spacer(1, 8))
-
+        c = canvas.Canvas(buf, pagesize=letter)
+        width, height = letter
+        
+        # Colors
+        primary_color = HexColor('#ff9800')  # Orange accent
+        dark_bg = HexColor('#232733')
+        text_color = HexColor('#f8f9fa')
+        
+        # Header with accent bar
+        c.setFillColor(primary_color)
+        c.rect(0, height - 80, width, 80, fill=True, stroke=False)
+        
+        c.setFillColor(HexColor('#000000'))
+        c.setFont("Helvetica-Bold", 24)
+        c.drawString(72, height - 50, "Illegal Parking Detection Report")
+        
+        # Date range subtitle
+        c.setFont("Helvetica", 12)
+        if period == 'custom':
+            date_range_text = f"{start_date.strftime('%B %d, %Y')} - {end_date.strftime('%B %d, %Y')}"
+        elif period == 'month':
+            date_range_text = date_obj.strftime('%B %Y')
+        elif period == 'week':
+            week_end = date_obj + timedelta(days=6)
+            date_range_text = f"Week of {date_obj.strftime('%B %d')} - {week_end.strftime('%B %d, %Y')}"
+        else:  # day
+            date_range_text = date_obj.strftime('%B %d, %Y')
+        
+        c.drawString(72, height - 68, date_range_text)
+        
+        # Current position
+        y = height - 110
+        
+        # Filters applied section
+        c.setFillColor(HexColor('#000000'))
+        c.setFont("Helvetica-Bold", 10)
+        filters_text = f"Filters: {vehicle_type if vehicle_type != 'all' else 'All Vehicles'}"
+        if camera_filter != 'all':
+            filters_text += f" | {camera_filter}"
+        c.drawString(72, y, filters_text)
+        y -= 8
+        
+        c.setFont("Helvetica", 8)
+        c.setFillColor(HexColor('#666666'))
+        c.drawString(72, y, f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+        y -= 30
+        
         # Summary box
-        elements.append(Paragraph(f"<b>Total Violators: {total_violators}</b>", normal))
-        elements.append(Spacer(1, 6))
-
-        # Per-day table
-        elements.append(Paragraph("<b>Violators by Day</b>", normal))
-        table_data = [["Date", "Violators"]]
-        if not day_rows:
-            table_data.append(["—", "0"])
+        c.setFillColor(dark_bg)
+        c.roundRect(72, y - 120, width - 144, 120, 10, fill=True, stroke=False)
+        
+        c.setFillColor(primary_color)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(92, y - 25, "SUMMARY")
+        
+        unique_violations = int(stats_row[0] or 0)
+        total_records = int(stats_row[1] or 0)
+        enforced_count = int(stats_row[2] or 0)
+        total_fines = float(stats_row[3] or 0.0)
+        avg_conf = float(stats_row[4] or 0.0)
+        avg_dur = float(stats_row[5] or 0.0)
+        
+        c.setFillColor(text_color)
+        c.setFont("Helvetica", 10)
+        
+        summary_lines = [
+            f"Total Violations: {unique_violations}",
+            f"Total Records: {total_records}",
+            f"Enforced: {enforced_count}",
+            f"Total Fines: ${total_fines:,.2f}",
+            f"Avg Confidence: {avg_conf:.1f}%",
+            f"Avg Duration: {avg_dur:.1f} min"
+        ]
+        
+        line_y = y - 50
+        col1_x = 92
+        col2_x = width / 2 + 36
+        
+        for i, line in enumerate(summary_lines):
+            if i < 3:
+                c.drawString(col1_x, line_y - (i * 20), line)
+            else:
+                c.drawString(col2_x, line_y - ((i - 3) * 20), line)
+        
+        y -= 150
+        
+        # Total Violators section
+        c.setFillColor(HexColor('#000000'))
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(72, y, "TOTAL VIOLATORS")
+        y -= 5
+        c.setStrokeColor(primary_color)
+        c.setLineWidth(2)
+        c.line(72, y, width - 72, y)
+        y -= 20
+        
+        # Daily breakdown for week/month/custom
+        if period in ['week', 'month', 'custom'] and daily_data:
+            c.setFont("Helvetica", 10)
+            c.setFillColor(HexColor('#000000'))
+            
+            for date_val, unique_count, total_count in daily_data:
+                if y < 100:
+                    c.showPage()
+                    y = height - 72
+                    c.setFont("Helvetica", 10)
+                    c.setFillColor(HexColor('#000000'))
+                
+                day_name = date_val.strftime('%A, %B %d, %Y')
+                c.drawString(92, y, f"{day_name}: {unique_count} violators ({total_count} total records)")
+                y -= 18
         else:
-            for day, cnt in day_rows:
-                # day may be datetime.date
-                day_label = day.isoformat() if hasattr(day, 'isoformat') else str(day)
-                table_data.append([day_label, str(int(cnt or 0))])
-        tbl = Table(table_data, colWidths=[120*mm, 40*mm])
-        tbl.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f3f3f3")),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('ALIGN', (1,1), (-1,-1), 'RIGHT'),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.grey),
-            ('INNERGRID', (0,0), (-1,-1), 0.25, colors.grey),
-            ('PAD', (0,0), (-1,-1), 6),
-        ]))
-        elements.append(tbl)
-        elements.append(Spacer(1, 8))
-
-        # Type breakdown
-        elements.append(Paragraph("<b>Type of Violators</b>", normal))
-        type_table = [["Type", "Count"]]
-        type_table.append(["Car", str(type_counts.get("CAR", 0))])
-        type_table.append(["Motorcycle", str(type_counts.get("MOTORCYCLE", 0))])
-        # include any other types
-        for t, c in other_types.items():
-            type_table.append([str(t), str(c)])
-        tbl2 = Table(type_table, colWidths=[120*mm, 40*mm])
-        tbl2.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f3f3f3")),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('ALIGN', (1,1), (-1,-1), 'RIGHT'),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.grey),
-            ('INNERGRID', (0,0), (-1,-1), 0.25, colors.grey),
-            ('PAD', (0,0), (-1,-1), 6),
-        ]))
-        elements.append(tbl2)
-        elements.append(Spacer(1, 8))
-
-        # Footer / generation timestamp
-        elements.append(Paragraph(f"Generated: {datetime.datetime.utcnow().isoformat()} UTC", ParagraphStyle('footer', fontSize=8, textColor=colors.grey)))
-        doc.build(elements)
+            # Single day
+            c.setFont("Helvetica", 10)
+            c.setFillColor(HexColor('#000000'))
+            c.drawString(92, y, f"Total Violators: {unique_violations}")
+            y -= 20
+        
+        y -= 20
+        
+        # Type of Violators section
+        if y < 200:
+            c.showPage()
+            y = height - 72
+        
+        c.setFillColor(HexColor('#000000'))
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(72, y, "TYPE OF VIOLATORS")
+        y -= 5
+        c.setStrokeColor(primary_color)
+        c.setLineWidth(2)
+        c.line(72, y, width - 72, y)
+        y -= 20
+        
+        if not label_rows:
+            c.setFont("Helvetica", 10)
+            c.setFillColor(HexColor('#666666'))
+            c.drawString(92, y, "No violations recorded for this period.")
+            y -= 20
+        else:
+            c.setFont("Helvetica", 10)
+            c.setFillColor(HexColor('#000000'))
+            
+            for lbl, cnt in label_rows:
+                if y < 80:
+                    c.showPage()
+                    y = height - 72
+                    c.setFont("Helvetica", 10)
+                    c.setFillColor(HexColor('#000000'))
+                
+                # Draw colored dot for vehicle type
+                if lbl == 'CAR':
+                    c.setFillColor(HexColor('#4da6ff'))
+                elif lbl == 'MOTORCYCLE':
+                    c.setFillColor(HexColor('#ffd11a'))
+                else:
+                    c.setFillColor(HexColor('#ff4d4d'))
+                
+                c.circle(82, y + 3, 4, fill=True, stroke=False)
+                
+                c.setFillColor(HexColor('#000000'))
+                c.drawString(92, y, f"{lbl}: {int(cnt)}")
+                y -= 18
+        
+        # Footer
+        c.setFont("Helvetica", 8)
+        c.setFillColor(HexColor('#666666'))
+        footer_text = "Illegal Parking Detection System - Automated Violation Tracking"
+        c.drawString(72, 40, footer_text)
+        c.drawRightString(width - 72, 40, f"Page 1")
+        
+        c.showPage()
+        c.save()
         buf.seek(0)
         pdf_bytes = buf.getvalue()
     except Exception as e:
-        logger.error(f"Failed to build PDF: {e}")
-        return jsonify({"error": "PDF generation failed"}), 500
+        logging.error(f"Failed to build PDF: {e}")
+        return jsonify({"error": f"PDF generation failed: {str(e)}"}), 500
     finally:
         try:
             buf.close()
@@ -391,6 +473,6 @@ def api_generate_report():
 
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
-    filename = f"violations_{period}_{period_desc.replace(' ','_')}.pdf"
+    filename = f"violations_{period}_{date_obj.isoformat()}.pdf"
     resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
     return resp
