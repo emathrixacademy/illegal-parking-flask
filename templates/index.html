@@ -591,15 +591,27 @@
             outline: none;
         }
 
+        #customRangeContainer {
+            grid-column: span 2;
+            min-width: 0;
+        }
+
         .date-range-inputs {
             display: flex;
             gap: 0.5rem;
             align-items: center;
+            min-width: 0;
+        }
+
+        .date-range-inputs .report-form-control {
+            min-width: 0;
+            flex: 1 1 0;
         }
 
         .date-range-separator {
             color: #bfc7d5;
             font-weight: 600;
+            flex-shrink: 0;
         }
 
         .report-submit-wrapper {
@@ -694,6 +706,9 @@
             }
             .report-form-grid {
                 grid-template-columns: 1fr;
+            }
+            #customRangeContainer {
+                grid-column: span 1;
             }
         }
 
