@@ -7,7 +7,8 @@ from datetime import datetime
 from flask import (
     Flask, request, jsonify, Response,
     render_template, render_template_string,
-    stream_with_context, make_response
+    stream_with_context, make_response,
+    session, redirect, url_for
 )
 import requests
 import base64
@@ -30,6 +31,11 @@ logger = logging.getLogger("ParkingApp")
 # Flask App
 # --------------------------------------------------
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'f7a3b9c1d4e8f2a6b0c5d9e3f1a7b4c8')
+
+# Admin credentials
+ADMIN_USERNAME = 'admin'
+ADMIN_PASSWORD = 'illegalparking'
 
 # Register analytics blueprint
 app.register_blueprint(analytics_bp)
@@ -233,9 +239,32 @@ def settings_page():
     return render_template('settings.html')
 
 
-@app.route('/admin')
+@app.route('/8f3c9a2d71b4e6c0f9d2a8b7c4e1/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page."""
+    if session.get('admin_logged_in'):
+        return redirect(url_for('admin_page'))
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_page'))
+        error = 'Invalid username or password'
+    return render_template('admin_login.html', error=error)
+
+@app.route('/8f3c9a2d71b4e6c0f9d2a8b7c4e1/logout')
+def admin_logout():
+    """Admin logout."""
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('admin_login'))
+
+@app.route('/8f3c9a2d71b4e6c0f9d2a8b7c4e1')
 def admin_page():
-    """Simple admin UI page."""
+    """Simple admin UI page. Requires login."""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
     return render_template('admin.html', public_url=PI_PUBLIC_URL or "")
 
 @app.route('/violations')
