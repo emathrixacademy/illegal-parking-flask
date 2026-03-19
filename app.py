@@ -60,7 +60,7 @@ EVENT_IMAGE_FORMAT = "{camera_id}_{timestamp}.jpg"
 EVENT_IMAGE_TIMESTAMP_REPL = lambda ts: ts.replace(":", "-").replace(".", "-")
 
 POSTGRES_URL = os.environ.get(
-    "POSTGRES_URL",
+    "DATABASE_URL",
     "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@postgres-pote.railway.internal:5432/railway"
 )
 
