@@ -1,13 +1,9 @@
 flask
 flask-login
 bcrypt
-opencv-python-headless
-numpy
 gunicorn
 requests
-sqlalchemy
 psycopg2-binary
 reportlab
 psutil
-scikit-image
-easyocr
+numpy
