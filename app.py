@@ -61,7 +61,7 @@ EVENT_IMAGE_TIMESTAMP_REPL = lambda ts: ts.replace(":", "-").replace(".", "-")
 
 POSTGRES_URL = os.environ.get(
     "POSTGRES_URL",
-    "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@mainline.proxy.rlwy.net:42362/railway"
+    "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@postgres-pote.railway.internal:5432/railway"
 )
 
 # Initialize database tables and default settings on startup
