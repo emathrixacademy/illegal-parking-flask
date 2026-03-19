@@ -591,6 +591,86 @@ def search_plates():
         return jsonify({"error": str(e)}), 500
 
 # ==================================================
+# PART 3: Remote AI Detection Control Proxies
+# ==================================================
+@app.route('/api/detection_control', methods=['GET', 'POST'])
+@login_required
+@role_required('operator')
+def api_detection_control():
+    """Proxy detection controls to Pi."""
+    try:
+        pi_base = get_pi_base()
+        if request.method == 'POST':
+            resp = requests.post(f"{pi_base}/api/detection_control",
+                json=request.get_json(force=True), timeout=10)
+        else:
+            resp = requests.get(f"{pi_base}/api/detection_control", timeout=10)
+        return Response(resp.content, resp.status_code,
+            content_type=resp.headers.get('Content-Type', 'application/json'))
+    except Exception:
+        return jsonify({"error": "Pi unreachable"}), 502
+
+@app.route('/api/detection_snapshot')
+@login_required
+def api_detection_snapshot():
+    """Proxy snapshot from Pi."""
+    try:
+        pi_base = get_pi_base()
+        resp = requests.get(f"{pi_base}/api/detection_snapshot", timeout=10)
+        return Response(resp.content, mimetype='image/jpeg')
+    except Exception:
+        return Response("Snapshot unavailable", status=502)
+
+@app.route('/api/restart_detection', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_restart_detection():
+    """Proxy restart command to Pi. Admin only."""
+    try:
+        pi_base = get_pi_base()
+        resp = requests.post(f"{pi_base}/api/restart_detection", timeout=15)
+        return Response(resp.content, resp.status_code,
+            content_type=resp.headers.get('Content-Type', 'application/json'))
+    except Exception:
+        return jsonify({"error": "Pi unreachable"}), 502
+
+# ==================================================
+# PART 2: Daily Health Summary Email
+# ==================================================
+@app.route('/api/health_summary_email', methods=['POST'])
+@login_or_api_key
+def api_health_summary_email():
+    """Receive health summary from Pi and email it."""
+    data = request.get_json(force=True)
+    summary = data.get('summary', '')
+    status = data.get('status', 'unknown')
+
+    from alerts import get_alert_config
+    alert_cfg = get_alert_config()
+    if not alert_cfg.get('email_enabled') or not alert_cfg.get('email_recipients'):
+        return jsonify({"success": False, "reason": "Email not configured"})
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+
+        msg = MIMEText(summary)
+        msg['Subject'] = f"[DECONGESTILAGUNA] Daily Health Report — {status.upper()}"
+        msg['From'] = alert_cfg['smtp_email']
+        msg['To'] = ', '.join(alert_cfg['email_recipients'])
+
+        server = smtplib.SMTP(alert_cfg.get('smtp_server', 'smtp.gmail.com'), alert_cfg.get('smtp_port', 587))
+        server.starttls()
+        server.login(alert_cfg['smtp_email'], alert_cfg['smtp_password'])
+        server.send_message(msg)
+        server.quit()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Health summary email failed: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================================================
 # Routes – Proxy to Pi
 # ==================================================
 @app.route('/api/<path:path>', methods=['GET','POST','OPTIONS'])

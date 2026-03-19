@@ -126,6 +126,54 @@
   </div>
 </div>
 
+<!-- Section 4: AI Detection Controls -->
+<div class="content-card">
+  <h2><i class="bi bi-cpu"></i> AI Detection Controls</h2>
+
+  <!-- ON/OFF Toggle -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;">
+    <div>
+      <div style="font-weight:600;">Detection Engine</div>
+      <div class="small-muted">Pause or resume AI violation detection</div>
+    </div>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="detectionToggle" checked style="width:50px;height:26px;">
+    </div>
+  </div>
+
+  <!-- Confidence Slider -->
+  <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+      <div>
+        <div style="font-weight:600;">Confidence Threshold</div>
+        <div class="small-muted">Higher = fewer detections but more accurate</div>
+      </div>
+      <span id="confValue" style="font-size:20px;font-weight:700;color:var(--accent);">0.30</span>
+    </div>
+    <input type="range" class="form-range" min="0.1" max="0.9" step="0.05" value="0.3" id="confSlider">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);">
+      <span>0.10 (sensitive)</span><span>0.50 (balanced)</span><span>0.90 (strict)</span>
+    </div>
+  </div>
+
+  <!-- Snapshot -->
+  <div style="margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;">
+    <div style="font-weight:600;margin-bottom:8px;">Live Detection Snapshot</div>
+    <div class="small-muted" style="margin-bottom:12px;">Grab a single frame showing what the AI currently sees with bounding boxes.</div>
+    <button class="btn btn-outline-warning btn-sm" id="snapshotBtn"><i class="bi bi-camera"></i> Capture Snapshot</button>
+    <div id="snapshotContainer" style="margin-top:12px;display:none;">
+      <img id="snapshotImg" style="width:100%;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <button class="btn btn-outline-warning btn-sm" id="saveDetectionBtn"><i class="bi bi-check-lg"></i> Save Settings</button>
+    <button class="btn btn-outline-danger btn-sm" id="restartDetectionBtn"><i class="bi bi-arrow-clockwise"></i> Restart Detection</button>
+  </div>
+  <div id="detectionStatus" class="mt-2"></div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -335,5 +383,84 @@
             status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (err.message || err) + '</div>';
         });
     });
+
+    // ===== AI Detection Controls =====
+    async function loadDetectionState() {
+        try {
+            const r = await fetch('/api/detection_control');
+            const d = await r.json();
+            if (d.error) return;
+            document.getElementById('detectionToggle').checked = d.enabled;
+            document.getElementById('confSlider').value = d.confidence;
+            document.getElementById('confValue').textContent = d.confidence.toFixed(2);
+        } catch(e) {
+            document.getElementById('detectionStatus').innerHTML = '<div class="alert alert-warning">Could not load detection state (Pi may be offline)</div>';
+        }
+    }
+
+    document.getElementById('confSlider').addEventListener('input', function() {
+        document.getElementById('confValue').textContent = parseFloat(this.value).toFixed(2);
+    });
+
+    document.getElementById('saveDetectionBtn').addEventListener('click', async () => {
+        const status = document.getElementById('detectionStatus');
+        try {
+            const r = await fetch('/api/detection_control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    enabled: document.getElementById('detectionToggle').checked,
+                    confidence: parseFloat(document.getElementById('confSlider').value)
+                })
+            });
+            const d = await r.json();
+            if (d.success) {
+                status.innerHTML = '<div class="alert alert-success">Detection settings saved!</div>';
+                setTimeout(() => status.innerHTML = '', 2000);
+            } else {
+                status.innerHTML = '<div class="alert alert-danger">' + (d.error || 'Failed') + '</div>';
+            }
+        } catch(e) {
+            status.innerHTML = '<div class="alert alert-danger">Failed to save detection settings</div>';
+        }
+    });
+
+    document.getElementById('restartDetectionBtn').addEventListener('click', async () => {
+        if (!confirm('Restart the detection pipeline? This will pause detection for ~2 seconds.')) return;
+        const status = document.getElementById('detectionStatus');
+        try {
+            const r = await fetch('/api/restart_detection', {method: 'POST'});
+            const d = await r.json();
+            status.innerHTML = '<div class="alert alert-success">' + (d.message || 'Detection restarted') + '</div>';
+            setTimeout(() => status.innerHTML = '', 3000);
+        } catch(e) {
+            status.innerHTML = '<div class="alert alert-danger">Failed to restart detection</div>';
+        }
+    });
+
+    document.getElementById('snapshotBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('snapshotBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Capturing...';
+        try {
+            const r = await fetch('/api/detection_snapshot');
+            if (r.ok) {
+                const blob = await r.blob();
+                const url = URL.createObjectURL(blob);
+                document.getElementById('snapshotImg').src = url;
+                document.getElementById('snapshotContainer').style.display = 'block';
+            } else {
+                document.getElementById('detectionStatus').innerHTML = '<div class="alert alert-warning">No frame available</div>';
+                setTimeout(() => document.getElementById('detectionStatus').innerHTML = '', 2000);
+            }
+        } catch(e) {
+            document.getElementById('detectionStatus').innerHTML = '<div class="alert alert-danger">Snapshot failed (Pi may be offline)</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-camera"></i> Capture Snapshot';
+    });
+
+    // Load detection state on page load
+    loadDetectionState();
 </script>
 {% endblock %}

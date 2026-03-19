@@ -6,6 +6,7 @@ Monitors CPU temperature, RAM, disk usage, and camera connectivity.
 import subprocess
 import time
 import logging
+from datetime import datetime
 import cv2
 
 logger = logging.getLogger("HealthMonitor")
@@ -112,3 +113,36 @@ class HealthMonitor:
             "overall_status": "critical" if any(a["level"] == "critical" for a in alerts)
                               else "warning" if alerts else "healthy"
         }
+
+    def generate_daily_summary(self, cameras=None):
+        """Generate a text summary for daily health email."""
+        if cameras is None:
+            cameras = {
+                "Camera_1": "rtsp://192.168.8.2:554/stream",
+                "Camera_2": "rtsp://192.168.8.199:554/stream",
+            }
+        health = self.get_full_health(cameras)
+        s = health['system']
+        summary = f"""DECONGESTILAGUNA — Daily Health Report
+Date: {datetime.now().strftime('%B %d, %Y %I:%M %p')}
+
+SYSTEM STATUS: {health['overall_status'].upper()}
+
+Hardware:
+  CPU Temperature: {s['cpu_temp']}°C
+  CPU Usage: {s['cpu_percent']}%
+  RAM: {s['memory_used_mb']} / {s['memory_total_mb']} MB ({s['memory_percent']}%)
+  SD Card: {s['disk_used_gb']} / {s['disk_total_gb']} GB ({s['disk_percent']}%)
+  Recording HDD: {s.get('recording_disk_gb', 'N/A')} GB free
+  Uptime: {round(s['uptime_seconds'] / 3600, 1)} hours
+
+Cameras:"""
+        for cam_id, status in health['cameras'].items():
+            summary += f"\n  {cam_id}: {'ONLINE' if status.get('online') else 'OFFLINE'}"
+
+        if health['alerts']:
+            summary += "\n\nALERTS:"
+            for alert in health['alerts']:
+                summary += f"\n  [{alert['level'].upper()}] {alert['msg']}"
+
+        return summary, health['overall_status']

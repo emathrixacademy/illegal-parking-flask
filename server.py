@@ -55,6 +55,10 @@ RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-det
 PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
 RAILWAY_HEADERS = {"X-API-Key": PI_API_KEY}
 
+# Detection control flags (remote-controllable)
+DETECTION_ENABLED = True
+DETECTION_CONFIDENCE = DETECTION_THRESHOLD
+
 # Resolution constants for zone selection (matching zone_selector.py)
 ACTUAL_WIDTH = 1280
 ACTUAL_HEIGHT = 720
@@ -206,6 +210,51 @@ def camera_status():
         "Camera_1": {"reconnecting": False, "online": True},
         "Camera_2": {"reconnecting": False, "online": True}
     })
+
+# ---- PART 3: Remote AI Detection Controls ----
+@app.route('/api/detection_control', methods=['GET', 'POST'])
+def api_detection_control():
+    global DETECTION_ENABLED, DETECTION_CONFIDENCE
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        if 'enabled' in data:
+            DETECTION_ENABLED = bool(data['enabled'])
+            logger.info(f"Detection {'ENABLED' if DETECTION_ENABLED else 'DISABLED'} via remote control")
+        if 'confidence' in data:
+            DETECTION_CONFIDENCE = max(0.1, min(0.9, float(data['confidence'])))
+            config.DETECTION_THRESHOLD = DETECTION_CONFIDENCE
+            logger.info(f"Detection confidence set to {DETECTION_CONFIDENCE}")
+        return jsonify({"success": True, "enabled": DETECTION_ENABLED, "confidence": DETECTION_CONFIDENCE})
+    return jsonify({
+        "enabled": DETECTION_ENABLED,
+        "confidence": DETECTION_CONFIDENCE,
+        "violation_threshold": getattr(config, 'VIOLATION_TIME_THRESHOLD', 100),
+        "repeat_interval": getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60),
+    })
+
+@app.route('/api/detection_snapshot')
+def api_detection_snapshot():
+    """Grab a single annotated frame showing what the AI currently sees."""
+    try:
+        with proc_lock:
+            frame = latest_processed.get("Camera_1")
+        if frame is None:
+            return jsonify({"error": "No frame available"}), 404
+        _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return Response(buf.tobytes(), mimetype='image/jpeg')
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/restart_detection', methods=['POST'])
+def api_restart_detection():
+    """Restart the detection pipeline."""
+    global DETECTION_ENABLED
+    logger.info("Detection restart requested via remote control")
+    DETECTION_ENABLED = False
+    time.sleep(2)
+    DETECTION_ENABLED = True
+    logger.info("Detection restarted")
+    return jsonify({"success": True, "message": "Detection pipeline restarted"})
 
 @app.route('/detect', methods=['POST'])
 def detect_endpoint():
@@ -599,6 +648,9 @@ threading.Thread(target=_set_reference_frames, daemon=True).start()
 def processing_worker(cam_name, stream):
     frame_count = 0
     while True:
+        if not DETECTION_ENABLED:
+            time.sleep(0.5)
+            continue
         frame = stream.get_frame()
         if frame is not None and stream.is_online():
             try:
@@ -729,6 +781,31 @@ def capture_frame(camera):
     except Exception as e:
         logger.error(f"Capture frame error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+# ---- PART 2: Daily Health Summary Email ----
+def daily_health_email_loop():
+    """Send health summary email every 24 hours at 6 AM Philippine time."""
+    from datetime import datetime as _dt, timedelta as _td
+    while True:
+        now = _dt.now()
+        next_6am = now.replace(hour=6, minute=0, second=0, microsecond=0)
+        if now.hour >= 6:
+            next_6am += _td(days=1)
+        sleep_seconds = (next_6am - now).total_seconds()
+        time.sleep(sleep_seconds)
+        try:
+            summary_text, status = health_mon.generate_daily_summary()
+            requests.post(
+                f"{RAILWAY_API_URL}/api/health_summary_email",
+                json={"summary": summary_text, "status": status},
+                headers=RAILWAY_HEADERS,
+                timeout=15
+            )
+            logger.info("Daily health summary sent to Railway.")
+        except Exception as e:
+            logger.error(f"Failed to send daily health email: {e}")
+
+threading.Thread(target=daily_health_email_loop, daemon=True).start()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
