@@ -28,36 +28,53 @@ def set_fine_map(mapping):
     return cleaned
 
 
-def list_violations() -> List[Dict[str, Any]]:
-    """Return latest row per (camera, tracker_id) from local `violations` table.
+def list_violations(page: int = 1, per_page: int = 30) -> Dict[str, Any]:
+    """Return paginated violations (latest row per camera+tracker_id).
 
-    If multiple rows exist for the same camera and tracker_id, the newest
-    capture (by `timestamp`) is returned and older rows are omitted.
-    The returned list is sorted by `timestamp` descending.
+    Returns dict with keys: items, page, per_page, total, total_pages.
+    Sorted by timestamp descending (newest first).
     """
     conn = get_connection()
     try:
         cur = conn.cursor()
-        # Use DISTINCT ON to keep only the newest row per (camera, tracker_id).
-        # This relies on PostgreSQL's DISTINCT ON feature.
+
+        # Count total distinct violations
         cur.execute("""
-            SELECT DISTINCT ON (camera, tracker_id)
-                id, camera, tracker_id, label, timestamp, image_path,
-                confidence_score, duration_minutes, fine_amount, barangay, enforced
-            FROM violations
-            ORDER BY camera, tracker_id, timestamp DESC
+            SELECT COUNT(*) FROM (
+                SELECT DISTINCT ON (camera, tracker_id) id
+                FROM violations
+                ORDER BY camera, tracker_id, timestamp DESC
+            ) sub
         """)
+        total = cur.fetchone()[0]
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        offset = (page - 1) * per_page
+
+        # Fetch paginated results, newest first
+        cur.execute("""
+            SELECT * FROM (
+                SELECT DISTINCT ON (camera, tracker_id)
+                    id, camera, tracker_id, label, timestamp, image_path,
+                    confidence_score, duration_minutes, fine_amount, barangay, enforced
+                FROM violations
+                ORDER BY camera, tracker_id, timestamp DESC
+            ) sub
+            ORDER BY timestamp DESC
+            LIMIT %s OFFSET %s
+        """, (per_page, offset))
         rows = cur.fetchall()
         cols = ['id', 'camera', 'tracker_id', 'label', 'timestamp', 'image_path',
                 'confidence_score', 'duration_minutes', 'fine_amount', 'barangay', 'enforced']
-        result = [dict(zip(cols, r)) for r in rows]
-        # Sort results by timestamp descending for presentation
-        try:
-            result.sort(key=lambda r: r.get('timestamp') or 0, reverse=True)
-        except Exception:
-            pass
+        items = [dict(zip(cols, r)) for r in rows]
         cur.close()
-        return result
+        return {
+            'items': items,
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'total_pages': total_pages
+        }
     finally:
         conn.close()
 

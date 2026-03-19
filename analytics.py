@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request, make_response
 import psycopg2
 from datetime import datetime, timedelta
 import io
+from auth import login_required
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -16,6 +17,7 @@ logger = logging.getLogger("Analytics")
 
 
 @analytics_bp.route('/api/violation_counts', methods=['GET'])
+@login_required
 def api_violation_counts():
     """
     Return counts of violations grouped by label from the local PostgreSQL `violations` table.
@@ -83,7 +85,7 @@ def api_violation_counts():
                 SELECT COUNT(DISTINCT (camera, tracker_id)) AS unique_today,
                        SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_today
                 FROM violations
-                WHERE (timestamp::date) = CURRENT_DATE;
+                WHERE (timestamp AT TIME ZONE 'Asia/Manila')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date;
             """)
             today_row = cur3.fetchone()
             cur3.close()
@@ -102,6 +104,7 @@ def api_violation_counts():
 
 
 @analytics_bp.route('/api/violation_stats', methods=['GET'])
+@login_required
 def api_violation_stats():
     """
     Return basic violation statistics from the local PostgreSQL `violations` table.
@@ -159,7 +162,366 @@ def api_violation_stats():
         })
 
 
+# ==================================================
+# Intelligent Analytics Endpoints
+# ==================================================
+
+@analytics_bp.route('/api/analytics/heatmap')
+@login_required
+def api_analytics_heatmap():
+    """Returns a 7x24 grid of violation counts (day-of-week x hour)."""
+    try:
+        days_back = int(request.args.get('days', 7))
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                EXTRACT(DOW FROM timestamp AT TIME ZONE 'Asia/Manila') AS dow,
+                EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+                COUNT(DISTINCT (camera, tracker_id)) AS violation_count
+            FROM violations
+            WHERE timestamp >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila' - make_interval(days => %s))
+            GROUP BY dow, hour
+            ORDER BY dow, hour;
+        """, (days_back,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        day_remap = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
+        day_labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        data = []
+        max_count = 0
+        for dow, hour, count in rows:
+            c = int(count)
+            if c > max_count:
+                max_count = c
+            ri = day_remap[int(dow)]
+            data.append({"day": day_labels[ri], "day_index": ri, "hour": int(hour), "count": c})
+
+        return jsonify({"data": data, "max_count": max_count, "period": f"last_{days_back}_days"})
+    except Exception as e:
+        logger.error(f"Heatmap query failed: {e}")
+        return jsonify({"data": [], "max_count": 0, "error": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/daily_trend')
+@login_required
+def api_analytics_daily_trend():
+    """Returns daily violation counts for trend chart."""
+    try:
+        days_back = int(request.args.get('days', 30))
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                (timestamp AT TIME ZONE 'Asia/Manila')::date AS violation_date,
+                COUNT(DISTINCT (camera, tracker_id)) AS daily_count
+            FROM violations
+            WHERE timestamp >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila' - make_interval(days => %s))
+            GROUP BY violation_date
+            ORDER BY violation_date;
+        """, (days_back,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        labels = [r[0].strftime('%b %d') for r in rows]
+        counts = [int(r[1]) for r in rows]
+        return jsonify({"labels": labels, "counts": counts, "period_days": days_back})
+    except Exception as e:
+        logger.error(f"Daily trend query failed: {e}")
+        return jsonify({"labels": [], "counts": [], "error": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/hourly')
+@login_required
+def api_analytics_hourly():
+    """Returns violation counts per hour of day (0-23)."""
+    try:
+        days_back = int(request.args.get('days', 30))
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+                COUNT(DISTINCT (camera, tracker_id)) AS hourly_count
+            FROM violations
+            WHERE timestamp >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila' - make_interval(days => %s))
+            GROUP BY hour
+            ORDER BY hour;
+        """, (days_back,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        hourly = {i: 0 for i in range(24)}
+        for hour, count in rows:
+            hourly[int(hour)] = int(count)
+        return jsonify({"hours": list(range(24)), "counts": [hourly[h] for h in range(24)]})
+    except Exception as e:
+        logger.error(f"Hourly query failed: {e}")
+        return jsonify({"hours": [], "counts": [], "error": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/camera_comparison')
+@login_required
+def api_analytics_camera_comparison():
+    """Returns per-camera, per-vehicle-type violation counts."""
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT camera, UPPER(label) AS vehicle_type,
+                   COUNT(DISTINCT (camera, tracker_id)) AS count
+            FROM violations
+            GROUP BY camera, UPPER(label)
+            ORDER BY camera, vehicle_type;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        cameras = []
+        data = {}
+        for cam, vtype, count in rows:
+            if cam not in data:
+                cameras.append(cam)
+                data[cam] = {}
+            data[cam][vtype] = int(count)
+        return jsonify({"cameras": cameras, "data": data})
+    except Exception as e:
+        logger.error(f"Camera comparison query failed: {e}")
+        return jsonify({"cameras": [], "data": {}, "error": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/duration_distribution')
+@login_required
+def api_analytics_duration_distribution():
+    """Returns violation counts in duration buckets."""
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT bucket, cnt FROM (
+                SELECT
+                    CASE
+                        WHEN duration_minutes < 5 THEN '0-5 min'
+                        WHEN duration_minutes < 10 THEN '5-10'
+                        WHEN duration_minutes < 15 THEN '10-15'
+                        WHEN duration_minutes < 20 THEN '15-20'
+                        WHEN duration_minutes < 30 THEN '20-30'
+                        WHEN duration_minutes < 60 THEN '30-60'
+                        ELSE '60+'
+                    END AS bucket,
+                    CASE
+                        WHEN duration_minutes < 5 THEN 1
+                        WHEN duration_minutes < 10 THEN 2
+                        WHEN duration_minutes < 15 THEN 3
+                        WHEN duration_minutes < 20 THEN 4
+                        WHEN duration_minutes < 30 THEN 5
+                        WHEN duration_minutes < 60 THEN 6
+                        ELSE 7
+                    END AS sort_order,
+                    COUNT(DISTINCT (camera, tracker_id)) AS cnt
+                FROM violations
+                GROUP BY bucket, sort_order
+            ) sub ORDER BY sort_order;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        buckets = [r[0] for r in rows]
+        counts = [int(r[1]) for r in rows]
+        return jsonify({"buckets": buckets, "counts": counts})
+    except Exception as e:
+        logger.error(f"Duration distribution query failed: {e}")
+        return jsonify({"buckets": [], "counts": [], "error": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/insights')
+@login_required
+def api_analytics_insights():
+    """Analyzes violation data and returns AI-generated insights."""
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        insights = []
+
+        # Overnight vs Daytime pattern
+        cur.execute("""
+            SELECT
+                CASE
+                    WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') >= 22
+                      OR EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') <= 5
+                    THEN 'night' ELSE 'day'
+                END AS period,
+                COUNT(DISTINCT (camera, tracker_id)) AS count
+            FROM violations GROUP BY period;
+        """)
+        period_counts = {r[0]: int(r[1]) for r in cur.fetchall()}
+        night = period_counts.get('night', 0)
+        day = period_counts.get('day', 0)
+        total = night + day
+        if total > 0:
+            night_pct = round(night * 100 / total)
+            if night_pct > 50:
+                insights.append({"type": "info", "title": "Overnight pattern detected",
+                    "description": f"{night_pct}% of violations happen between 10 PM and 6 AM. Residents may be using the road as overnight parking."})
+            elif night_pct < 30:
+                insights.append({"type": "info", "title": "Daytime violation pattern",
+                    "description": f"{100 - night_pct}% of violations occur during daytime hours (6 AM - 10 PM). Commercial activity or delivery vehicles may be the primary cause."})
+
+        # Camera imbalance
+        cur.execute("""
+            SELECT camera, COUNT(DISTINCT (camera, tracker_id)) AS count
+            FROM violations GROUP BY camera ORDER BY count DESC;
+        """)
+        cam_rows = cur.fetchall()
+        if len(cam_rows) >= 2 and cam_rows[1][1] > 0:
+            ratio = round(cam_rows[0][1] / cam_rows[1][1], 1)
+            if ratio > 2.0:
+                insights.append({"type": "warning", "title": "Repeat offender zone",
+                    "description": f"{cam_rows[0][0].replace('_', ' ')} captures {ratio}x more violations than {cam_rows[1][0].replace('_', ' ')}. This zone is the primary hotspot."})
+
+        # Deterrent effect (30-day comparison)
+        cur.execute("""
+            SELECT
+                CASE
+                    WHEN timestamp >= (CURRENT_TIMESTAMP - INTERVAL '30 days') THEN 'recent'
+                    WHEN timestamp >= (CURRENT_TIMESTAMP - INTERVAL '60 days') THEN 'previous'
+                END AS period,
+                AVG(duration_minutes) AS avg_dur,
+                COUNT(DISTINCT (camera, tracker_id)) AS count
+            FROM violations
+            WHERE timestamp >= (CURRENT_TIMESTAMP - INTERVAL '60 days')
+            GROUP BY period;
+        """)
+        trend_data = {r[0]: {"avg_dur": float(r[1] or 0), "count": int(r[2])} for r in cur.fetchall() if r[0]}
+        if 'recent' in trend_data and 'previous' in trend_data:
+            recent_dur = round(trend_data['recent']['avg_dur'], 1)
+            prev_dur = round(trend_data['previous']['avg_dur'], 1)
+            recent_count = trend_data['recent']['count']
+            prev_count = trend_data['previous']['count']
+            if recent_dur < prev_dur and prev_dur > 0:
+                drop_pct = round((prev_dur - recent_dur) / prev_dur * 100)
+                insights.append({"type": "success", "title": "Deterrent effect observed",
+                    "description": f"Average violation duration dropped from {prev_dur} min to {recent_dur} min ({drop_pct}% decrease). Awareness of the system may be increasing."})
+            elif prev_count > 0 and recent_count > prev_count * 1.3:
+                increase_pct = round((recent_count - prev_count) / prev_count * 100)
+                insights.append({"type": "warning", "title": "Violations increasing",
+                    "description": f"Violations increased by {increase_pct}% compared to the previous period ({prev_count} → {recent_count}). Enforcement actions may need to be strengthened."})
+            elif prev_count > 0 and recent_count < prev_count * 0.8:
+                decrease_pct = round((prev_count - recent_count) / prev_count * 100)
+                insights.append({"type": "success", "title": "Violations decreasing",
+                    "description": f"Violations decreased by {decrease_pct}% ({prev_count} → {recent_count}). The system appears to be working as a deterrent."})
+
+        # Peak hour identification
+        cur.execute("""
+            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+                   COUNT(DISTINCT (camera, tracker_id)) AS count
+            FROM violations WHERE timestamp >= (CURRENT_TIMESTAMP - INTERVAL '30 days')
+            GROUP BY hour ORDER BY count DESC LIMIT 1;
+        """)
+        peak_row = cur.fetchone()
+        if peak_row:
+            ph = int(peak_row[0])
+            pc = int(peak_row[1])
+            td = "late night/early morning" if (ph >= 22 or ph <= 5) else "morning" if ph <= 11 else "afternoon" if ph <= 17 else "evening"
+            insights.append({"type": "info", "title": f"Peak violation hour: {ph}:00-{ph+1}:00",
+                "description": f"Highest concentration of violations occurs during {td} hours ({pc} violations in the last 30 days). Enforcers should prioritize monitoring during this window."})
+
+        # Worst day of week
+        cur.execute("""
+            SELECT TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Day') AS day_name,
+                   COUNT(DISTINCT (camera, tracker_id)) AS count
+            FROM violations WHERE timestamp >= (CURRENT_TIMESTAMP - INTERVAL '30 days')
+            GROUP BY day_name ORDER BY count DESC LIMIT 1;
+        """)
+        worst_row = cur.fetchone()
+        if worst_row:
+            insights.append({"type": "warning", "title": f"Busiest day: {worst_row[0].strip()}",
+                "description": f"{worst_row[0].strip()} has the most violations ({int(worst_row[1])} in the last 30 days). Consider scheduling enforcement patrols on {worst_row[0].strip()}s."})
+
+        cur.close()
+        conn.close()
+        return jsonify({"insights": insights[:3]})
+    except Exception as e:
+        logger.error(f"Insights generation failed: {e}")
+        return jsonify({"insights": [], "error": str(e)}), 500
+
+
+@analytics_bp.route('/api/analytics/summary')
+@login_required
+def api_analytics_summary():
+    """Returns enhanced summary metrics for top metric cards."""
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+
+        cur.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations;")
+        total = int(cur.fetchone()[0] or 0)
+
+        cur.execute("""
+            SELECT
+                COUNT(DISTINCT (camera, tracker_id)) FILTER (
+                    WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+                ) AS recent,
+                COUNT(DISTINCT (camera, tracker_id)) FILTER (
+                    WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '60 days'
+                    AND timestamp < CURRENT_TIMESTAMP - INTERVAL '30 days'
+                ) AS previous
+            FROM violations;
+        """)
+        row = cur.fetchone()
+        recent_30 = int(row[0] or 0)
+        prev_30 = int(row[1] or 0)
+        change = recent_30 - prev_30
+
+        cur.execute("SELECT AVG(duration_minutes) FROM violations;")
+        avg_dur = round(float(cur.fetchone()[0] or 0), 1)
+
+        cur.execute("""
+            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS h, COUNT(*) AS c
+            FROM violations WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+            GROUP BY h ORDER BY c DESC LIMIT 1;
+        """)
+        peak = cur.fetchone()
+        peak_h = int(peak[0]) if peak else 0
+        ampm = 'AM' if peak_h < 12 else 'PM'
+        disp_h = peak_h if peak_h <= 12 else peak_h - 12
+        if disp_h == 0:
+            disp_h = 12
+        peak_label = f"{disp_h}-{disp_h + 1 if disp_h < 12 else 1} {ampm}"
+        peak_note = "Overnight parking" if (peak_h >= 22 or peak_h <= 5) else "Active hours"
+
+        cur.execute("""
+            SELECT TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Day') AS d,
+                   COUNT(DISTINCT (camera, tracker_id)) AS c
+            FROM violations WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+            GROUP BY d ORDER BY c DESC LIMIT 1;
+        """)
+        worst = cur.fetchone()
+        worst_day = worst[0].strip() if worst else "N/A"
+        worst_day_avg = round(int(worst[1] or 0) / 4.3) if worst else 0
+
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "total_violations": total, "change_vs_last_month": change,
+            "avg_duration": avg_dur, "peak_hour": peak_label,
+            "peak_hour_note": peak_note, "worst_day": worst_day,
+            "worst_day_avg": worst_day_avg
+        })
+    except Exception as e:
+        logger.error(f"Summary query failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @analytics_bp.route('/api/generate_report', methods=['GET'])
+@login_required
 def api_generate_report():
     """
     Generate a professional PDF report for violations with enhanced filtering.
@@ -474,9 +836,9 @@ def api_generate_report():
                 
                 # Draw colored dot for vehicle type
                 if lbl == 'CAR':
-                    c.setFillColor(HexColor('#4da6ff'))
+                    c.setFillColor(HexColor('#e68a00'))
                 elif lbl == 'MOTORCYCLE':
-                    c.setFillColor(HexColor('#ffd11a'))
+                    c.setFillColor(HexColor('#ffb74d'))
                 else:
                     c.setFillColor(HexColor('#ff4d4d'))
                 

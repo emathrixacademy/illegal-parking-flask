@@ -60,7 +60,13 @@ def ensure_tables():
                 );
             """)
             logger.info("Created 'violations' table.")
-        
+
+        # Ensure performance indexes on violations
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_violations_timestamp ON violations(timestamp);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_violations_camera ON violations(camera);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_violations_tracker ON violations(tracker_id);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_violations_camera_tracker ON violations(camera, tracker_id);")
+
         # Check and create config table
         if not table_exists(cur, 'config'):
             cur.execute("""
@@ -123,11 +129,102 @@ def ensure_tables():
                     logger.info("Added 'barangay' column to violations table.")
                 except Exception as e:
                     logger.warning(f"Could not add barangay column to violations: {e}")
-        
+
+        # --- Feature 13: plate_records table ---
+        if not table_exists(cur, 'plate_records'):
+            cur.execute("""
+                CREATE TABLE plate_records (
+                    id SERIAL PRIMARY KEY,
+                    violation_id INTEGER REFERENCES violations(id),
+                    plate_number VARCHAR(20),
+                    confidence REAL DEFAULT 0.0,
+                    plate_image_path TEXT,
+                    camera VARCHAR(32),
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX idx_plate_number ON plate_records(plate_number);
+                CREATE INDEX idx_plate_timestamp ON plate_records(timestamp);
+            """)
+            logger.info("Created 'plate_records' table.")
+
+        # --- Feature 14: tamper_events table ---
+        if not table_exists(cur, 'tamper_events'):
+            cur.execute("""
+                CREATE TABLE tamper_events (
+                    id SERIAL PRIMARY KEY,
+                    camera VARCHAR(32),
+                    tamper_type VARCHAR(32),
+                    details JSONB,
+                    last_good_frame_path TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    resolved BOOLEAN DEFAULT FALSE
+                );
+            """)
+            logger.info("Created 'tamper_events' table.")
+
+        # --- Feature 17: alert_log table ---
+        if not table_exists(cur, 'alert_log'):
+            cur.execute("""
+                CREATE TABLE alert_log (
+                    id SERIAL PRIMARY KEY,
+                    alert_type VARCHAR(16),
+                    camera VARCHAR(32),
+                    vehicle_type VARCHAR(32),
+                    success BOOLEAN,
+                    error_message TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            logger.info("Created 'alert_log' table.")
+
+        # --- Feature 18: users table ---
+        if not table_exists(cur, 'users'):
+            cur.execute("""
+                CREATE TABLE users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(64) UNIQUE NOT NULL,
+                    password_hash VARCHAR(256) NOT NULL,
+                    role VARCHAR(16) NOT NULL DEFAULT 'viewer',
+                    display_name VARCHAR(128),
+                    email VARCHAR(128),
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_login TIMESTAMP
+                );
+            """)
+            logger.info("Created 'users' table.")
+
+            # Create default admin user (password: admin2026)
+            try:
+                import bcrypt
+                default_pw = bcrypt.hashpw("admin2026".encode(), bcrypt.gensalt()).decode()
+                cur.execute("""
+                    INSERT INTO users (username, password_hash, role, display_name)
+                    VALUES ('admin', %s, 'admin', 'System Administrator')
+                    ON CONFLICT (username) DO NOTHING
+                """, (default_pw,))
+                logger.info("Created default admin user.")
+            except Exception as e:
+                logger.warning(f"Could not create default admin user: {e}")
+
+        # --- Feature 18: activity_log table ---
+        if not table_exists(cur, 'activity_log'):
+            cur.execute("""
+                CREATE TABLE activity_log (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    action VARCHAR(64),
+                    details TEXT,
+                    ip_address VARCHAR(45),
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            logger.info("Created 'activity_log' table.")
+
         conn.commit()
         cur.close()
         conn.close()
-        logger.info("Ensured 'violations' and 'config' tables exist.")
+        logger.info("Ensured all tables exist.")
     except Exception as e:
         logger.error(f"Failed to ensure tables: {e}")
 

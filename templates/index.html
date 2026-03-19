@@ -1,1153 +1,500 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>YOLO Tracking Monitor</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>%3Crect x='1' y='6' width='14' height='9' rx='1.2' fill='%23ff9800'/%3E%3Cpath d='M18 9a4 4 0 1 1 0 6 4 4 0 0 1 0-6z' fill='%23232733'/%3E%3Cpath d='M22 4l-6 3v2' stroke='%23232733' stroke-width='1' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg>">
-    <style>
-        :root {
-            --primary-bg: #181c23;
-            --sidebar-bg: #232733;
-            --accent: #ff9800;
-            --card-bg: #232733;
-            --card-radius: 18px;
-            --shadow: 0 4px 24px rgba(0,0,0,0.7);
-            --border: 1px solid #232733;
-        }
-        body {
-            background: var(--primary-bg);
-            color: #f8f9fa;
-            min-height: 100vh;
-            font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
-        }
-        .dashboard-container {
-            display: flex;
-            min-height: 100vh;
-            flex-direction: column;
-        }
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: 999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .sidebar-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%) translateX(-100%);
-            width: 240px;
-            max-height: 80vh;
-            background: var(--sidebar-bg);
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            padding: 0;
-            border-right: var(--border);
-            z-index: 1000;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 2px 0 12px rgba(0,0,0,0.5);
-            overflow-y: auto;
-            border-radius: 0 12px 12px 0;
-        }
-        .sidebar.open {
-            transform: translateY(-50%) translateX(0);
-        }
-        .sidebar .sidebar-header {
-            font-size: 1.7rem;
-            font-weight: bold;
-            padding: 2rem 1.5rem 1rem 1.5rem;
-            letter-spacing: 1px;
-            color: var(--accent);
-            border-bottom: var(--border);
-            text-shadow: 0 2px 8px #0006;
-        }
-        .sidebar .nav-link {
-            color: #bfc7d5;
-            font-weight: 500;
-            padding: 1.1rem 1.5rem;
-            border-radius: 0;
-            transition: background 0.2s, color 0.2s;
-            font-size: 1.08rem;
-            display: flex;
-            align-items: center;
-            gap: 0.7em;
-        }
-        .sidebar .nav-link.active, .sidebar .nav-link:hover {
-            background: #2d3342;
-            color: #fff;
-        }
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            background: var(--primary-bg);
-            margin-top: 60px;
-        }
-        .header-bar {
-            background: var(--sidebar-bg);
-            padding: 1.2rem 2.5rem;
-            border-bottom: var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 12px #0003;
-            gap: 1rem;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 998;
-        }
-        .hamburger-menu {
-            background: none;
-            border: none;
-            color: var(--accent);
-            font-size: 1.8rem;
-            cursor: pointer;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            transition: color 0.2s;
-            z-index: 1001;
-        }
-        .hamburger-menu:hover {
-            color: #ffb84d;
-        }
-        .header-bar h1 {
-            color: var(--accent);
-            font-size: 2rem;
-            margin: 0;
-            font-weight: bold;
-            letter-spacing: 1px;
-            text-shadow: 0 2px 8px #0006;
-        }
-        .video-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 2rem;
-            padding: 2rem 2rem 1rem 2rem;
-            margin-top: 2rem;
-            width: 100%;
-        }
-        .camera-frame-wrapper {
-            background: var(--card-bg);
-            border-radius: var(--card-radius);
-            box-shadow: var(--shadow);
-            border: var(--border);
-            overflow: hidden;
-            flex: 1 1 calc(50% - 2rem);
-            min-width: 320px;
-            max-width: calc(50% - 2rem);
-            position: relative;
-            margin-bottom: 1rem;
-            display: flex;
-            flex-direction: column;
-        }
-        .camera-label {
-            background: rgba(0,0,0,0.7);
-            color: var(--accent);
-            font-weight: bold;
-            font-size: 1.15rem;
-            padding: 0.6rem 1.2rem;
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            border-radius: 10px;
-            z-index: 2;
-            box-shadow: 0 2px 8px #0006;
-            letter-spacing: 1px;
-        }
-        .video-frame-container {
-            width: 100%;
-            aspect-ratio: 16/9;
-            background: #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            border-radius: 0 0 14px 14px;
-        }
-        .video-frame {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border: 4px solid #111;
-            border-radius: 0 0 12px 12px;
-            background: #000;
-            display: block;
-            box-shadow: 0 2px 12px #000a;
-            transition: filter 0.2s;
-        }
-        .reconnecting-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            background: rgba(30,30,30,0.55);
-            backdrop-filter: blur(6px);
-            pointer-events: none;
-            transition: opacity 0.3s;
-            opacity: 0;
-        }
-        .reconnecting-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .reconnecting-spinner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .reconnecting-spinner .spinner-border {
-            width: 2.5rem;
-            height: 2.5rem;
-            color: var(--accent);
-        }
-        .reconnecting-spinner span {
-            margin-top: 1rem;
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: bold;
-            text-shadow: 0 2px 8px #000;
-            letter-spacing: 1px;
-            animation: pulse 1.2s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .violations-section {
-            background: var(--card-bg);
-            border-radius: var(--card-radius);
-            margin: 2rem 2rem 2.5rem 2rem;
-            padding: 2rem 2.5rem;
-            box-shadow: var(--shadow);
-            width: calc(100% - 4rem);
-            box-sizing: border-box;
-        }
-        .violations-section h2 {
-            color: var(--accent);
-            font-size: 1.3rem;
-            font-weight: bold;
-            margin-bottom: 1.5rem;
-            letter-spacing: 1px;
-        }
-        .violation-timeline {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1.5rem;
-            width: 100%;
-        }
-        .legend-box {
-            background: transparent;
-            border-radius: 0;
-            padding: 0.25rem 0;
-            margin: 1rem 2rem 0 2rem;
-            box-shadow: none;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 1rem;
-            width: auto;
-            box-sizing: border-box;
-            color: #bfc7d5;
-            font-weight: 500;
-            flex-wrap: wrap;
-            overflow: visible;
-        }
-        .legend-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.8rem;
-            white-space: nowrap;
-            color: #bfc7d5;
-            font-size: 0.95rem;
-        }
-        .legend-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: none;
-        }
-        .legend-dot.red { background: #ff4d4d; }
-        .legend-dot.blue { background: #4da6ff; }
-        .legend-dot.yellow { background: #ffd11a; }
-        .violation-card {
-            background: var(--primary-bg);
-            border: 1px solid #2d3342;
-            border-radius: 14px;
-            margin-bottom: 0;
-            display: flex;
-            align-items: flex-start;
-            box-shadow: 0 2px 8px #0004;
-            overflow: hidden;
-            transition: box-shadow 0.2s;
-        }
-        .violation-card:hover {
-            box-shadow: 0 4px 16px #0007;
-        }
-        .violation-card img {
-            width: 120px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 14px 0 0 14px;
-            border-right: 2px solid #232733;
-            background: #222;
-            transition: filter 0.2s;
-        }
-        .violation-card-body {
-            padding: 0.8rem 1rem;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .violation-card-title {
-            color: var(--accent);
-            font-size: 1.08rem;
-            font-weight: bold;
-            margin-bottom: 0.2rem;
-            letter-spacing: 1px;
-        }
-        .violation-card-meta {
-            color: #bfc7d5;
-            font-size: 0.97rem;
-            margin-bottom: 0.5rem;
-        }
-        .violation-card pre {
-            background: #232733;
-            color: #bfc7d5;
-            font-size: 0.92em;
-            border: none;
-            margin: 0;
-            padding: 0.3rem 0.5rem;
-            border-radius: 6px;
-        }
-        #serverStatusBanner {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 9999;
-            font-weight: bold;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            margin-bottom: 0;
-            max-width: 400px;
-            padding: 1rem 1.5rem !important;
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(400px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
+{% extends "base.html" %}
+{% block title %}Dashboard — DECONGESTILAGUNA{% endblock %}
+{% block header_title %}<i class="bi bi-eye-fill"></i> Live Monitor{% endblock %}
 
-        /* REDESIGNED ANALYTICS SECTION */
-        .analytics-container {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 1.25rem;
-            margin-bottom: 1.5rem;
-        }
+{% block extra_css %}
+/* ===== Notification Bell ===== */
+.notif-bell {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s;
+}
+.notif-bell.muted { color: var(--muted); }
+.notif-bell .bell-badge {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+.notif-bell .bell-badge:empty { display: none; }
+@keyframes bellRing {
+  0% { transform: rotate(0); }
+  10% { transform: rotate(14deg); }
+  20% { transform: rotate(-14deg); }
+  30% { transform: rotate(10deg); }
+  40% { transform: rotate(-10deg); }
+  50% { transform: rotate(6deg); }
+  60% { transform: rotate(-4deg); }
+  70% { transform: rotate(2deg); }
+  80% { transform: rotate(-1deg); }
+  100% { transform: rotate(0); }
+}
+.notif-bell.ringing i { animation: bellRing 0.8s ease; }
+.notif-dropdown {
+  position: fixed;
+  top: 48px;
+  right: 0.5rem;
+  width: 300px;
+  max-width: calc(100vw - 1rem);
+  max-height: 60vh;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 500;
+  overflow-y: auto;
+  display: none;
+  padding: 0;
+}
+.notif-dropdown.open { display: block; }
+.notif-dropdown .notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.notif-dropdown .notif-item {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.8rem;
+}
+.notif-dropdown .notif-item:last-child { border-bottom: none; }
+.notif-dropdown .notif-item .notif-time { color: var(--muted); font-size: 0.7rem; }
+.notif-dropdown .notif-empty { padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
-        /* Chart takes prominent left position */
-        .analytics-chart-wrapper {
-            grid-column: span 4;
-            background: var(--primary-bg);
-            border: 1px solid #2d3342;
-            border-radius: 14px;
-            padding: 1rem 1.25rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 220px;
-            max-height: 300px;
-        }
+/* ===== Dashboard mobile-first styles ===== */
+.cam-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+.cam-card {
+  background: var(--card);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.cam-label {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  background: rgba(0,0,0,0.7);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  z-index: 2;
+}
+.cam-feed-wrap {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #111;
+  position: relative;
+  overflow: hidden;
+}
+.cam-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+.reconnect-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(30,30,30,0.55);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.reconnect-overlay.active { opacity: 1; pointer-events: auto; }
+.reconnect-overlay .spinner-border { width: 2rem; height: 2rem; color: var(--accent); }
+.reconnect-overlay span { color: #fff; font-size: 0.85rem; font-weight: 600; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%{opacity:1} 50%{opacity:0.5} 100%{opacity:1} }
+.zoom-btns {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  z-index: 10;
+  display: flex;
+  gap: 3px;
+}
+.zoom-btns .btn { font-size: 0.7rem; padding: 0.2rem 0.35rem; }
+.zoom-btns .zoom-level { font-size: 0.65rem; align-self: center; }
 
-        .chart-title {
-            color: var(--accent);
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-            text-align: center;
-            letter-spacing: 0.5px;
-        }
+/* Status widgets */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  flex-wrap: wrap;
+}
+.tamper-alert { border-radius: 10px; font-size: 0.85rem; }
 
-        /* Vehicle type cards - stacked vertically on right of chart */
-        .vehicle-counts-wrapper {
-            grid-column: span 4;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
+/* Legend */
+.legend { display: flex; gap: 0.75rem; padding: 0.25rem 0.75rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.legend-dot.red { background: #ff4d4d; }
+.legend-dot.blue { background: #e68a00; }
+.legend-dot.orange { background: #ffb74d; }
 
-        .vehicle-count-card {
-            background: var(--primary-bg);
-            border: 1px solid #2d3342;
-            border-radius: 14px;
-            padding: 1.25rem 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
+/* Analytics */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+.stat-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+.stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.stat-value { font-size: 1.5rem; font-weight: 800; color: #fff; }
+.stat-value.accent { color: var(--accent); }
+.chart-wrap { display: flex; justify-content: center; align-items: center; min-height: 160px; }
+.chart-wrap canvas { max-width: 180px; max-height: 180px; }
 
-        .vehicle-count-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        }
+/* Vehicle count cards */
+.vehicle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.vehicle-card { text-align: center; }
+.vehicle-card .count { font-size: 2rem; font-weight: 800; }
+.vehicle-card .label { font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.color-dot.blue { background: #e68a00; }
+.color-dot.orange { background: #ffb74d; }
 
-        .vehicle-count-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: #bfc7d5;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+/* Detailed stats */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.detail-item .dl { font-size: 0.72rem; color: #8a92a6; text-transform: uppercase; font-weight: 600; }
+.detail-item .dv { font-size: 1.1rem; font-weight: 700; }
 
-        .vehicle-count-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #fff;
-            line-height: 1;
-            margin-top: 0.25rem;
-        }
+/* Report form */
+.report-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+.report-grid .full-span { grid-column: 1 / -1; }
 
-        .color-indicator {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
+/* Notification banner */
+#newViolationBanner {
+  position: fixed;
+  top: 56px;
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 999;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  color: #111;
+  background: #ffd966;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+#serverStatusBanner {
+  position: fixed;
+  bottom: calc(var(--nav-h) + var(--safe-b) + 50px);
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 999;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  max-width: 100%;
+}
 
-        .color-indicator.blue { background: #4da6ff; }
-        .color-indicator.yellow { background: #ffd11a; }
+/* Summary cards */
+#summary-cards .scard { background: var(--card); border-radius: 10px; padding: 0.85rem; }
+#summary-cards .scard .sc-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+#summary-cards .scard .sc-value { font-size: 1.5rem; font-weight: 800; color: #fff; }
+#summary-cards .scard .sc-sub { font-size: 0.7rem; color: var(--muted); }
+/* Insight cards */
+.insight-card { border-radius: 10px; padding: 0.85rem; }
+.insight-card .ic-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+.insight-card .ic-desc { font-size: 0.8rem; line-height: 1.45; color: rgba(255,255,255,0.6); }
 
-        /* Summary stats - spans full width below */
-        .summary-stats-wrapper {
-            grid-column: span 4;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
+/* ===== Tablet+ ===== */
+@media (min-width: 768px) {
+  .cam-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; padding: 0.75rem; }
+  .analytics-grid { grid-template-columns: repeat(3, 1fr); }
+  .vehicle-row { grid-template-columns: 1fr 1fr; }
+  .detail-grid { grid-template-columns: repeat(3, 1fr); }
+  .report-grid { grid-template-columns: 1fr 1fr; }
+  .chart-wrap canvas { max-width: 200px; max-height: 200px; }
+  #summary-cards { grid-template-columns: repeat(4, 1fr) !important; }
+  #insights-container { grid-template-columns: repeat(3, 1fr) !important; }
+  div[style*="grid-template-columns:1fr; gap:0;"] { grid-template-columns: 1fr 1fr !important; }
+}
+@media (min-width: 1024px) {
+  .cam-grid { padding: 1rem 1.5rem; gap: 1rem; }
+  .detail-grid { grid-template-columns: repeat(4, 1fr); }
+  #newViolationBanner { left: 240px; top: 60px; right: 1.5rem; }
+  #serverStatusBanner { left: 240px; top: 110px; right: 1.5rem; }
+}
+@media (min-width: 1400px) {
+  .analytics-grid { grid-template-columns: repeat(4, 1fr); }
+}
+{% endblock %}
 
-        .summary-stat-card {
-            background: var(--primary-bg);
-            border: 1px solid #2d3342;
-            border-radius: 14px;
-            padding: 1rem 1.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .summary-stat-card:hover {
-            transform: translateX(4px);
-            box-shadow: -4px 0 12px rgba(255, 152, 0, 0.15);
-        }
-
-        .summary-stat-label {
-            font-size: 0.9rem;
-            color: #bfc7d5;
-            font-weight: 600;
-        }
-
-        .summary-stat-value {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--accent);
-        }
-
-        /* Detailed stats grid */
-        .detailed-stats-grid {
-            grid-column: span 12;
-            background: var(--primary-bg);
-            border: 1px solid #2d3342;
-            border-radius: 14px;
-            padding: 1.5rem;
-        }
-
-        .detailed-stats-title {
-            color: var(--accent);
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .detailed-stats-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.25rem;
-        }
-
-        .detailed-stat-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-
-        .detailed-stat-label {
-            font-size: 0.85rem;
-            color: #8a92a6;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-
-        .detailed-stat-value {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #fff;
-        }
-
-        /* Report Generator */
-        .report-generator-wrapper {
-            grid-column: span 12;
-            background: var(--primary-bg);
-            border: 1px solid #2d3342;
-            border-radius: 14px;
-            padding: 1.5rem;
-        }
-
-        .report-generator-title {
-            color: var(--accent);
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .report-form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
-        }
-
-        .report-form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .report-form-label {
-            color: #bfc7d5;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .report-form-control,
-        .report-form-select {
-            background: #181c23;
-            color: #fff;
-            border: 1px solid #2d3342;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            font-size: 0.95rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .report-form-control:focus,
-        .report-form-select:focus {
-            background: #1a1f28;
-            color: #fff;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.15);
-            outline: none;
-        }
-
-        #customRangeContainer {
-            grid-column: span 2;
-            min-width: 0;
-        }
-
-        .date-range-inputs {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            min-width: 0;
-        }
-
-        .date-range-inputs .report-form-control {
-            min-width: 0;
-            flex: 1 1 0;
-        }
-
-        .date-range-separator {
-            color: #bfc7d5;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .report-submit-wrapper {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 0.5rem;
-        }
-
-        .report-generate-btn {
-            background: var(--accent);
-            color: #000;
-            font-weight: 700;
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            font-size: 0.95rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .report-generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
-        }
-
-        .report-generate-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 1400px) {
-            .analytics-chart-wrapper {
-                grid-column: span 4;
-            }
-            .vehicle-counts-wrapper {
-                grid-column: span 4;
-            }
-            .summary-stats-wrapper {
-                grid-column: span 4;
-            }
-        }
-
-        @media (max-width: 1024px) {
-            .analytics-container {
-                grid-template-columns: repeat(6, 1fr);
-            }
-            .analytics-chart-wrapper {
-                grid-column: span 6;
-                min-height: 280px;
-            }
-            .vehicle-counts-wrapper {
-                grid-column: span 4;
-            }
-            .summary-stats-wrapper {
-                grid-column: span 4;
-            }
-            .detailed-stats-grid {
-                grid-column: span 6;
-            }
-            .report-generator-wrapper {
-                grid-column: span 6;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .analytics-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            .analytics-chart-wrapper,
-            .vehicle-counts-wrapper,
-            .summary-stats-wrapper,
-            .detailed-stats-grid,
-            .report-generator-wrapper {
-                grid-column: span 1;
-            }
-            .vehicle-counts-wrapper {
-                flex-direction: row;
-            }
-            .summary-stats-wrapper {
-                flex-direction: column;
-            }
-            .detailed-stats-content {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-            .report-form-grid {
-                grid-template-columns: 1fr;
-            }
-            #customRangeContainer {
-                grid-column: span 1;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .detailed-stats-content {
-                grid-template-columns: 1fr;
-            }
-            .vehicle-counts-wrapper {
-                flex-direction: column;
-            }
-            .vehicle-count-number {
-                font-size: 2rem;
-            }
-            .summary-stat-value {
-                font-size: 1.25rem;
-            }
-        }
-        
-        @media (max-width: 1200px) {
-            .hamburger-menu {
-                display: flex;
-            }
-            .video-container {
-                gap: 1.5rem;
-                padding: 1.5rem;
-            }
-            .camera-frame-wrapper {
-                flex: 1 1 calc(50% - 1.5rem);
-                min-width: 300px;
-                max-width: calc(50% - 1.5rem);
-            }
-        }
-        @media (max-width: 900px) {
-            .video-container { 
-                flex-direction: column;
-                align-items: center;
-                gap: 1.5rem; 
-                padding: 1rem; 
-            }
-            .camera-frame-wrapper {
-                width: 100%;
-                max-width: 100%;
-                min-width: 100%;
-            }
-            .violations-section { 
-                margin: 1rem auto;
-                padding: 1rem; 
-                width: calc(100% - 2rem);
-            }
-            .violation-timeline { 
-                flex-direction: column;
-                align-items: center;
-                gap: 1rem; 
-            }
-        }
-        @media (max-width: 600px) {
-            .sidebar { flex-direction: column; width: 100%; }
-            .main-content { padding: 0; }
-            .violations-section { margin: 0.5rem; padding: 0.5rem; }
-            .header-bar { padding: 0.7rem 1rem; }
-            .camera-label { font-size: 1rem; padding: 0.4rem 0.8rem; top: 0.5rem; left: 0.5rem; }
-            .camera-frame-wrapper { min-width: unset; max-width: unset; }
-            #serverStatusBanner { left: 0; width: 100%; }
-        }
-        @media (max-width: 768px) {
-            .main-content {
-                margin-top: 85px;
-            }
-            .header-bar {
-                padding: 0.9rem 1.2rem;
-                gap: 0.5rem;
-            }
-            .header-bar h1 {
-                font-size: 1.4rem;
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .video-container {
-                gap: 1rem;
-                padding: 1rem;
-                margin-top: 0;
-            }
-            .camera-frame-wrapper {
-                margin-bottom: 0;
-            }
-            .camera-label {
-                font-size: 0.95rem;
-                padding: 0.5rem 0.8rem;
-                top: 0.5rem;
-                left: 0.5rem;
-            }
-            .violations-section {
-                margin: 0.8rem;
-                padding: 1rem;
-            }
-            .violations-section h2 {
-                font-size: 1.1rem;
-                margin-bottom: 0.8rem;
-            }
-            .violation-timeline {
-                gap: 0.8rem;
-            }
-            .violation-card {
-                flex-direction: row;
-            }
-            .violation-card img {
-                width: 100px;
-                height: 70px;
-                border-radius: 10px 0 0 10px;
-                border-right: 2px solid #232733;
-                border-bottom: none;
-            }
-            #serverStatusBanner {
-                width: calc(100% - 1rem);
-                left: 0.5rem;
-                right: 0.5rem;
-                bottom: 1rem;
-                font-size: 0.95rem;
-                padding: 0.8rem 1rem !important;
-            }
-        }
-        @media (max-width: 480px) {
-            .main-content {
-                margin-top: 95px;
-            }
-            .header-bar {
-                flex-wrap: wrap;
-                padding: 0.5rem 0.8rem;
-                gap: 0.3rem;
-            }
-            .header-bar h1 {
-                font-size: 1.05rem;
-                order: 2;
-                flex-basis: 100%;
-                margin-top: 0.4rem;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .hamburger-menu {
-                order: 1;
-                font-size: 1.3rem;
-            }
-            #clock {
-                order: 3;
-                font-size: 0.85rem;
-                margin-top: 0.3rem;
-                flex-basis: 100%;
-            }
-            .video-container {
-                padding: 0.5rem;
-                gap: 0.5rem;
-                margin-top: 0;
-            }
-            .camera-frame-wrapper {
-                border-radius: 12px;
-            }
-            .camera-label {
-                font-size: 0.8rem;
-                padding: 0.3rem 0.5rem;
-                top: 0.4rem;
-                left: 0.4rem;
-                border-radius: 6px;
-            }
-            .violations-section {
-                margin: 0.5rem;
-                padding: 0.8rem;
-                border-radius: 10px;
-                width: calc(100% - 1rem);
-            }
-            .violations-section h2 {
-                font-size: 1rem;
-                margin-bottom: 0.6rem;
-            }
-            .violation-timeline {
-                gap: 0.5rem;
-            }
-            .violation-card {
-                border-radius: 8px;
-                overflow: hidden;
-            }
-            .violation-card img {
-                width: 70px;
-                height: 50px;
-                border-radius: 8px 0 0 8px;
-            }
-            .violation-card-body {
-                padding: 0.5rem;
-            }
-            .violation-card-title {
-                font-size: 0.9rem;
-                margin-bottom: 0.1rem;
-            }
-            .violation-card-meta {
-                font-size: 0.8rem;
-                margin-bottom: 0.3rem;
-            }
-            .violation-card pre {
-                font-size: 0.75em;
-                padding: 0.2rem 0.3rem;
-            }
-            #serverStatusBanner {
-                width: calc(100% - 1rem);
-                left: 0.5rem;
-                right: 0.5rem;
-                bottom: 0.8rem;
-                font-size: 0.9rem;
-                padding: 0.6rem 0.8rem !important;
-                max-width: unset;
-                border-radius: 8px;
-            }
-        }
-    </style>
-</head>
-<body>
-<div class="dashboard-container">
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <i class="bi bi-camera-video-fill"></i> CCTV Monitor
+{% block content %}
+<!-- Camera Feeds -->
+<div class="cam-grid">
+  <div class="cam-card">
+    <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 1</span>
+    <div class="cam-feed-wrap" id="zoomContainerC1">
+      <img src="" class="cam-feed" alt="CCTV 1" id="liveVideoC1" style="transform-origin:0 0;">
+      <div class="reconnect-overlay" id="reconnectingOverlayC1">
+        <div class="d-flex flex-column align-items-center">
+          <div class="spinner-border" role="status"></div>
+          <span>Reconnecting</span>
         </div>
-        <a class="nav-link active" href="/"><i class="bi bi-house-door-fill"></i> Home</a>
-        <a class="nav-link" href="/violations"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
-    </nav>
-    <div class="main-content">
-        <div class="header-bar">
-            <button class="hamburger-menu" id="hamburgerMenu"><i class="bi bi-list"></i></button>
-            <h1><i class="bi bi-eye-fill"></i> Illegal Parking Detection - Live</h1>
-            <span class="text-secondary" style="font-size:1.1rem;"><i class="bi bi-clock-history"></i> <span id="clock"></span></span>
-        </div>
-        <div class="video-container" id="videoContainer">
-            <div class="camera-frame-wrapper">
-                <span class="camera-label"><i class="bi bi-camera-video"></i> CCTV 1</span>
-                <div class="video-frame-container">
-                    <img src="" class="video-frame" alt="CCTV 1 Feed" id="liveVideoC1">
-                    <div class="reconnecting-overlay" id="reconnectingOverlayC1">
-                        <div class="reconnecting-spinner">
-                            <div class="spinner-border" role="status"></div>
-                            <span>Reconnecting</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="camera-frame-wrapper">
-                <span class="camera-label"><i class="bi bi-camera-video"></i> CCTV 2</span>
-                <div class="video-frame-container">
-                    <img src="" class="video-frame" alt="CCTV 2 Feed" id="liveVideoC2">
-                    <div class="reconnecting-overlay" id="reconnectingOverlayC2">
-                        <div class="reconnecting-spinner">
-                            <div class="spinner-border" role="status"></div>
-                            <span>Reconnecting</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="legend-box" id="legendBox">
-            <div class="legend-item"><span class="legend-dot blue"></span> Detected</div>
-            <div class="legend-item"><span class="legend-dot yellow"></span> Warning</div>
-            <div class="legend-item"><span class="legend-dot red"></span> Violator</div>
-        </div>
-        
-        <!-- REDESIGNED ANALYTICS SECTION -->
-        <div class="violations-section">
-            <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h2>
-            
-            <div class="analytics-container">
-                <!-- Chart Card -->
-                <div class="analytics-chart-wrapper">
-                    <div class="chart-title">Vehicle Distribution</div>
-                    <canvas id="analyticsChart" width="220" height="220"></canvas>
-                </div>
-
-                <!-- Vehicle Type Cards -->
-                <div class="vehicle-counts-wrapper">
-                    <div class="vehicle-count-card">
-                        <div class="vehicle-count-header">
-                            <span class="color-indicator blue"></span>
-                            <span>Cars</span>
-                        </div>
-                        <div id="count-CAR" class="vehicle-count-number">0</div>
-                    </div>
-                    
-                    <div class="vehicle-count-card">
-                        <div class="vehicle-count-header">
-                            <span class="color-indicator yellow"></span>
-                            <span>Motorcycles</span>
-                        </div>
-                        <div id="count-MOTORCYCLE" class="vehicle-count-number">0</div>
-                    </div>
-                </div>
-
-                <!-- Summary Stats -->
-                <div class="summary-stats-wrapper">
-                    <div class="summary-stat-card">
-                        <span class="summary-stat-label">Total Unique Violations</span>
-                        <span id="total-violators" class="summary-stat-value">0</span>
-                    </div>
-                    
-                    <div class="summary-stat-card">
-                        <span class="summary-stat-label">Recent Violators (Today)</span>
-                        <span id="recent-violators" class="summary-stat-value">0</span>
-                    </div>
-                </div>
-
-                <!-- Detailed Statistics Grid -->
-                <div class="detailed-stats-grid">
-                    <div class="detailed-stats-title">
-                        <i class="bi bi-clipboard-data"></i> Detailed Statistics
-                    </div>
-                    <div class="detailed-stats-content">
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Total Violations</span>
-                            <span id="stat-total-violations" class="detailed-stat-value">0</span>
-                        </div>
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Active Cameras</span>
-                            <span id="stat-active-cameras" class="detailed-stat-value">0</span>
-                        </div>
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Affected Barangays</span>
-                            <span id="stat-affected-barangays" class="detailed-stat-value">0</span>
-                        </div>
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Enforced Count</span>
-                            <span id="stat-enforced-count" class="detailed-stat-value">0</span>
-                        </div>
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Avg Confidence</span>
-                            <span id="stat-avg-confidence" class="detailed-stat-value">0.00</span>
-                        </div>
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Avg Duration (min)</span>
-                            <span id="stat-avg-duration" class="detailed-stat-value">0.00</span>
-                        </div>
-                        <div class="detailed-stat-item">
-                            <span class="detailed-stat-label">Total Fines Collected</span>
-                            <span id="stat-total-fines" class="detailed-stat-value">₱0.00</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Report Generator -->
-                <div class="report-generator-wrapper">
-                    <div class="report-generator-title">
-                        <i class="bi bi-file-earmark-pdf-fill"></i>
-                        Generate Report
-                    </div>
-                    
-                    <div class="report-form-grid">
-                        <div class="report-form-group">
-                            <label class="report-form-label">Report Period</label>
-                            <select id="reportPeriod" class="report-form-select">
-                                <option value="day">Single Day</option>
-                                <option value="week">Week</option>
-                                <option value="month">Month</option>
-                                <option value="custom">Custom Range</option>
-                            </select>
-                        </div>
-                        
-                        <div class="report-form-group" id="singleDateContainer">
-                            <label class="report-form-label">Select Date</label>
-                            <input id="reportDate" type="date" class="report-form-control" />
-                        </div>
-                        
-                        <div class="report-form-group" id="customRangeContainer" style="display:none;">
-                            <label class="report-form-label">Date Range</label>
-                            <div class="date-range-inputs">
-                                <input id="reportStartDate" type="date" class="report-form-control" style="flex:1;" />
-                                <span class="date-range-separator">to</span>
-                                <input id="reportEndDate" type="date" class="report-form-control" style="flex:1;" />
-                            </div>
-                        </div>
-                        
-                        <div class="report-form-group">
-                            <label class="report-form-label">Vehicle Type</label>
-                            <select id="reportVehicleType" class="report-form-select">
-                                <option value="all">All Vehicles</option>
-                                <option value="CAR">Cars Only</option>
-                                <option value="MOTORCYCLE">Motorcycles Only</option>
-                            </select>
-                        </div>
-                        
-                        <div class="report-form-group">
-                            <label class="report-form-label">Camera Filter</label>
-                            <select id="reportCamera" class="report-form-select">
-                                <option value="all">All Cameras</option>
-                                <option value="Camera_1">Camera 1 Only</option>
-                                <option value="Camera_2">Camera 2 Only</option>
-                            </select>
-                        </div>
-                        
-                        <div class="report-submit-wrapper">
-                            <button id="generateReportBtn" class="report-generate-btn">
-                                <i class="bi bi-download"></i>
-                                Generate PDF Report
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="newViolationBanner" class="alert alert-warning" role="alert"
-             style="display:none; position: fixed; bottom: 6rem; right: 2rem; z-index:10001; border-radius:12px; padding:0.8rem 1rem; color:#111; background:#ffd966;">
-        </div>
+      </div>
+      <div class="zoom-btns">
+        <button class="btn btn-sm btn-dark" onclick="zoomC1.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+        <button class="btn btn-sm btn-dark" onclick="zoomC1.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+        <button class="btn btn-sm btn-dark" onclick="zoomC1.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+        <span class="zoom-level badge bg-warning text-dark">1.0x</span>
+      </div>
     </div>
+  </div>
+  <div class="cam-card">
+    <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 2</span>
+    <div class="cam-feed-wrap" id="zoomContainerC2">
+      <img src="" class="cam-feed" alt="CCTV 2" id="liveVideoC2" style="transform-origin:0 0;">
+      <div class="reconnect-overlay" id="reconnectingOverlayC2">
+        <div class="d-flex flex-column align-items-center">
+          <div class="spinner-border" role="status"></div>
+          <span>Reconnecting</span>
+        </div>
+      </div>
+      <div class="zoom-btns">
+        <button class="btn btn-sm btn-dark" onclick="zoomC2.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+        <button class="btn btn-sm btn-dark" onclick="zoomC2.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+        <button class="btn btn-sm btn-dark" onclick="zoomC2.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+        <span class="zoom-level badge bg-warning text-dark">1.0x</span>
+      </div>
+    </div>
+  </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Notification Bell Dropdown -->
+<div class="notif-dropdown" id="notifDropdown">
+  <div class="notif-header">
+    <span><i class="bi bi-bell-fill text-accent"></i> Notifications</span>
+    <div class="d-flex gap-2 align-items-center">
+      <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.7rem;" onclick="clearNotifications()">Clear</button>
+      <button class="btn btn-sm py-0 px-1" style="font-size:0.7rem;" id="muteToggle" onclick="toggleMute()">
+        <i class="bi bi-volume-up-fill"></i>
+      </button>
+    </div>
+  </div>
+  <div id="notifList"><div class="notif-empty">No new notifications</div></div>
+</div>
+
+<!-- Tamper Alert -->
+<div id="tamperAlert" class="mx-2 mt-1" style="display:none;">
+  <div class="alert alert-danger tamper-alert d-flex align-items-center mb-0 py-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div class="flex-grow-1">
+      <strong>TAMPER DETECTED!</strong> <span id="tamperAlertMsg"></span>
+    </div>
+    <button class="btn btn-sm btn-outline-light ms-2" onclick="dismissTamperAlert()">Dismiss</button>
+  </div>
+</div>
+
+<!-- Health + Legend + Bell -->
+<div class="status-bar">
+  <span><span id="healthIndicator" style="font-size:1rem;">&#9679;</span> <span id="healthText" class="text-muted">Checking...</span></span>
+  <span class="ms-auto d-flex align-items-center gap-2">
+    <button class="notif-bell" id="notifBell" onclick="toggleNotifDropdown()" title="Notifications">
+      <i class="bi bi-bell-fill"></i>
+      <span class="bell-badge" id="bellBadge"></span>
+    </button>
+    <span id="clock" class="text-muted" style="font-size:0.78rem;"></span>
+  </span>
+</div>
+<div class="legend">
+  <span><span class="legend-dot blue"></span> Detected</span>
+  <span><span class="legend-dot orange"></span> Warning</span>
+  <span><span class="legend-dot red"></span> Violator</span>
+</div>
+
+<!-- ==================== INTELLIGENT ANALYTICS ==================== -->
+
+<!-- Summary Metric Cards -->
+<div id="summary-cards" style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.5rem; margin:0.5rem;">
+  <!-- Populated by JS -->
+</div>
+
+<!-- Quick Stats (Pie + Counts) -->
+<div class="content-card">
+  <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h2>
+  <div class="analytics-grid">
+    <div class="stat-card chart-wrap">
+      <canvas id="analyticsChart" width="180" height="180"></canvas>
+    </div>
+    <div class="stat-card">
+      <div class="vehicle-row">
+        <div class="vehicle-card">
+          <div class="color-dot blue"></div>
+          <div class="label">Cars</div>
+          <div id="count-CAR" class="count">0</div>
+        </div>
+        <div class="vehicle-card">
+          <div class="color-dot orange"></div>
+          <div class="label">Motorcycles</div>
+          <div id="count-MOTORCYCLE" class="count">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Unique Violations</div>
+      <div id="total-violators" class="stat-value accent">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Recent (Today)</div>
+      <div id="recent-violators" class="stat-value accent">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- Heatmap -->
+<div class="content-card">
+  <h2><i class="bi bi-grid-3x3-gap"></i> Hourly Violation Heatmap <small class="small-muted">(30-day pattern)</small></h2>
+  <div id="heatmap-container" style="overflow-x:auto;"></div>
+</div>
+
+<!-- Trend + Hourly Charts -->
+<div style="display:grid; grid-template-columns:1fr; gap:0;">
+  <div class="content-card">
+    <h2><i class="bi bi-graph-up"></i> Daily Trend <small class="small-muted">(30 days)</small></h2>
+    <div style="position:relative; height:220px;"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="content-card">
+    <h2><i class="bi bi-clock-history"></i> Violations by Hour</h2>
+    <div style="position:relative; height:220px;"><canvas id="hourlyChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Camera Comparison + Duration -->
+<div style="display:grid; grid-template-columns:1fr; gap:0;">
+  <div class="content-card">
+    <h2><i class="bi bi-camera-video"></i> Camera Comparison</h2>
+    <div style="position:relative; height:200px;"><canvas id="cameraChart"></canvas></div>
+  </div>
+  <div class="content-card">
+    <h2><i class="bi bi-hourglass-split"></i> Duration Distribution</h2>
+    <div style="position:relative; height:200px;"><canvas id="durationChart"></canvas></div>
+  </div>
+</div>
+
+<!-- AI Insights -->
+<div class="content-card">
+  <h2><i class="bi bi-lightbulb"></i> AI Insights</h2>
+  <div id="insights-container" style="display:grid; grid-template-columns:1fr; gap:0.5rem;">
+    <div class="small-muted">Analyzing patterns...</div>
+  </div>
+</div>
+
+<!-- Detailed Stats -->
+<div class="content-card">
+  <h2><i class="bi bi-clipboard-data"></i> Detailed Statistics</h2>
+  <div class="detail-grid">
+    <div class="detail-item"><div class="dl">Total Violations</div><div id="stat-total-violations" class="dv">0</div></div>
+    <div class="detail-item"><div class="dl">Active Cameras</div><div id="stat-active-cameras" class="dv">0</div></div>
+    <div class="detail-item"><div class="dl">Affected Barangays</div><div id="stat-affected-barangays" class="dv">0</div></div>
+    <div class="detail-item"><div class="dl">Enforced Count</div><div id="stat-enforced-count" class="dv">0</div></div>
+    <div class="detail-item"><div class="dl">Avg Confidence</div><div id="stat-avg-confidence" class="dv">0.00</div></div>
+    <div class="detail-item"><div class="dl">Avg Duration (min)</div><div id="stat-avg-duration" class="dv">0.00</div></div>
+    <div class="detail-item"><div class="dl">Total Fines Collected</div><div id="stat-total-fines" class="dv">&#8369;0.00</div></div>
+  </div>
+</div>
+
+<!-- Report Generator -->
+<div class="content-card">
+  <h2><i class="bi bi-file-earmark-pdf-fill"></i> Generate Report</h2>
+  <div class="report-grid">
+    <div>
+      <label class="form-label">Period</label>
+      <select id="reportPeriod" class="form-select">
+        <option value="day">Single Day</option>
+        <option value="week">Week</option>
+        <option value="month">Month</option>
+        <option value="custom">Custom Range</option>
+      </select>
+    </div>
+    <div id="singleDateContainer">
+      <label class="form-label">Date</label>
+      <input id="reportDate" type="date" class="form-control">
+    </div>
+    <div id="customRangeContainer" style="display:none;" class="full-span">
+      <label class="form-label">Date Range</label>
+      <div class="d-flex gap-2 align-items-center">
+        <input id="reportStartDate" type="date" class="form-control" style="flex:1;">
+        <span class="text-muted">to</span>
+        <input id="reportEndDate" type="date" class="form-control" style="flex:1;">
+      </div>
+    </div>
+    <div>
+      <label class="form-label">Vehicle Type</label>
+      <select id="reportVehicleType" class="form-select">
+        <option value="all">All Vehicles</option>
+        <option value="CAR">Cars Only</option>
+        <option value="MOTORCYCLE">Motorcycles Only</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Camera</label>
+      <select id="reportCamera" class="form-select">
+        <option value="all">All Cameras</option>
+        <option value="Camera_1">Camera 1</option>
+        <option value="Camera_2">Camera 2</option>
+      </select>
+    </div>
+    <div class="full-span text-end">
+      <button id="generateReportBtn" class="btn btn-accent"><i class="bi bi-download"></i> Generate PDF</button>
+    </div>
+  </div>
+</div>
+
+<div id="newViolationBanner" style="display:none;"></div>
+{% endblock %}
+
+{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Hamburger menu functionality
-const hamburgerMenu = document.getElementById('hamburgerMenu');
-const sidebar = document.getElementById('sidebar');
-const sidebarOverlay = document.getElementById('sidebarOverlay');
-hamburgerMenu.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-    sidebarOverlay.classList.toggle('active');
-});
-sidebarOverlay.addEventListener('click', () => {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('active');
-});
-sidebar.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('active');
-    });
-});
+// ===== Video Feeds =====
 let RASPI_BASE = "";
-let cloudLinkActive = true;
 async function updateVideoFeeds() {
     try {
         const resp = await fetch('/api/get_pi_url');
         const data = await resp.json();
-        if (data.public_url) {
-            RASPI_BASE = data.public_url;
-        }
+        if (data.public_url) RASPI_BASE = data.public_url;
     } catch (e) {}
     const c1 = document.getElementById('liveVideoC1');
     const c2 = document.getElementById('liveVideoC2');
@@ -1155,225 +502,320 @@ async function updateVideoFeeds() {
     if (c2 && RASPI_BASE) c2.src = RASPI_BASE + '/video_feed_c2';
 }
 function pollRaspiBase() {
-    fetch('/api/get_pi_url')
-        .then(resp => resp.json())
-        .then(data => {
-            if (data.public_url && data.public_url !== RASPI_BASE) {
-                RASPI_BASE = data.public_url;
-                updateVideoFeeds();
-            }
-        })
-        .catch(() => {});
+    fetch('/api/get_pi_url').then(r => r.json()).then(data => {
+        if (data.public_url && data.public_url !== RASPI_BASE) { RASPI_BASE = data.public_url; updateVideoFeeds(); }
+    }).catch(() => {});
 }
 setInterval(pollRaspiBase, 3000);
-function apiFetch(path, options = {}) {
-    if (!RASPI_BASE && path === '/api/get_pi_url') {
-        return fetch(path, options);
-    }
-    let url = path.startsWith('/') ? (RASPI_BASE + path) : path;
-    return fetch(url, options);
+function apiFetch(path, opts = {}) {
+    if (!RASPI_BASE && path === '/api/get_pi_url') return fetch(path, opts);
+    return fetch((path.startsWith('/') ? RASPI_BASE : '') + path, opts);
 }
+
+// ===== Reconnecting overlays =====
 function updateReconnectingOverlays(camStatus) {
-    const overlayC1 = document.getElementById('reconnectingOverlayC1');
-    const overlayC2 = document.getElementById('reconnectingOverlayC2');
-    const spanC1 = overlayC1.querySelector('span');
-    const spanC2 = overlayC2.querySelector('span');
-    apiFetch('/api/get_pi_url')
-        .then(resp => resp.json())
-        .then(data => {
-            const cloudLinkAvailable = !!data.public_url;
-            if (!cloudLinkAvailable) {
-                overlayC1.classList.add('active');
-                overlayC2.classList.add('active');
-                spanC1.textContent = "Cloud Link Disconnected";
-                spanC1.style.display = "";
-                spanC2.textContent = "Cloud Link Disconnected";
-                spanC2.style.display = "";
-            } else {
-                if (!(camStatus.Camera_1 && camStatus.Camera_1.online === true)) {
-                    overlayC1.classList.add('active');
-                    spanC1.textContent = "Reconnecting";
-                    spanC1.style.display = "";
-                } else {
-                    overlayC1.classList.remove('active');
-                    spanC1.style.display = "none";
-                }
-                if (!(camStatus.Camera_2 && camStatus.Camera_2.online === true)) {
-                    overlayC2.classList.add('active');
-                    spanC2.textContent = "Reconnecting";
-                    spanC2.style.display = "";
-                } else {
-                    overlayC2.classList.remove('active');
-                    spanC2.style.display = "none";
-                }
-            }
-        })
-        .catch(() => {
-            overlayC1.classList.add('active');
-            overlayC2.classList.add('active');
-            spanC1.textContent = "Cloud Link Disconnected";
-            spanC1.style.display = "";
-            spanC2.textContent = "Cloud Link Disconnected";
-            spanC2.style.display = "";
-        });
+    const oC1 = document.getElementById('reconnectingOverlayC1');
+    const oC2 = document.getElementById('reconnectingOverlayC2');
+    const sC1 = oC1.querySelector('span');
+    const sC2 = oC2.querySelector('span');
+    apiFetch('/api/get_pi_url').then(r => r.json()).then(data => {
+        if (!data.public_url) {
+            oC1.classList.add('active'); oC2.classList.add('active');
+            sC1.textContent = "Cloud Link Disconnected"; sC2.textContent = "Cloud Link Disconnected";
+        } else {
+            if (!(camStatus.Camera_1 && camStatus.Camera_1.online === true)) { oC1.classList.add('active'); sC1.textContent = "Reconnecting"; }
+            else { oC1.classList.remove('active'); }
+            if (!(camStatus.Camera_2 && camStatus.Camera_2.online === true)) { oC2.classList.add('active'); sC2.textContent = "Reconnecting"; }
+            else { oC2.classList.remove('active'); }
+        }
+    }).catch(() => { oC1.classList.add('active'); oC2.classList.add('active'); sC1.textContent = "Cloud Link Disconnected"; sC2.textContent = "Cloud Link Disconnected"; });
 }
 function checkCameraStatus() {
-    apiFetch('/api/camera_status')
-        .then(async r => {
-            let status;
-            try {
-                status = await r.json();
-            } catch (e) {
+    apiFetch('/api/camera_status').then(async r => { try { updateReconnectingOverlays(await r.json()); } catch(e){} }).catch(() => {});
+}
+
+// ===== Clock =====
+function startClock() {
+    function u() { const el = document.getElementById('clock'); if(el) el.textContent = new Date().toLocaleString(undefined, {hour12:false}); }
+    u(); setInterval(u, 1000);
+}
+
+// ===== Analytics =====
+let analyticsChart;
+function fetchAnalyticsAjax() {
+    ApiCache.fetch('/api/violation_counts', {ttl: 15000, cacheKey: 'violation_counts'}).then(data => {
+        const labels = ['CAR','MOTORCYCLE'];
+        const counts = labels.map(l => Number(data[l] || 0));
+        const total = counts.reduce((a,b)=>a+b,0);
+        const canvas = document.getElementById('analyticsChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!analyticsChart && ctx) {
+            analyticsChart = new Chart(ctx, {
+                type: 'pie',
+                data: { labels, datasets: [{ data: counts, backgroundColor: ['#e68a00','#ffb74d'] }] },
+                options: { plugins: { legend: { display: false } }, maintainAspectRatio: true, responsive: true }
+            });
+        }
+        if (analyticsChart) {
+            if (total === 0) { analyticsChart.data.labels = ['No data']; analyticsChart.data.datasets[0].data = [1]; analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76']; }
+            else { analyticsChart.data.labels = labels; analyticsChart.data.datasets[0].data = counts; analyticsChart.data.datasets[0].backgroundColor = ['#e68a00','#ffb74d']; }
+            analyticsChart.update();
+        }
+        labels.forEach(l => { const el = document.getElementById('count-'+l); if(el) el.textContent = data[l] || 0; });
+        const uniq = data.TOTAL_UNIQUE_TRACKERS || data.TOTAL || total;
+        const el1 = document.getElementById('total-violators'); if(el1) el1.textContent = uniq;
+        const recent = data.RECENT_VIOLATORS_TODAY || data.recent || total;
+        const el2 = document.getElementById('recent-violators'); if(el2) el2.textContent = recent;
+    }).catch(() => {});
+    fetch('/api/violation_stats').then(r => r.json()).then(data => {
+        document.getElementById('stat-total-violations').textContent = data.total_violations || 0;
+        document.getElementById('stat-active-cameras').textContent = data.active_cameras || 0;
+        document.getElementById('stat-affected-barangays').textContent = data.affected_barangays || 0;
+        document.getElementById('stat-avg-confidence').textContent = (data.avg_confidence || 0).toFixed(2);
+        document.getElementById('stat-avg-duration').textContent = (data.avg_duration_minutes || 0).toFixed(2);
+        document.getElementById('stat-enforced-count').textContent = data.enforced_count || 0;
+        document.getElementById('stat-total-fines').textContent = '\u20B1' + (data.total_fines_collected || 0).toFixed(2);
+    }).catch(() => {});
+}
+
+// ===== Violator notification =====
+function setupViolatorNotification() {
+    const isFirstVisit = localStorage.getItem('lastKnownViolatorCount') === null;
+    let lastKnown = Number(localStorage.getItem('lastKnownViolatorCount') || 0);
+    let seeded = !isFirstVisit;
+    const banner = document.getElementById('newViolationBanner');
+    async function poll() {
+        try {
+            const resp = await fetch('/api/db_violations_count');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const count = Number(data.count || 0);
+            if (!seeded) {
+                // First ever visit — just seed the count, don't show banner
+                localStorage.setItem('lastKnownViolatorCount', String(count));
+                lastKnown = count;
+                seeded = true;
                 return;
             }
-            updateReconnectingOverlays(status);
-        })
-        .catch(() => {});
-}
-function startClock() {
-    function updateClock() {
-        const now = new Date();
-        document.getElementById('clock').textContent =
-            now.toLocaleString(undefined, { hour12: false });
+            const prev = Number(localStorage.getItem('lastKnownViolatorCount') || lastKnown);
+            if (count > prev) showBanner(count - prev, count);
+            localStorage.setItem('lastKnownViolatorCount', String(count));
+            lastKnown = count;
+        } catch (e) {}
     }
-    updateClock();
-    setInterval(updateClock, 1000);
+    function showBanner(delta, abs) {
+        if (!banner) return;
+        banner.innerHTML = `<div class="d-flex align-items-center gap-2"><i class="bi bi-exclamation-circle-fill"></i><strong>${delta} new violator${delta>1?'s':''}</strong><button id="dismissNV" class="btn btn-sm btn-light ms-auto">Dismiss</button></div>`;
+        banner.style.display = 'block';
+        playNotificationBeep();
+        document.getElementById('dismissNV')?.addEventListener('click', () => { banner.style.display='none'; localStorage.setItem('lastKnownViolatorCount',String(abs)); lastKnown=abs; }, {once:true});
+        setTimeout(() => { if(banner.style.display!=='none'){banner.style.display='none';localStorage.setItem('lastKnownViolatorCount',String(abs));lastKnown=abs;} }, 10000);
+    }
+    poll(); setInterval(poll, 5000);
 }
+
+// ===== Report =====
+document.getElementById('reportPeriod').addEventListener('change', function() {
+    document.getElementById('singleDateContainer').style.display = this.value === 'custom' ? 'none' : 'block';
+    document.getElementById('customRangeContainer').style.display = this.value === 'custom' ? 'block' : 'none';
+});
+document.getElementById('generateReportBtn').addEventListener('click', async () => {
+    const period = document.getElementById('reportPeriod').value;
+    const date = document.getElementById('reportDate').value;
+    const sd = document.getElementById('reportStartDate').value;
+    const ed = document.getElementById('reportEndDate').value;
+    const vt = document.getElementById('reportVehicleType').value;
+    const cam = document.getElementById('reportCamera').value;
+    let url = '/api/generate_report?period=' + encodeURIComponent(period);
+    if (period === 'custom') { if(!sd||!ed){alert('Select both dates');return;} url+='&start_date='+sd+'&end_date='+ed; }
+    else if (date) url += '&date=' + date;
+    if (vt !== 'all') url += '&vehicle_type=' + vt;
+    if (cam !== 'all') url += '&camera=' + cam;
+    try {
+        const resp = await fetch(url);
+        if (!resp.ok) { try{const e=await resp.json();alert(e.error||'Failed');}catch(e){alert('Failed');} return; }
+        const blob = await resp.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `violations_${period}_${date||sd||new Date().toISOString().slice(0,10)}.pdf`;
+        document.body.appendChild(a); a.click(); a.remove();
+    } catch(e) { alert('Failed to fetch report'); }
+});
+
+// ===== Audio =====
+let _audioCtx = null;
+function _ensureAudioContext() { if(!_audioCtx) _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return _audioCtx; }
+document.addEventListener('click', function _once() { try{const c=_ensureAudioContext();if(c.state==='suspended')c.resume();}catch(e){} document.removeEventListener('click',_once); }, {once:true});
+function playNotificationBeep() {
+    try { const c=_ensureAudioContext(); if(c.state==='suspended')c.resume(); const o=c.createOscillator(),g=c.createGain(); o.type='sine';o.frequency.value=880;g.gain.value=0.0001;o.connect(g);g.connect(c.destination); const n=c.currentTime;g.gain.setValueAtTime(0.0001,n);g.gain.exponentialRampToValueAtTime(0.2,n+0.02);o.start(n);g.gain.exponentialRampToValueAtTime(0.0001,n+0.22);o.stop(n+0.25); } catch(e){}
+}
+
+// ===== Init =====
 function fetchRaspiBaseAndInit() {
-    fetch('/api/get_pi_url')
-        .then(resp => resp.json())
-        .then(data => {
-            if (data.public_url) {
-                RASPI_BASE = data.public_url;
-                updateVideoFeeds();
-            }
-            pollRaspiBase();
-            checkCameraStatus();
-            startClock();
-            if (typeof fetchAnalytics === 'function') {
-                fetchAnalytics();
-                setInterval(fetchAnalytics, 5000);
-            }
-        })
-        .catch(() => {
-            pollRaspiBase();
-            startClock();
-            if (typeof fetchAnalytics === 'function') {
-                fetchAnalytics();
-                setInterval(fetchAnalytics, 5000);
-            }
+    fetch('/api/get_pi_url').then(r=>r.json()).then(data=>{
+        if(data.public_url){RASPI_BASE=data.public_url;updateVideoFeeds();}
+        checkCameraStatus(); startClock(); fetchAnalyticsAjax(); setInterval(fetchAnalyticsAjax,5000);
+    }).catch(()=>{ startClock(); fetchAnalyticsAjax(); setInterval(fetchAnalyticsAjax,5000); });
+}
+window.onload = function() {
+    fetchRaspiBaseAndInit();
+    setupViolatorNotification();
+    document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+};
+</script>
+<script src="/static/js/zoom.js"></script>
+<script>
+let zoomC1, zoomC2;
+document.addEventListener('DOMContentLoaded', function() {
+    const i1=document.getElementById('liveVideoC1'), c1=document.getElementById('zoomContainerC1');
+    if(i1&&c1) zoomC1 = new DigitalZoom(i1, c1);
+    const i2=document.getElementById('liveVideoC2'), c2=document.getElementById('zoomContainerC2');
+    if(i2&&c2) zoomC2 = new DigitalZoom(i2, c2);
+});
+
+// Health monitoring
+async function updateHealth() {
+    try {
+        const r = await fetch('/api/system_health');
+        const d = await r.json();
+        const ind = document.getElementById('healthIndicator'), txt = document.getElementById('healthText');
+        if(!ind||!txt) return;
+        const colors = {healthy:'#2ecc71',warning:'#f39c12',critical:'#e74c3c',unreachable:'#888'};
+        ind.style.color = colors[d.overall_status]||'#888';
+        if(d.overall_status==='unreachable') txt.textContent='System Unreachable';
+        else if(d.system) txt.textContent=`${(d.overall_status||'').toUpperCase()} | CPU:${d.system.cpu_temp}C | RAM:${d.system.memory_percent}%`;
+        else txt.textContent=d.overall_status||'Unknown';
+    } catch(e) { const t=document.getElementById('healthText'); if(t)t.textContent='Health check failed'; }
+}
+setInterval(updateHealth, 30000); setTimeout(updateHealth, 2000);
+
+// Tamper alerts
+async function checkTamperAlerts() {
+    try {
+        const r = await fetch('/api/tamper_events?unresolved=1');
+        const ev = await r.json();
+        const ad = document.getElementById('tamperAlert'), ms = document.getElementById('tamperAlertMsg');
+        if(ev&&ev.length>0){ ms.textContent=` ${ev[0].camera} - ${ev[0].tamper_type} at ${ev[0].timestamp||''}`; ad.style.display='block'; }
+    } catch(e) {}
+}
+function dismissTamperAlert() { document.getElementById('tamperAlert').style.display='none'; }
+setInterval(checkTamperAlerts, 30000); setTimeout(checkTamperAlerts, 3000);
+
+// ===== Notification Bell System =====
+let notifMuted = localStorage.getItem('notifMuted') === 'true';
+let notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+let notifCount = 0;
+
+function updateMuteUI() {
+    const bell = document.getElementById('notifBell');
+    const toggle = document.getElementById('muteToggle');
+    if (notifMuted) {
+        bell.classList.add('muted');
+        toggle.innerHTML = '<i class="bi bi-volume-mute-fill text-danger"></i>';
+        toggle.title = 'Unmute';
+    } else {
+        bell.classList.remove('muted');
+        toggle.innerHTML = '<i class="bi bi-volume-up-fill"></i>';
+        toggle.title = 'Mute';
+    }
+}
+
+function toggleMute() {
+    notifMuted = !notifMuted;
+    localStorage.setItem('notifMuted', notifMuted);
+    updateMuteUI();
+}
+
+function toggleNotifDropdown() {
+    const dd = document.getElementById('notifDropdown');
+    dd.classList.toggle('open');
+    // Reset badge when opened
+    if (dd.classList.contains('open')) {
+        notifCount = 0;
+        document.getElementById('bellBadge').textContent = '';
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dd = document.getElementById('notifDropdown');
+    const bell = document.getElementById('notifBell');
+    if (dd.classList.contains('open') && !dd.contains(e.target) && !bell.contains(e.target)) {
+        dd.classList.remove('open');
+    }
+});
+
+function addNotification(msg, type) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    notifications.unshift({ msg, type, time: timeStr, ts: now.toISOString() });
+    // Keep max 50
+    if (notifications.length > 50) notifications = notifications.slice(0, 50);
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+    renderNotifications();
+    // Update badge
+    notifCount++;
+    const badge = document.getElementById('bellBadge');
+    badge.textContent = notifCount > 99 ? '99+' : notifCount;
+    // Ring animation
+    const bell = document.getElementById('notifBell');
+    bell.classList.remove('ringing');
+    void bell.offsetWidth; // force reflow
+    bell.classList.add('ringing');
+    // Play sound if not muted
+    if (!notifMuted) {
+        playNotificationBell();
+    }
+}
+
+function renderNotifications() {
+    const list = document.getElementById('notifList');
+    if (!notifications.length) {
+        list.innerHTML = '<div class="notif-empty">No new notifications</div>';
+        return;
+    }
+    list.innerHTML = notifications.slice(0, 30).map(n => `
+        <div class="notif-item">
+            <div><i class="bi bi-exclamation-circle-fill text-accent me-1"></i> ${n.msg}</div>
+            <div class="notif-time">${n.time}</div>
+        </div>
+    `).join('');
+}
+
+function clearNotifications() {
+    notifications = [];
+    notifCount = 0;
+    localStorage.setItem('notifications', '[]');
+    document.getElementById('bellBadge').textContent = '';
+    renderNotifications();
+}
+
+function playNotificationBell() {
+    try {
+        const ctx = _ensureAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+        // Bell-like sound: two tones
+        [880, 1100].forEach((freq, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            o.connect(g);
+            g.connect(ctx.destination);
+            const t = ctx.currentTime + i * 0.15;
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+            o.start(t);
+            o.stop(t + 0.45);
         });
+    } catch(e) {}
 }
-let analyticsChart;
-function fetchAnalyticsAjax(){
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/api/violation_counts', true);
-    xhr.onreadystatechange = function() {
-        if(xhr.readyState === 4) {
-            const labels = ['CAR','MOTORCYCLE'];
-            if(xhr.status === 200) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    const counts = labels.map(l => Number(data[l] || 0));
-                    const total = counts.reduce((a,b)=>a+b,0);
-                    const canvas = document.getElementById('analyticsChart');
-                    if (!canvas) return;
-                    const ctx = canvas.getContext('2d');
-                    if(!analyticsChart && ctx){
-                        analyticsChart = new Chart(ctx, {
-                            type: 'pie',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    data: counts,
-                                    backgroundColor: ['#4da6ff','#ffd11a']
-                                }]
-                            },
-                            options: { 
-                                plugins: { 
-                                    legend: { 
-                                        display: false 
-                                    } 
-                                },
-                                maintainAspectRatio: true,
-                                responsive: true
-                            }
-                        });
-                    }
-                    if(analyticsChart){
-                        if(total === 0){
-                            analyticsChart.data.labels = ['No data'];
-                            analyticsChart.data.datasets[0].data = [1];
-                            analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
-                        } else {
-                            analyticsChart.data.labels = labels;
-                            analyticsChart.data.datasets[0].data = counts;
-                            analyticsChart.data.datasets[0].backgroundColor = ['#4da6ff','#ffd11a'];
-                        }
-                        analyticsChart.update();
-                    }
-                    const idMap = { 'CAR':'count-CAR', 'MOTORCYCLE':'count-MOTORCYCLE' };
-                    labels.forEach(l => {
-                        const el2 = document.getElementById(idMap[l]);
-                        if(el2) el2.textContent = data && data[l] ? data[l] : 0;
-                    });
-                    try {
-                        const uniq = data && (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) ? (data.TOTAL_UNIQUE_TRACKERS || data.TOTAL) : total;
-                        const totalBox = document.getElementById('total-violators');
-                        if(totalBox) totalBox.textContent = uniq;
-                        const recent = data && (data.RECENT_VIOLATORS_TODAY || data.recent) ? (data.RECENT_VIOLATORS_TODAY || data.recent) : total;
-                        const recentBox = document.getElementById('recent-violators');
-                        if(recentBox) recentBox.textContent = recent;
-                    } catch(e) {}
-                } catch(e) {
-                    labels.forEach(l => {
-                        const el2 = document.getElementById('count-' + l);
-                        if(el2) el2.textContent = 0;
-                    });
-                    const totalBox = document.getElementById('total-violators');
-                    if(totalBox) totalBox.textContent = 0;
-                    const recentBox = document.getElementById('recent-violators');
-                    if(recentBox) recentBox.textContent = 0;
-                    if(analyticsChart){
-                        analyticsChart.data.labels = ['No data'];
-                        analyticsChart.data.datasets[0].data = [1];
-                        analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
-                        analyticsChart.update();
-                    }
-                }
-            } else {
-                labels.forEach(l => {
-                    const el2 = document.getElementById('count-' + l);
-                    if(el2) el2.textContent = 0;
-                });
-                const totalBox2 = document.getElementById('total-violators');
-                if(totalBox2) totalBox2.textContent = 0;
-                const recentBox2 = document.getElementById('recent-violators');
-                if(recentBox2) recentBox2.textContent = 0;
-                if(analyticsChart){
-                    analyticsChart.data.labels = ['No data'];
-                    analyticsChart.data.datasets[0].data = [1];
-                    analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76'];
-                    analyticsChart.update();
-                }
-            }
-        }
-    };
-    xhr.send();
-    fetch('/api/violation_stats')
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('stat-total-violations').textContent = data.total_violations || 0;
-            document.getElementById('stat-active-cameras').textContent = data.active_cameras || 0;
-            document.getElementById('stat-affected-barangays').textContent = data.affected_barangays || 0;
-            document.getElementById('stat-avg-confidence').textContent = (data.avg_confidence || 0).toFixed(2);
-            document.getElementById('stat-avg-duration').textContent = (data.avg_duration_minutes || 0).toFixed(2);
-            document.getElementById('stat-enforced-count').textContent = data.enforced_count || 0;
-            document.getElementById('stat-total-fines').textContent = '₱' + (data.total_fines_collected || 0).toFixed(2);
-        })
-        .catch(() => {});
-}
-function setupViolatorNotification() {
+
+// Hook into the existing violation notification system
+const _origSetupViolatorNotification = setupViolatorNotification;
+setupViolatorNotification = function() {
     let lastKnown = Number(localStorage.getItem('lastKnownViolatorCount') || 0);
     const banner = document.getElementById('newViolationBanner');
     async function poll() {
@@ -1385,159 +827,139 @@ function setupViolatorNotification() {
             const prev = Number(localStorage.getItem('lastKnownViolatorCount') || lastKnown);
             if (count > prev) {
                 const delta = count - prev;
-                showBanner(delta, count);
+                // Add to notification bell
+                addNotification(`${delta} new violation${delta > 1 ? 's' : ''} detected`, 'violation');
+                // Show banner
+                banner.innerHTML = `<div class="d-flex align-items-center gap-2"><i class="bi bi-exclamation-circle-fill"></i><strong>${delta} new violator${delta>1?'s':''}</strong><button id="dismissNV" class="btn btn-sm btn-light ms-auto">Dismiss</button></div>`;
+                banner.style.display = 'block';
+                if (!notifMuted) playNotificationBell();
+                document.getElementById('dismissNV')?.addEventListener('click', () => { banner.style.display='none'; localStorage.setItem('lastKnownViolatorCount',String(count)); lastKnown=count; }, {once:true});
+                setTimeout(() => { if(banner.style.display!=='none'){banner.style.display='none';localStorage.setItem('lastKnownViolatorCount',String(count));lastKnown=count;} }, 10000);
             }
             localStorage.setItem('lastKnownViolatorCount', String(count));
             lastKnown = count;
         } catch (e) {}
     }
-    function showBanner(delta, absoluteCount) {
-        if (!banner) return;
-        banner.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.75rem;">
-                <i class="bi bi-exclamation-circle-fill" style="font-size:1.2rem;color:#8a4b00;"></i>
-                <div style="font-weight:700;color:#332200;">
-                    ${delta} new violator${delta > 1 ? 's' : ''} added
-                </div>
-                <button id="dismissNewViolator" class="btn btn-sm btn-light" style="margin-left:8px;">Dismiss</button>
-            </div>`;
-        banner.style.display = 'block';
-        playNotificationBeep();
-        const dismiss = document.getElementById('dismissNewViolator');
-        if (dismiss) {
-            dismiss.addEventListener('click', () => {
-                banner.style.display = 'none';
-                localStorage.setItem('lastKnownViolatorCount', String(absoluteCount));
-                lastKnown = absoluteCount;
-            }, { once: true });
-        }
-        setTimeout(() => {
-            if (banner.style.display !== 'none') {
-                banner.style.display = 'none';
-                localStorage.setItem('lastKnownViolatorCount', String(absoluteCount));
-                lastKnown = absoluteCount;
-            }
-        }, 10000);
-    }
-    poll();
-    setInterval(poll, 5000);
-}
-// Period selector handling
-document.getElementById('reportPeriod').addEventListener('change', function() {
-    const period = this.value;
-    const singleDateContainer = document.getElementById('singleDateContainer');
-    const customRangeContainer = document.getElementById('customRangeContainer');
-    
-    if (period === 'custom') {
-        singleDateContainer.style.display = 'none';
-        customRangeContainer.style.display = 'block';
-    } else {
-        singleDateContainer.style.display = 'block';
-        customRangeContainer.style.display = 'none';
-    }
-});
-// Generate PDF report with enhanced filters
-document.getElementById('generateReportBtn').addEventListener('click', async () => {
-    const period = document.getElementById('reportPeriod').value;
-    const date = document.getElementById('reportDate').value;
-    const startDate = document.getElementById('reportStartDate').value;
-    const endDate = document.getElementById('reportEndDate').value;
-    const vehicleType = document.getElementById('reportVehicleType').value;
-    const camera = document.getElementById('reportCamera').value;
-    
-    let url = '/api/generate_report?period=' + encodeURIComponent(period);
-    
-    if (period === 'custom') {
-        if (!startDate || !endDate) {
-            alert('Please select both start and end dates for custom range');
-            return;
-        }
-        url += '&start_date=' + encodeURIComponent(startDate);
-        url += '&end_date=' + encodeURIComponent(endDate);
-    } else if (date) {
-        url += '&date=' + encodeURIComponent(date);
-    }
-    
-    if (vehicleType !== 'all') {
-        url += '&vehicle_type=' + encodeURIComponent(vehicleType);
-    }
-    
-    if (camera !== 'all') {
-        url += '&camera=' + encodeURIComponent(camera);
-    }
-    
-    try {
-        const resp = await fetch(url);
-        if (!resp.ok) {
-            try { 
-                const err = await resp.json(); 
-                alert(err.error || 'Failed to generate report'); 
-            } catch(e){ 
-                alert('Failed to generate report'); 
-            }
-            return;
-        }
-        const blob = await resp.blob();
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        const fileDate = date || startDate || new Date().toISOString().slice(0,10);
-        a.download = `violations_${period}_${fileDate}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-    } catch (e) {
-        console.error(e);
-        alert('Failed to fetch report');
-    }
-});
-let _audioCtx = null;
-function _ensureAudioContext() {
-    if (!_audioCtx) {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    return _audioCtx;
-}
-function unlockAudioOnGesture() {
-    document.addEventListener('click', function _once() {
-        try { 
-            const ctx = _ensureAudioContext(); 
-            if (ctx.state === 'suspended') ctx.resume(); 
-        } catch(e) {}
-        document.removeEventListener('click', _once);
-    }, { once: true });
-}
-unlockAudioOnGesture();
-function playNotificationBeep() {
-    try {
-        const ctx = _ensureAudioContext();
-        if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.value = 880;
-        g.gain.value = 0.0001;
-        o.connect(g);
-        g.connect(ctx.destination);
-        const now = ctx.currentTime;
-        g.gain.setValueAtTime(0.0001, now);
-        g.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
-        o.start(now);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-        o.stop(now + 0.25);
-    } catch (e) {}
-}
-window.onload = function() {
-    fetchRaspiBaseAndInit();
-    fetchAnalyticsAjax();
-    setInterval(fetchAnalyticsAjax, 5000);
-    setupViolatorNotification();
-    
-    // Set default date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('reportDate').value = today;
+    poll(); setInterval(poll, 5000);
 };
+
+// Init bell UI
+updateMuteUI();
+renderNotifications();
+
+// =====================================================
+// INTELLIGENT ANALYTICS DASHBOARD
+// =====================================================
+const CT = 'rgba(255,255,255,0.6)', CG = 'rgba(255,255,255,0.08)', AC = '#ff9800', ACL = 'rgba(255,152,0,0.4)', ACF = 'rgba(255,152,0,0.1)', BL = '#4da6ff';
+const cOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: { x: { ticks: { color: CT, font: { size: 10 } }, grid: { color: CG } }, y: { ticks: { color: CT, font: { size: 10 } }, grid: { color: CG } } }
+};
+
+async function loadSummaryCards() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/summary', { ttl: 30000, cacheKey: 'analytics_summary' });
+    if (d.error) return;
+    const s = d.change_vs_last_month >= 0 ? '+' : '';
+    document.getElementById('summary-cards').innerHTML = `
+      <div class="scard"><div class="sc-label">Total Violations</div><div class="sc-value" style="color:var(--accent)">${d.total_violations.toLocaleString()}</div><div class="sc-sub">${s}${d.change_vs_last_month.toLocaleString()} vs last month</div></div>
+      <div class="scard"><div class="sc-label">Avg Duration</div><div class="sc-value">${d.avg_duration} min</div><div class="sc-sub">Per violation</div></div>
+      <div class="scard"><div class="sc-label">Peak Hour</div><div class="sc-value">${d.peak_hour}</div><div class="sc-sub">${d.peak_hour_note}</div></div>
+      <div class="scard"><div class="sc-label">Worst Day</div><div class="sc-value">${d.worst_day}</div><div class="sc-sub">Avg ${d.worst_day_avg}/week</div></div>
+    `;
+  } catch(e) { console.error('Summary failed:', e); }
+}
+
+async function loadHeatmap() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/heatmap?days=30', { ttl: 60000, cacheKey: 'analytics_heatmap' });
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const hm = {};
+    d.data.forEach(x => { if(!hm[x.day_index]) hm[x.day_index]={}; hm[x.day_index][x.hour]=x.count; });
+    let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:10px;">';
+    html += '<div></div>';
+    for(let h=0;h<24;h++) html += `<div style="text-align:center;color:rgba(255,255,255,0.4)">${String(h).padStart(2,'0')}</div>`;
+    for(let di=0;di<7;di++){
+      html += `<div style="color:rgba(255,255,255,0.5);text-align:right;padding-right:4px;line-height:20px">${days[di]}</div>`;
+      for(let h=0;h<24;h++){
+        const c = (hm[di]&&hm[di][h])||0;
+        const i = d.max_count>0 ? c/d.max_count : 0;
+        const a = Math.max(0.08, i);
+        html += `<div style="height:20px;border-radius:3px;background:rgba(${Math.round(255*i)},${Math.round(152*i)},0,${a});cursor:pointer" title="${days[di]} ${h}:00 — ${c} violations"></div>`;
+      }
+    }
+    html += '</div>';
+    document.getElementById('heatmap-container').innerHTML = html;
+  } catch(e) { console.error('Heatmap failed:', e); }
+}
+
+async function loadTrendChart() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/daily_trend?days=30', { ttl: 60000, cacheKey: 'analytics_trend' });
+    new Chart(document.getElementById('trendChart'), {
+      type: 'line', data: { labels: d.labels, datasets: [{ data: d.counts, borderColor: AC, backgroundColor: ACF, fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
+      options: { ...cOpts, scales: { ...cOpts.scales, x: { ...cOpts.scales.x, ticks: { ...cOpts.scales.x.ticks, maxTicksLimit: 8 } } } }
+    });
+  } catch(e) { console.error('Trend failed:', e); }
+}
+
+async function loadHourlyChart() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/hourly?days=30', { ttl: 60000, cacheKey: 'analytics_hourly' });
+    const mx = Math.max(...d.counts);
+    new Chart(document.getElementById('hourlyChart'), {
+      type: 'bar', data: { labels: d.hours.map(h=>h+':00'), datasets: [{ data: d.counts, backgroundColor: d.counts.map(v=>v>(mx*0.7)?AC:ACL), borderRadius: 3 }] },
+      options: { ...cOpts, scales: { ...cOpts.scales, x: { ...cOpts.scales.x, ticks: { ...cOpts.scales.x.ticks, maxTicksLimit: 12 } } } }
+    });
+  } catch(e) { console.error('Hourly failed:', e); }
+}
+
+async function loadCameraChart() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/camera_comparison', { ttl: 60000, cacheKey: 'analytics_cameras' });
+    const cams = d.cameras;
+    new Chart(document.getElementById('cameraChart'), {
+      type: 'bar', data: {
+        labels: cams.map(c=>c.replace('_',' ')),
+        datasets: [
+          { label: 'Cars', data: cams.map(c=>(d.data[c]&&d.data[c]['CAR'])||0), backgroundColor: BL, borderRadius: 4 },
+          { label: 'Motorcycles', data: cams.map(c=>(d.data[c]&&d.data[c]['MOTORCYCLE'])||0), backgroundColor: AC, borderRadius: 4 }
+        ]
+      },
+      options: { ...cOpts, plugins: { legend: { display: true, labels: { color: CT, font: { size: 10 }, boxWidth: 10 } } } }
+    });
+  } catch(e) { console.error('Camera chart failed:', e); }
+}
+
+async function loadDurationChart() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/duration_distribution', { ttl: 60000, cacheKey: 'analytics_duration' });
+    new Chart(document.getElementById('durationChart'), {
+      type: 'bar', data: { labels: d.buckets, datasets: [{ data: d.counts, backgroundColor: ACL, borderRadius: 3 }] },
+      options: cOpts
+    });
+  } catch(e) { console.error('Duration failed:', e); }
+}
+
+async function loadInsights() {
+  try {
+    const d = await ApiCache.fetch('/api/analytics/insights', { ttl: 120000, cacheKey: 'analytics_insights' });
+    const colors = {
+      info: { bg: 'rgba(52,152,219,0.12)', border: 'rgba(52,152,219,0.3)', title: '#4da6ff' },
+      warning: { bg: 'rgba(255,152,0,0.12)', border: 'rgba(255,152,0,0.3)', title: '#ff9800' },
+      success: { bg: 'rgba(46,204,113,0.12)', border: 'rgba(46,204,113,0.3)', title: '#2ecc71' }
+    };
+    const c = document.getElementById('insights-container');
+    if (!d.insights || !d.insights.length) { c.innerHTML = '<div class="small-muted">Collecting data for insights...</div>'; return; }
+    c.innerHTML = d.insights.map(ins => {
+      const cl = colors[ins.type] || colors.info;
+      return `<div class="insight-card" style="background:${cl.bg};border:1px solid ${cl.border}"><div class="ic-title" style="color:${cl.title}">${ins.title}</div><div class="ic-desc">${ins.description}</div></div>`;
+    }).join('');
+  } catch(e) { console.error('Insights failed:', e); }
+}
+
+// Load all analytics on page ready
+setTimeout(() => { loadSummaryCards(); loadHeatmap(); loadTrendChart(); loadHourlyChart(); loadCameraChart(); loadDurationChart(); loadInsights(); }, 500);
 </script>
-</body>
-</html>
+{% endblock %}

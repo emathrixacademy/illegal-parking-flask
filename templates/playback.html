@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Playback — DECONGESTILAGUNA{% endblock %}
+
+{% block header_title %}<i class="bi bi-play-circle-fill"></i> Playback{% endblock %}
+
+{% block extra_css %}
+  video {
+    width: 100%;
+    max-height: 420px;
+    border-radius: 10px;
+    background: #000;
+  }
+  .segment-btn {
+    margin: 0.2rem;
+    font-size: 0.8rem;
+  }
+  .btn-outline-accent {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .btn-outline-accent:hover,
+  .btn-outline-accent:active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .plate-results .table { color: var(--text); }
+
+  @media (min-width: 768px) {
+    video { max-height: 500px; }
+  }
+{% endblock %}
+
+{% block content %}
+  <!-- ===== Select Recording ===== -->
+  <div class="content-card">
+    <h2><i class="bi bi-camera-reels"></i> Select Recording</h2>
+
+    <!-- Mobile: stacked; tablet+: row -->
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="cameraSelect">Camera</label>
+        <select id="cameraSelect" class="form-select">
+          <option value="Camera_1">Camera 1</option>
+          <option value="Camera_2">Camera 2</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="dateSelect">Date</label>
+        <select id="dateSelect" class="form-select">
+          <option value="">Loading dates...</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4 d-flex align-items-end">
+        <button id="loadSegmentsBtn" class="btn btn-accent w-100">
+          <i class="bi bi-search"></i> Load Segments
+        </button>
+      </div>
+    </div>
+
+    <div id="segmentsList"></div>
+  </div>
+
+  <!-- ===== Video Player ===== -->
+  <div class="content-card">
+    <h2><i class="bi bi-film"></i> Player</h2>
+    <video id="videoPlayer" controls>
+      <source src="" type="video/mp4">
+      Your browser does not support video playback.
+    </video>
+    <div id="playerStatus" class="small-muted mt-2"></div>
+  </div>
+
+  <!-- ===== Plate Search ===== -->
+  <div class="content-card plate-results">
+    <h2><i class="bi bi-search"></i> Plate Number Search</h2>
+    <div class="row g-2 mb-3">
+      <div class="col">
+        <input type="text" id="plateSearch" class="form-control"
+               placeholder="Enter plate number (e.g. ABC-1234)">
+      </div>
+      <div class="col-auto">
+        <button id="plateSearchBtn" class="btn btn-accent">
+          <i class="bi bi-search"></i> Search
+        </button>
+      </div>
+    </div>
+    <div id="plateResults"></div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDates() {
+    try {
+        const resp = await fetch('/api/playback/dates');
+        const data = await resp.json();
+        const sel = document.getElementById('dateSelect');
+        sel.innerHTML = '<option value="">Select date...</option>';
+        const camera = document.getElementById('cameraSelect').value;
+        const dates = data[camera] || [];
+        dates.forEach(d => {
+            sel.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+    } catch(e) {
+        document.getElementById('dateSelect').innerHTML = '<option value="">No dates available</option>';
+    }
+}
+
+document.getElementById('cameraSelect').addEventListener('change', loadDates);
+
+document.getElementById('loadSegmentsBtn').addEventListener('click', async () => {
+    const camera = document.getElementById('cameraSelect').value;
+    const date = document.getElementById('dateSelect').value;
+    if (!date) return;
+    try {
+        const resp = await fetch(`/api/playback/segments?camera=${camera}&date=${date}`);
+        const segments = await resp.json();
+        const container = document.getElementById('segmentsList');
+        if (!segments.length) {
+            container.innerHTML = '<div class="alert alert-info">No segments for this date.</div>';
+            return;
+        }
+        container.innerHTML = '<div class="d-flex flex-wrap gap-1">' +
+            segments.map(s =>
+                `<button class="btn btn-sm btn-outline-accent segment-btn" onclick="playSegment('${camera}','${date}','${s.time}')">`+
+                `<i class="bi bi-play-fill"></i> ${s.time} (${s.size_mb}MB)</button>`
+            ).join('') + '</div>';
+    } catch(e) {
+        document.getElementById('segmentsList').innerHTML = '<div class="alert alert-danger">Failed to load segments.</div>';
+    }
+});
+
+function playSegment(camera, date, timeStr) {
+    const player = document.getElementById('videoPlayer');
+    player.src = `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(timeStr)}`;
+    player.load();
+    player.play();
+    document.getElementById('playerStatus').textContent = `Playing: ${camera} - ${date} ${timeStr}`;
+}
+
+// Plate search
+document.getElementById('plateSearchBtn').addEventListener('click', async () => {
+    const q = document.getElementById('plateSearch').value.trim();
+    if (!q) return;
+    try {
+        const resp = await fetch(`/api/plates/search?q=${encodeURIComponent(q)}`);
+        const data = await resp.json();
+        const container = document.getElementById('plateResults');
+        if (data.error) {
+            container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            return;
+        }
+        if (!data.length) {
+            container.innerHTML = '<div class="alert alert-info">No records found for this plate.</div>';
+            return;
+        }
+        let html = '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr>' +
+            '<th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Fine</th><th>Time</th></tr></thead><tbody>';
+        data.forEach(r => {
+            html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td>` +
+                `<td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td>` +
+                `<td>${r.fine_amount ? 'P'+r.fine_amount.toFixed(0) : ''}</td>` +
+                `<td>${r.timestamp||''}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch(e) {
+        document.getElementById('plateResults').innerHTML = '<div class="alert alert-danger">Search failed.</div>';
+    }
+});
+
+document.getElementById('plateSearch').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('plateSearchBtn').click();
+});
+
+// Load dates on page load
+loadDates();
+</script>
+{% endblock %}

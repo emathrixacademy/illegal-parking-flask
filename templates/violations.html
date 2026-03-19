@@ -1,410 +1,191 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Violators - Illegal Parking Detection</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
-        body {
-            background: #181c23;
-            color: #f8f9fa;
-            min-height: 100vh;
-        }
-        .dashboard-container {
-            display: flex;
-            min-height: 100vh;
-        }
-        .sidebar {
-            width: 220px;
-            background: #232733;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            padding: 0;
-            border-right: 1px solid #232733;
-        }
-        .sidebar .nav-link {
-            color: #bfc7d5;
-            font-weight: 500;
-            padding: 1.1rem 1.5rem;
-            border-radius: 0;
-            transition: background 0.2s;
-        }
-        .sidebar .nav-link.active, .sidebar .nav-link:hover {
-            background: #2d3342;
-            color: #fff;
-        }
-        .sidebar .sidebar-header {
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 2rem 1.5rem 1rem 1.5rem;
-            letter-spacing: 1px;
-            color: #ff9800;
-            border-bottom: 1px solid #232733;
-        }
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-        .header-bar {
-            background: #232733;
-            padding: 1rem 2rem;
-            border-bottom: 1px solid #232733;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .header-bar h1 {
-            color: #ff9800;
-            font-size: 1.6rem;
-            margin: 0;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-        .violations-section {
-            background: #232733;
-            border-radius: 16px;
-            margin: 2rem 2rem 2rem 2rem;
-            padding: 2rem 2rem 1.5rem 2rem;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.7);
-            max-width: 800px;
-        }
-        .violations-section h2 {
-            color: #ff9800;
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 1.2rem;
-        }
-        .violation-timeline {
-            border-left: 3px solid #ff9800;
-            margin-left: 1.2rem;
-            padding-left: 1.5rem;
-        }
-        .violation-card {
-            background: #181c23;
-            border: 1px solid #2d3342;
-            border-radius: 10px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: flex-start;
-            box-shadow: 0 2px 8px #0004;
-        }
-        .violation-card img {
-            width: 120px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 10px 0 0 10px;
-            border-right: 2px solid #232733;
-            background: #222;
-        }
-        .violation-card-body {
-            padding: 0.8rem 1rem;
-            flex: 1;
-        }
-        .violation-card-title {
-            color: #ff9800;
-            font-size: 1.05rem;
-            font-weight: bold;
-            margin-bottom: 0.2rem;
-        }
-        .violation-card-meta {
-            color: #bfc7d5;
-            font-size: 0.92rem;
-            margin-bottom: 0.5rem;
-        }
-        .violation-card pre {
-            background: #232733;
-            color: #bfc7d5;
-            font-size: 0.92em;
-            border: none;
-            margin: 0;
-            padding: 0.3rem 0.5rem;
-        }
-        /* Large screens (1400px+) */
-        @media (min-width: 1400px) {
-            .violations-section {
-                max-width: 1200px;
-                margin: 3rem auto;
-                padding: 3rem;
-            }
-            .violations-section h2 {
-                font-size: 1.4rem;
-                margin-bottom: 1.5rem;
-            }
-            .violation-timeline {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-                gap: 2rem;
-            }
-            .violation-card {
-                flex-direction: column;
-            }
-            .violation-card img {
-                width: 100%;
-                height: 180px;
-                border-radius: 10px 10px 0 0;
-                border-right: none;
-                border-bottom: 2px solid #232733;
-            }
-        }
-        /* Ultra-wide screens (1800px+) */
-        @media (min-width: 1800px) {
-            .violations-section {
-                max-width: 100%;
-                padding: 3rem;
-            }
-            .violation-timeline {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 2.5rem;
-            }
-        }
-        /* Tablets and medium screens */
-        @media (max-width: 1200px) {
-            .violations-section {
-                max-width: 900px;
-                margin: 2rem auto;
-            }
-            .violation-timeline {
-                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-                gap: 1.5rem;
-            }
-        }
-        /* Tablets (768px - 900px) */
-        @media (max-width: 900px) {
-            .dashboard-container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                flex-direction: row;
-                border-right: none;
-                border-bottom: 1px solid #232733;
-                padding: 0;
-            }
-            .sidebar .sidebar-header {
-                padding: 0.8rem 1.5rem;
-                border-bottom: none;
-                border-right: 1px solid #232733;
-                font-size: 1.3rem;
-            }
-            .sidebar .nav-link {
-                padding: 0.8rem 1.2rem;
-                font-size: 0.95rem;
-            }
-            .main-content {
-                min-width: 100%;
-            }
-            .header-bar {
-                padding: 1rem 1.5rem;
-            }
-            .header-bar h1 {
-                font-size: 1.4rem;
-            }
-            .violations-section {
-                max-width: 100%;
-                margin: 1.5rem;
-                padding: 1.5rem;
-            }
-            .violations-section h2 {
-                font-size: 1.1rem;
-            }
-            .violation-timeline {
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 1rem;
-            }
-            .violation-card {
-                flex-direction: row;
-            }
-            .violation-card img {
-                width: 120px;
-                height: 80px;
-                border-radius: 10px 0 0 10px;
-                border-right: 2px solid #232733;
-                border-bottom: none;
-            }
-        }
-        /* Mobile (600px and below) */
-        @media (max-width: 600px) {
-            .dashboard-container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: 100%;
-                flex-direction: row;
-                justify-content: flex-start;
-                overflow-x: auto;
-                border-right: none;
-                border-bottom: 1px solid #232733;
-            }
-            .sidebar .sidebar-header {
-                padding: 0.6rem 1rem;
-                border-bottom: none;
-                border-right: 1px solid #232733;
-                font-size: 1.1rem;
-                white-space: nowrap;
-            }
-            .sidebar .nav-link {
-                padding: 0.6rem 0.8rem;
-                font-size: 0.85rem;
-                white-space: nowrap;
-            }
-            .main-content {
-                padding: 0;
-            }
-            .header-bar {
-                padding: 0.8rem 1rem;
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .header-bar h1 {
-                font-size: 1.2rem;
-            }
-            .violations-section {
-                max-width: 100%;
-                margin: 0.5rem;
-                padding: 1rem;
-                border-radius: 12px;
-            }
-            .violations-section h2 {
-                font-size: 1rem;
-                margin-bottom: 1rem;
-            }
-            .violation-timeline {
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 0.8rem;
-            }
-            .violation-card {
-                flex-direction: row;
-                border-radius: 8px;
-            }
-            .violation-card img {
-                width: 100px;
-                height: 70px;
-                border-radius: 8px 0 0 8px;
-            }
-            .violation-card-body {
-                padding: 0.6rem 0.8rem;
-            }
-            .violation-card-title {
-                font-size: 0.95rem;
-            }
-            .violation-card-meta {
-                font-size: 0.85rem;
-            }
-            .violation-card pre {
-                font-size: 0.85em;
-                padding: 0.2rem 0.4rem;
-            }
-        }
-        /* Extra small (480px and below) */
-        @media (max-width: 480px) {
-            .sidebar .sidebar-header {
-                font-size: 0.95rem;
-                padding: 0.5rem 0.7rem;
-            }
-            .sidebar .nav-link {
-                padding: 0.5rem 0.6rem;
-                font-size: 0.8rem;
-            }
-            .header-bar {
-                padding: 0.6rem 0.8rem;
-            }
-            .header-bar h1 {
-                font-size: 1.1rem;
-            }
-            .violations-section {
-                margin: 0.3rem;
-                padding: 0.8rem;
-            }
-            .violation-card {
-                flex-direction: column;
-                border-radius: 8px;
-            }
-            .violation-card img {
-                width: 100%;
-                height: 100px;
-                border-radius: 8px 8px 0 0;
-                border-right: none;
-                border-bottom: 2px solid #232733;
-            }
-            .violation-card-body {
-                padding: 0.6rem;
-            }
-            .violation-card-title {
-                font-size: 0.9rem;
-            }
-            .violation-card-meta {
-                font-size: 0.8rem;
-            }
-            .violation-card pre {
-                font-size: 0.8em;
-            }
-        }
-    </style>
-</head>
-<!-- Small-device responsive overrides -->
-<style>
-@media (max-width:900px){
-    body{font-size:14px}
-    .sidebar{position:fixed;top:0;left:0;right:0;height:56px;padding:0 .6rem;border-radius:0 0 8px 8px}
-    .sidebar .nav-link{display:none}
-    .main-content{margin-top:64px}
-    .violations-section{margin:0.8rem;padding:0.8rem;max-width:100%}
-    .violation-card{flex-direction:column}
-    .violation-card img{width:100%;height:auto}
-    .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
-}
-@media (max-width:480px){
-    .violation-card-title{font-size:1rem}
-    .violation-card-meta{font-size:0.85rem}
-}
-</style>
-<body>
-<div class="dashboard-container">
-    <nav class="sidebar">
-        <div class="sidebar-header">
-            <i class="bi bi-camera-video-fill"></i> CCTV Monitor
-        </div>
-        <a class="nav-link" href="/"><i class="bi bi-house-door-fill"></i> Home</a>
-        <a class="nav-link active" href="/violations"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
-    </nav>
-    <div class="main-content">
-        <div class="header-bar">
-            <h1><i class="bi bi-exclamation-triangle-fill"></i> Violators</h1>
-        </div>
-        <div class="violations-section mx-auto">
-            <h2><i class="bi bi-exclamation-triangle-fill"></i> Parking Violations</h2>
+{% extends "base.html" %}
 
-            <!-- New: date list (click a date to load images for that date) -->
-            <div id="dateList" class="mb-3"></div>
+{% block title %}Violations — DECONGESTILAGUNA{% endblock %}
 
-            <div id="violationEvents" class="violation-timeline"></div>
-            <a href="/" class="btn btn-secondary mt-3">Back to Home</a>
-        </div>
-        <!-- Modal for image zoom (can be left, but will not be used) -->
-        <div class="modal fade" id="zoomModal" tabindex="-1" aria-labelledby="zoomModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-dark">
-              <div class="modal-header border-0">
-                <h5 class="modal-title text-warning" id="zoomModalLabel">Violation Image</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body text-center">
-                <img id="zoomedImage" src="" alt="Zoomed Violation" style="max-width:100%;max-height:70vh;border-radius:10px;">
-              </div>
-            </div>
-          </div>
-        </div>
+{% block header_title %}<i class="bi bi-exclamation-triangle-fill"></i> Violations{% endblock %}
+
+{% block extra_css %}
+/* ========== VIOLATION TIMELINE ========== */
+.violation-timeline {
+  border-left: 3px solid var(--accent);
+  margin-left: 0.5rem;
+  padding-left: 1rem;
+}
+.violation-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.violation-card:hover {
+  border-color: var(--accent);
+}
+.violation-card img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 10px 10px 0 0;
+  border-bottom: 2px solid var(--card);
+  background: #222;
+}
+.violation-card-body {
+  padding: 0.7rem 0.85rem;
+  flex: 1;
+}
+.violation-card-title {
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+.violation-card-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+.violation-card pre {
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.82em;
+  border: none;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+/* Date buttons */
+.date-btn {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  font-size: 0.82rem;
+}
+.date-btn:hover, .date-btn.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #000 !important;
+}
+
+/* Search section */
+.search-section {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+}
+.search-section h6 {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* ========== TABLET (768px+) ========== */
+@media (min-width: 768px) {
+  .violation-timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    border-left: none;
+    margin-left: 0;
+    padding-left: 0;
+  }
+  .violation-card {
+    margin-bottom: 0;
+  }
+  .violation-card img {
+    height: 150px;
+  }
+  .search-section {
+    padding: 1rem;
+  }
+}
+
+/* ========== DESKTOP (1024px+) ========== */
+@media (min-width: 1024px) {
+  .violation-timeline {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.25rem;
+  }
+  .violation-card img {
+    height: 170px;
+  }
+}
+
+/* ========== WIDE (1400px+) ========== */
+@media (min-width: 1400px) {
+  .violation-timeline {
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.5rem;
+  }
+  .violation-card img {
+    height: 180px;
+  }
+}
+
+/* ========== ULTRA-WIDE (1800px+) ========== */
+@media (min-width: 1800px) {
+  .violation-timeline {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* Zoom modal image */
+#zoomedImage {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 10px;
+}
+{% endblock %}
+
+{% block content %}
+<div class="content-card">
+  <h2><i class="bi bi-exclamation-triangle-fill"></i> Parking Violations</h2>
+
+  <!-- Plate Number Search -->
+  <div class="search-section">
+    <h6><i class="bi bi-search"></i> Search by Plate Number</h6>
+    <div class="input-group">
+      <input type="text" id="plateSearchInput" class="form-control" placeholder="Enter plate number (e.g. ABC-1234)">
+      <button class="btn btn-accent" onclick="searchPlates()"><i class="bi bi-search"></i> Search</button>
     </div>
-</div>
-<script>
-// Replaced client-side script to use AJAX polling, safe encoding and robust fallbacks.
+    <div id="plateSearchResults" class="mt-2"></div>
+  </div>
 
+  <!-- Date list -->
+  <div id="dateList" class="mb-3"></div>
+
+  <!-- Violation timeline -->
+  <div id="violationEvents" class="violation-timeline"></div>
+
+  <a href="/" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left"></i> Back to Home</a>
+</div>
+
+<!-- Image Zoom Modal -->
+<div class="modal fade" id="zoomModal" tabindex="-1" aria-labelledby="zoomModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark">
+      <div class="modal-header border-0">
+        <h5 class="modal-title text-accent" id="zoomModalLabel">Violation Image</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="zoomedImage" src="" alt="Zoomed Violation">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ========== UTILITY FUNCTIONS ==========
 function groupBy(arr, keyFn) {
     return arr.reduce((acc, item) => {
         const key = keyFn(item);
@@ -427,18 +208,13 @@ function formatHour(ts) {
     return d.toLocaleDateString() + ' ' + d.getHours() + ':00';
 }
 
-// Build a safe proxy URL function removed from client side because server now returns encoded proxy_image_url
 const FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22250%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23ff9800%22%20font-size%3D%2220%22%20font-family%3D%22Arial%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3EImage%20unavailable%3C/text%3E%3C/svg%3E';
 
-// Helper to format date and time as requested
 function parseDateLabel(label) {
-    // label is like "January 03, 2026 (Saturday)"
-    // fallback: just return as is
     return label;
 }
+
 function parseTimeFromFilename(ev) {
-    // Try to extract time from filename pattern: Camera_1-12_00_00.jpg or Camera_1-12_00_00-xxxx.jpg
-    // ev.proxy_image_url contains image_path param, which is URL encoded
     try {
         let path = "";
         if (ev.proxy_image_url) {
@@ -447,7 +223,6 @@ function parseTimeFromFilename(ev) {
         }
         if (!path) return "";
         let fname = path.split('/').pop();
-        // Find time part: e.g. Camera_1-12_34_56.jpg
         let mt = fname.match(/-(\d{2})_(\d{2})_(\d{2})/);
         if (mt) {
             return `${mt[1]}:${mt[2]}`;
@@ -456,6 +231,7 @@ function parseTimeFromFilename(ev) {
     return "";
 }
 
+// ========== VIOLATION CARD ==========
 function violationCard(ev) {
     let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
     let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
@@ -465,8 +241,7 @@ function violationCard(ev) {
     let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
 
     return `
-    <div class="violation-card flex-column" style="min-height:80px;justify-content:center; cursor:pointer;"
-        onclick="showZoomModalBySrc('${imgSrc}')">
+    <div class="violation-card" onclick="showZoomModalBySrc('${imgSrc}')">
         <div class="violation-card-body">
             <div class="violation-card-title">
                 <i class="bi bi-camera-video"></i> <b>${camera_id}</b>
@@ -482,15 +257,13 @@ function violationCard(ev) {
     `;
 }
 
-// Add a global variable to track the retry interval
+// ========== IMAGE ZOOM MODAL ==========
 let zoomModalRetryInterval = null;
 
-// Show image modal by src (AJAX fetch for latest image, retry until loaded or modal closed)
 function showZoomModalBySrc(imgSrc) {
     const zoomedImage = document.getElementById('zoomedImage');
-    zoomedImage.src = ""; // Clear previous image
+    zoomedImage.src = "";
 
-    // Helper to clear retry interval
     function clearRetry() {
         if (zoomModalRetryInterval) {
             clearInterval(zoomModalRetryInterval);
@@ -498,11 +271,9 @@ function showZoomModalBySrc(imgSrc) {
         }
     }
 
-    // Modal element and instance
     const modalEl = document.getElementById('zoomModal');
     const modal = new bootstrap.Modal(modalEl);
 
-    // Listen for modal close to stop retrying and revoke object URLs
     function onModalHidden() {
         clearRetry();
         if (zoomedImage.src.startsWith('blob:')) {
@@ -512,7 +283,6 @@ function showZoomModalBySrc(imgSrc) {
     }
     modalEl.addEventListener('hidden.bs.modal', onModalHidden);
 
-    // Retry logic: try to fetch image every second until success or modal closed
     function tryFetchImage() {
         if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
             fetch(imgSrc)
@@ -526,7 +296,6 @@ function showZoomModalBySrc(imgSrc) {
                     zoomedImage.src = url;
                 })
                 .catch(() => {
-                    // Show fallback or keep retrying
                     zoomedImage.src = FALLBACK_SVG;
                 });
         } else {
@@ -535,7 +304,6 @@ function showZoomModalBySrc(imgSrc) {
         }
     }
 
-    // Start retry interval
     clearRetry();
     tryFetchImage();
     if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
@@ -545,77 +313,92 @@ function showZoomModalBySrc(imgSrc) {
     modal.show();
 }
 
-let pollingHandle = null;
-
-// Fetch and render available date labels
-async function loadDateList(){
-    const dl = document.getElementById('dateList');
-    dl.innerHTML = "<div class='text-muted'>Loading dates...</div>";
-    try{
-        const res = await fetch('/api/events?dates_only=1');
-        const dates = await res.json();
-        if(!dates.length){
-            dl.innerHTML = "<div class='alert alert-info'>No violation dates available.</div>";
-            return;
-        }
-        dl.innerHTML = dates.map(d => `<button class="btn btn-outline-warning me-2 mb-2 date-btn" data-date="${d}">${d}</button>`).join('');
-        document.querySelectorAll('.date-btn').forEach(b => {
-            b.addEventListener('click', () => {
-                // highlight selected
-                document.querySelectorAll('.date-btn').forEach(x=>x.classList.remove('active'));
-                b.classList.add('active');
-                loadEventsForDate(b.getAttribute('data-date'));
-            });
-        });
-    }catch(err){
-        dl.innerHTML = "<div class='alert alert-danger'>Failed to load dates.</div>";
-        console.error(err);
-    }
-}
-
-// Fetch and render events for a single date
-async function loadEventsForDate(dateLabel){
-    const container = document.getElementById('violationEvents');
-    container.innerHTML = "<div class='text-muted'>Loading events for selected date...</div>";
-    try{
-        const res = await fetch(`/api/events?date=${encodeURIComponent(dateLabel)}`);
-        const events = await res.json();
-        if(!events || !events.length){
-            container.innerHTML = "<div class='alert alert-info'>No images for this date.</div>";
-            return;
-        }
-        // Preload images for smoother display (optional)
-        await Promise.all(events.map(ev => new Promise(resolve => {
-            const src = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
-            if(!src) return resolve();
-            const img = new Image();
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-            img.src = src;
-        })));
-        // Render
-        container.innerHTML = events.map(ev => violationCard(ev)).join('');
-    }catch(err){
-        container.innerHTML = "<div class='alert alert-danger'>Failed to load events for date.</div>";
-        console.error(err);
-    }
-}
-
-// Start by loading only dates; poll the date list periodically
-window.addEventListener('load', () => {
-    loadDateList();
-    if (pollingHandle) clearInterval(pollingHandle);
-    pollingHandle = setInterval(loadDateList, 10000);
-});
-
-// Image zoom modal logic (unchanged)
 function showZoomModal(imgElem) {
     const zoomedImage = document.getElementById('zoomedImage');
     zoomedImage.src = imgElem.getAttribute('data-img') || imgElem.src;
     const modal = new bootstrap.Modal(document.getElementById('zoomModal'));
     modal.show();
 }
+
+// ========== DATE LIST & EVENTS ==========
+let pollingHandle = null;
+
+async function loadDateList() {
+    const dl = document.getElementById('dateList');
+    dl.innerHTML = "<div class='text-muted'>Loading dates...</div>";
+    try {
+        const res = await fetch('/api/events?dates_only=1');
+        const dates = await res.json();
+        if (!dates.length) {
+            dl.innerHTML = "<div class='alert alert-info'>No violation dates available.</div>";
+            return;
+        }
+        dl.innerHTML = dates.map(d => `<button class="btn btn-outline-warning date-btn me-2 mb-2" data-date="${d}">${d}</button>`).join('');
+        document.querySelectorAll('.date-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                document.querySelectorAll('.date-btn').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                loadEventsForDate(b.getAttribute('data-date'));
+            });
+        });
+    } catch (err) {
+        dl.innerHTML = "<div class='alert alert-danger'>Failed to load dates.</div>";
+        console.error(err);
+    }
+}
+
+async function loadEventsForDate(dateLabel) {
+    const container = document.getElementById('violationEvents');
+    container.innerHTML = "<div class='text-muted'>Loading events for selected date...</div>";
+    try {
+        const res = await fetch(`/api/events?date=${encodeURIComponent(dateLabel)}`);
+        const events = await res.json();
+        if (!events || !events.length) {
+            container.innerHTML = "<div class='alert alert-info'>No images for this date.</div>";
+            return;
+        }
+        // Preload images
+        await Promise.all(events.map(ev => new Promise(resolve => {
+            const src = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
+            if (!src) return resolve();
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = src;
+        })));
+        container.innerHTML = events.map(ev => violationCard(ev)).join('');
+    } catch (err) {
+        container.innerHTML = "<div class='alert alert-danger'>Failed to load events for date.</div>";
+        console.error(err);
+    }
+}
+
+// ========== PLATE SEARCH ==========
+async function searchPlates() {
+    const q = document.getElementById('plateSearchInput').value.trim();
+    const container = document.getElementById('plateSearchResults');
+    if (!q) { container.innerHTML = ''; return; }
+    try {
+        const resp = await fetch(`/api/plates/search?q=${encodeURIComponent(q)}`);
+        const data = await resp.json();
+        if (data.error) { container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; return; }
+        if (!data.length) { container.innerHTML = '<div class="alert alert-info py-1">No records found.</div>'; return; }
+        let html = '<div class="table-responsive"><table class="table table-sm table-dark table-striped mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Fine</th><th>Time</th></tr></thead><tbody>';
+        data.forEach(r => {
+            html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td><td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td><td>${r.fine_amount ? 'P'+r.fine_amount.toFixed(0) : ''}</td><td>${r.timestamp||''}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch(e) { container.innerHTML = '<div class="alert alert-danger py-1">Search failed.</div>'; }
+}
+
+document.getElementById('plateSearchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchPlates(); });
+
+// ========== INIT ==========
+window.addEventListener('load', () => {
+    loadDateList();
+    if (pollingHandle) clearInterval(pollingHandle);
+    pollingHandle = setInterval(loadDateList, 10000);
+});
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

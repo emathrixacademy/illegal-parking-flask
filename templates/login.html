@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
+  <meta name="theme-color" content="#181c23">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DECONGESTILAGUNA">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="icon" href="/static/icons/icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
+  <title>Login — DECONGESTILAGUNA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #181c23;
+      color: #fff;
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0;
+      padding: 1rem;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .login-card {
+      background: #232733;
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .login-card h4 { margin-bottom: 0.3rem; color: #ff9800; font-weight: 700; font-size: 1.2rem; }
+    .login-card .subtitle { color: #888; font-size: 0.82rem; margin-bottom: 1.25rem; }
+    .login-logo { font-size: 2.2rem; color: #ff9800; margin-bottom: 0.4rem; }
+    .form-control {
+      background: #1a1e25;
+      color: #fff;
+      border: 1px solid #2d3342;
+      font-size: 0.95rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 8px;
+    }
+    .form-control:focus {
+      background: #1a1e25;
+      color: #fff;
+      border-color: #ff9800;
+      box-shadow: 0 0 0 0.15rem rgba(255,152,0,0.2);
+    }
+    .form-label { font-size: 0.85rem; color: #bfc7d5; }
+    .btn-login {
+      background: #ff9800;
+      border-color: #ff9800;
+      color: #000;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 0.6rem;
+      border-radius: 8px;
+    }
+    .btn-login:hover { background: #e68a00; border-color: #e68a00; color: #000; }
+    .alert-danger { background: rgba(220,53,69,0.15); border: 1px solid #dc3545; color: #f88; font-size: 0.85rem; border-radius: 8px; }
+    @media (min-width: 768px) {
+      .login-card { padding: 2.5rem 2rem; }
+      .login-card h4 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card text-center">
+    <div class="login-logo"><i class="bi bi-camera-video-fill"></i></div>
+    <h4>DECONGESTILAGUNA</h4>
+    <p class="subtitle">Illegal Parking Detection System</p>
+    {% if error %}
+    <div class="alert alert-danger text-center">{{ error }}</div>
+    {% endif %}
+    <form method="POST" class="text-start">
+      <div class="mb-3">
+        <label class="form-label"><i class="bi bi-person"></i> Username</label>
+        <input name="username" type="text" class="form-control" required autofocus autocomplete="username">
+      </div>
+      <div class="mb-3">
+        <label class="form-label"><i class="bi bi-lock"></i> Password</label>
+        <input name="password" type="password" class="form-control" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-login w-100 mt-1"><i class="bi bi-box-arrow-in-right"></i> Login</button>
+    </form>
+  </div>
+  <script>
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+  </script>
+</body>
+</html>

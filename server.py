@@ -16,6 +16,10 @@ import signal
 from cloudlink import start_cloudflared
 from db import insert_violation_event  # (You can remove this import if not used elsewhere)
 from admin_config import get_fine_map
+from ocr_module import extract_plate
+from tamper_detect import TamperDetector
+from health_monitor import HealthMonitor
+from recorder import ContinuousRecorder, get_recording_dates, get_recording_segments
 import sys
 
 app = Flask(__name__)
@@ -48,6 +52,8 @@ REPEAT_CAPTURE_INTERVAL = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
 PARKING_ZONES = getattr(config, "PARKING_ZONES", {})
 PORT = int(os.environ.get("PORT", 5000))
 RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
+RAILWAY_HEADERS = {"X-API-Key": PI_API_KEY}
 
 # Resolution constants for zone selection (matching zone_selector.py)
 ACTUAL_WIDTH = 1280
@@ -65,7 +71,7 @@ def fetch_settings_from_railway():
     """Fetch settings from Railway database and update local config.py"""
     try:
         logger.info("Fetching settings from Railway database...")
-        resp = requests.get(f"{RAILWAY_API_URL}/api/db_settings", timeout=10)
+        resp = requests.get(f"{RAILWAY_API_URL}/api/db_settings", headers=RAILWAY_HEADERS, timeout=10)
         if resp.ok:
             data = resp.json()
             logger.info(f"Received settings from Railway: {data}")
@@ -143,7 +149,50 @@ def periodic_settings_sync():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok'})
+    """Feature 16: Full system health endpoint."""
+    cameras = {
+        "Camera_1": getattr(config, "CAM1_URL", ""),
+        "Camera_2": getattr(config, "CAM2_URL", ""),
+    }
+    return jsonify(health_mon.get_full_health(cameras))
+
+# Feature 13: Recording/Playback routes
+@app.route('/api/recording_dates')
+def api_recording_dates():
+    """List available recording dates per camera."""
+    camera = request.args.get('camera')
+    return jsonify(get_recording_dates(camera))
+
+@app.route('/api/recording_segments')
+def api_recording_segments():
+    """List available segments for a camera and date."""
+    camera = request.args.get('camera', 'Camera_1')
+    date = request.args.get('date')
+    if not date:
+        return jsonify({"error": "date parameter required"}), 400
+    return jsonify(get_recording_segments(camera, date))
+
+@app.route('/api/playback')
+def api_playback():
+    """Serve a recorded video file."""
+    camera = request.args.get('camera', 'Camera_1')
+    date = request.args.get('date')
+    time_str = request.args.get('time')
+    if not date or not time_str:
+        return jsonify({"error": "date and time parameters required"}), 400
+    from recorder import RECORDING_DIR
+    filename = f"{time_str.replace(':', '-')}.mp4"
+    filepath = os.path.join(RECORDING_DIR, camera, date, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"error": "Recording not found"}), 404
+    def generate():
+        with open(filepath, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                yield chunk
+    return Response(generate(), content_type='video/mp4')
 
 @app.route('/api/get_pi_url')
 def get_pi_url():
@@ -233,7 +282,7 @@ def api_settings():
             
             def sync_to_db():
                 try:
-                    requests.post(f"{RAILWAY_API_URL}/api/db_settings", json=sync_data, timeout=5)
+                    requests.post(f"{RAILWAY_API_URL}/api/db_settings", json=sync_data, headers=RAILWAY_HEADERS, timeout=5)
                     logger.info("Synced settings to Railway database")
                 except Exception as e:
                     logger.warning(f"Could not sync to Railway: {e}")
@@ -410,6 +459,25 @@ class ParkingMonitor:
                             fine_map = get_fine_map()
                             fine_amount = float(fine_map.get(label.upper(), 0))
 
+                            # Feature 13: OCR plate extraction
+                            plate_number = None
+                            plate_confidence = 0.0
+                            plate_image_path = ""
+                            try:
+                                plate_text, plate_conf = extract_plate(frame, bbox=(x1, y1, x2, y2))
+                                if plate_text:
+                                    plate_number = plate_text
+                                    plate_confidence = plate_conf
+                                    plate_crop = frame[y1:y2, x1:x2]
+                                    plate_img_name = f"{name}_{tid}_{now_dt.strftime('%H_%M_%S')}_plate.jpg"
+                                    plate_dir = os.path.join(SAVE_DIR, date_folder, "plates")
+                                    os.makedirs(plate_dir, exist_ok=True)
+                                    plate_image_path = os.path.join(plate_dir, plate_img_name)
+                                    cv2.imwrite(plate_image_path, plate_crop)
+                                    logger.info(f"Plate detected: {plate_text} (conf={plate_conf:.2f})")
+                            except Exception as ocr_err:
+                                logger.warning(f"OCR failed: {ocr_err}")
+
                             payload = {
                                 "camera_id": name,
                                 "tracker_id": tid,
@@ -421,8 +489,12 @@ class ParkingMonitor:
                                 "enforced": False,
                                 "meta": {}
                             }
+                            if plate_number:
+                                payload["plate_number"] = plate_number
+                                payload["plate_confidence"] = plate_confidence
+                                payload["plate_image_path"] = plate_image_path
                             api_url = f"{RAILWAY_API_URL}/api/upload_event"
-                            resp = requests.post(api_url, json=payload, timeout=10)
+                            resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=10)
                             if resp.ok:
                                 logger.info(f"Uploaded violation event to Railway: {resp.status_code}")
                             else:
@@ -482,6 +554,15 @@ class Stream:
 # --- Initialize ---
 monitor = ParkingMonitor()
 
+# Feature 14: Tamper detection
+tamper_detectors = {
+    "Camera_1": TamperDetector("Camera_1"),
+    "Camera_2": TamperDetector("Camera_2"),
+}
+
+# Feature 16: Health monitoring
+health_mon = HealthMonitor()
+
 # Use config values directly, fallback to defaults if missing
 CAM1_URL = getattr(config, "CAM1_URL", None)
 CAM2_URL = getattr(config, "CAM2_URL", None)
@@ -494,7 +575,29 @@ c1, c2 = Stream(CAM1_URL), Stream(CAM2_URL)
 latest_processed = {"Camera_1": None, "Camera_2": None}
 proc_lock = threading.Lock()
 
+# Feature 13: Start continuous recorders
+recorders = {}
+try:
+    recorders["Camera_1"] = ContinuousRecorder("Camera_1", CAM1_URL)
+    recorders["Camera_2"] = ContinuousRecorder("Camera_2", CAM2_URL)
+    for rec in recorders.values():
+        rec.start()
+    logger.info("Continuous recorders started.")
+except Exception as e:
+    logger.warning(f"Could not start recorders: {e}")
+
+# Feature 14: Set reference frames after a short delay
+def _set_reference_frames():
+    time.sleep(5)  # Wait for cameras to stabilize
+    for cam_name, stream in [("Camera_1", c1), ("Camera_2", c2)]:
+        frame = stream.get_frame()
+        if frame is not None:
+            tamper_detectors[cam_name].set_reference(frame)
+            logger.info(f"Reference frame set for {cam_name}")
+threading.Thread(target=_set_reference_frames, daemon=True).start()
+
 def processing_worker(cam_name, stream):
+    frame_count = 0
     while True:
         frame = stream.get_frame()
         if frame is not None and stream.is_online():
@@ -505,6 +608,29 @@ def processing_worker(cam_name, stream):
                     monitor.process(cam_name, res[0], frame_disp)
                     with proc_lock:
                         latest_processed[cam_name] = frame_disp
+
+                # Feature 14: Check for tampering every 30 frames (~3 seconds)
+                frame_count += 1
+                if frame_count % 30 == 0:
+                    is_tampered, tamper_type, details = tamper_detectors[cam_name].check(frame)
+                    if is_tampered:
+                        import datetime as dt
+                        now_dt = dt.datetime.now()
+                        good_frame_path = f"static/tamper/{cam_name}_{now_dt.strftime('%Y%m%d_%H%M%S')}_last_good.jpg"
+                        os.makedirs("static/tamper", exist_ok=True)
+                        if tamper_detectors[cam_name].last_good_frame is not None:
+                            cv2.imwrite(good_frame_path, tamper_detectors[cam_name].last_good_frame)
+                        logger.warning(f"TAMPER DETECTED on {cam_name}: {tamper_type} - {details}")
+                        try:
+                            requests.post(f"{RAILWAY_API_URL}/api/tamper_event", json={
+                                "camera": cam_name,
+                                "tamper_type": tamper_type,
+                                "details": details,
+                                "last_good_frame_path": good_frame_path,
+                                "timestamp": now_dt.isoformat()
+                            }, headers=RAILWAY_HEADERS, timeout=5)
+                        except Exception as te:
+                            logger.warning(f"Failed to upload tamper event: {te}")
             except Exception as e:
                 logger.error(f"Detection error: {e}")
         time.sleep(0.1)
@@ -621,6 +747,7 @@ if __name__ == '__main__':
                 resp = requests.post(
                     f"{RAILWAY_API_URL}/api/set_pi_url",
                     json={"public_url": public_url},
+                    headers=RAILWAY_HEADERS,
                     timeout=5
                 )
                 print("Posted public URL to Railway:", resp.status_code, resp.text)

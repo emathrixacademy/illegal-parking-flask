@@ -1,196 +1,263 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin — Illegal Parking</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { background:#121216; color:#fff; font-family:Segoe UI, Roboto, Arial; }
-    .card { background:#1f2228; border-radius:12px; }
-    textarea { font-family:monospace; color:#0f1720; }
-    table { color: #fff; }
-    .small-muted { color: #aaa; font-size: 0.9em; }
-      /* Responsive overrides for modern mobile devices */
-      @media (max-width:1200px){
-        .card, .container { padding: 0.75rem; }
-      }
-      @media (max-width:900px){
-        body{font-size:14px}
-        .card{padding:0.8rem}
-        .table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch}
-        table.table td, table.table th{font-size:0.85rem}
-        .d-flex.gap-2{flex-direction:column;align-items:stretch}
-      }
-      @media (max-width:480px){
-        h3{font-size:1.05rem}
-        .card{border-radius:10px;padding:0.6rem}
-        .small-muted{font-size:0.82rem}
-      }
-      </style>
-    </head>
-    <body>
-    <div class="container py-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Admin</h3>
-        <div class="d-flex gap-2">
-          <a class="btn btn-outline-light" href="/">Back</a>
-          <a class="btn btn-outline-primary" href="/settings">Settings</a>
-          <a class="btn btn-outline-danger" href="/8f3c9a2d71b4e6c0f9d2a8b7c4e1/logout">Logout</a>
-        </div>
-      </div>
+{% extends "base.html" %}
 
-      <div class="card p-3">
-        <h5>Violations</h5>
-        <p class="small-muted">List of violation records from the Database. Select rows and mark them enforced.</p>
-        <div class="table-responsive">
-          <table id="violationsTable" class="table table-sm table-dark table-striped">
-            <thead>
-              <tr>
-                <th><input id="selectAll" type="checkbox"></th>
-                <th>ID</th>
-                <th>Camera</th>
-                <th>Tracker</th>
-                <th>Label</th>
-                <th>Timestamp</th>
-                <th>Confidence</th>
-                <th>Duration (min)</th>
-                <th>Fine</th>
-                <th>Image</th>
-                <th>Barangay</th>
-                <th>Enforced</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div class="d-flex gap-2">
-          <button id="enforceBtn" class="btn btn-success">Mark Selected Enforced</button>
-          <button id="refreshViolations" class="btn btn-secondary">Refresh</button>
-          <div id="violationsMsg" class="align-self-center small-muted"></div>
-        </div>
-      </div>
+{% set active_page = 'admin' %}
 
-      <div class="card p-3 mt-3">
-        <h5>Fines</h5>
-        <p class="small-muted">Update fine amounts for vehicle types (in pesos).</p>
-        <div class="row g-2">
-          <div class="col-6 col-md-3">
-            <label class="form-label fw-bold text-white">CAR</label>
-            <div class="input-group">
-              <span class="input-group-text">₱</span>
-              <input id="fine_car" type="number" class="form-control" step="0.01" placeholder="e.g. 100">
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <label class="form-label fw-bold text-white">MOTORCYCLE</label>
-            <div class="input-group">
-              <span class="input-group-text">₱</span>
-              <input id="fine_motorcycle" type="number" class="form-control" step="0.01" placeholder="e.g. 50">
-            </div>
-          </div>
-        </div>
-        <div class="d-flex gap-2 mt-3">
-          <button id="saveFines" class="btn btn-primary">Save Fines</button>
-          <button id="refreshFines" class="btn btn-secondary">Refresh</button>
-          <div id="finesMsg" class="align-self-center small-muted"></div>
-        </div>
-      </div>
+{% block title %}Admin — DECONGESTILAGUNA{% endblock %}
 
+{% block header_title %}<i class="bi bi-shield-lock-fill"></i> Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Violations Section -->
+<div class="content-card">
+  <h2><i class="bi bi-exclamation-octagon-fill"></i> Violations</h2>
+  <p class="small-muted">List of violation records from the Database. Select rows and mark them enforced.</p>
+  <div class="table-responsive">
+    <table id="violationsTable" class="table table-sm table-dark table-striped">
+      <thead>
+        <tr>
+          <th><input id="selectAll" type="checkbox"></th>
+          <th>ID</th>
+          <th>Camera</th>
+          <th>Tracker</th>
+          <th>Label</th>
+          <th>Timestamp</th>
+          <th>Confidence</th>
+          <th>Duration (min)</th>
+          <th>Fine</th>
+          <th>Image</th>
+          <th>Barangay</th>
+          <th>Enforced</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <!-- Pagination Controls -->
+  <nav id="paginationNav" class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2 mb-2">
+    <div class="d-flex align-items-center gap-2">
+      <button id="prevPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-left"></i></button>
+      <span id="pageInfo" class="small-muted">Page 1 / 1</span>
+      <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
     </div>
+    <span id="totalInfo" class="small-muted"></span>
+  </nav>
+  <div class="d-flex gap-2 flex-wrap mt-2">
+    <button id="enforceBtn" class="btn btn-success"><i class="bi bi-check-circle"></i> Mark Selected Enforced</button>
+    <button id="refreshViolations" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    <div id="violationsMsg" class="align-self-center small-muted"></div>
+  </div>
+</div>
 
-    <script>
-    // Violations functions
-    async function fetchViolations(){
-      const tbody = document.querySelector('#violationsTable tbody');
-      tbody.innerHTML = '';
-      document.getElementById('violationsMsg').textContent = '';
-      try{
-        const r = await fetch('/api/violations_list');
-        const rows = await r.json();
-        for(const row of rows){
-          const tr = document.createElement('tr');
-          const disabled = row.enforced ? 'disabled' : '';
-          tr.innerHTML = `
-            <td><input class="rowChk" data-id="${row.id}" type="checkbox" ${disabled}></td>
-            <td>${row.id}</td>
-            <td>${row.camera || ''}</td>
-            <td>${row.tracker_id ?? ''}</td>
-            <td>${row.label || ''}</td>
-            <td>${row.timestamp || ''}</td>
-            <td>${row.confidence_score !== undefined && row.confidence_score !== null ? Number(row.confidence_score).toFixed(3) : ''}</td>
-            <td>${row.duration_minutes !== undefined && row.duration_minutes !== null ? Number(row.duration_minutes).toFixed(1) : ''}</td>
-            <td>${row.fine_amount !== undefined && row.fine_amount !== null ? Number(row.fine_amount).toFixed(2) : ''}</td>
-            <td>${row.image_path ? '<a target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
-            <td>${row.barangay || ''}</td>
-            <td>${row.enforced ? 'Yes' : 'No'}</td>
-          `;
-          tbody.appendChild(tr);
-        }
-      }catch(e){
-        document.getElementById('violationsMsg').textContent = 'Failed to load violations';
+<!-- Fines Section -->
+<div class="content-card">
+  <h2><i class="bi bi-cash-coin"></i> Fines</h2>
+  <p class="small-muted">Update fine amounts for vehicle types (in pesos).</p>
+  <div class="row g-2">
+    <div class="col-6 col-md-3">
+      <label class="form-label fw-bold">CAR</label>
+      <div class="input-group">
+        <span class="input-group-text" style="background:var(--border);color:var(--accent);border-color:var(--border);">&#8369;</span>
+        <input id="fine_car" type="number" class="form-control" step="0.01" placeholder="e.g. 100">
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label fw-bold">MOTORCYCLE</label>
+      <div class="input-group">
+        <span class="input-group-text" style="background:var(--border);color:var(--accent);border-color:var(--border);">&#8369;</span>
+        <input id="fine_motorcycle" type="number" class="form-control" step="0.01" placeholder="e.g. 50">
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap mt-3">
+    <button id="saveFines" class="btn btn-accent"><i class="bi bi-save"></i> Save Fines</button>
+    <button id="refreshFines" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    <div id="finesMsg" class="align-self-center small-muted"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ---- Pagination State ----
+let currentPage = 1;
+let totalPages = 1;
+const PER_PAGE = 10;
+const CACHE_KEY = 'dcgl_violations_cache';
+const CACHE_TTL = 15000; // 15 seconds
+
+// ---- localStorage Cache Helpers ----
+function getCached(page) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY + '_p' + page);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (Date.now() - obj._ts > CACHE_TTL) { localStorage.removeItem(CACHE_KEY + '_p' + page); return null; }
+    return obj.data;
+  } catch(e) { return null; }
+}
+function setCache(page, data) {
+  try { localStorage.setItem(CACHE_KEY + '_p' + page, JSON.stringify({ data, _ts: Date.now() })); } catch(e) {}
+}
+function clearViolationsCache() {
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY)).forEach(k => localStorage.removeItem(k));
+  } catch(e) {}
+}
+
+// ---- Render violations into table ----
+function renderViolations(rows) {
+  const tbody = document.querySelector('#violationsTable tbody');
+  tbody.innerHTML = '';
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    const disabled = row.enforced ? 'disabled' : '';
+    tr.innerHTML = `
+      <td><input class="rowChk" data-id="${row.id}" type="checkbox" ${disabled}></td>
+      <td>${row.id}</td>
+      <td>${row.camera || ''}</td>
+      <td>${row.tracker_id ?? ''}</td>
+      <td>${row.label || ''}</td>
+      <td>${row.timestamp || ''}</td>
+      <td>${row.confidence_score !== undefined && row.confidence_score !== null ? Number(row.confidence_score).toFixed(3) : ''}</td>
+      <td>${row.duration_minutes !== undefined && row.duration_minutes !== null ? Number(row.duration_minutes).toFixed(1) : ''}</td>
+      <td>${row.fine_amount !== undefined && row.fine_amount !== null ? Number(row.fine_amount).toFixed(2) : ''}</td>
+      <td>${row.image_path ? '<a target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
+      <td>${row.barangay || ''}</td>
+      <td>${row.enforced ? 'Yes' : 'No'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('selectAll').checked = false;
+}
+
+// ---- Update pagination UI ----
+function updatePaginationUI() {
+  document.getElementById('pageInfo').textContent = `Page ${currentPage} / ${totalPages}`;
+  document.getElementById('prevPage').disabled = currentPage <= 1;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages;
+}
+
+// ---- Fetch violations (with cache) ----
+async function fetchViolations(page, forceRefresh) {
+  page = page || currentPage;
+  const msg = document.getElementById('violationsMsg');
+  msg.textContent = '';
+
+  // Try cache first (unless forced refresh)
+  if (!forceRefresh) {
+    const cached = getCached(page);
+    if (cached) {
+      currentPage = cached.page;
+      totalPages = cached.total_pages;
+      document.getElementById('totalInfo').textContent = cached.total + ' total violations';
+      renderViolations(cached.items);
+      updatePaginationUI();
+      return;
+    }
+  }
+
+  try {
+    const r = await fetch(`/api/violations_list?page=${page}&per_page=${PER_PAGE}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    currentPage = data.page;
+    totalPages = data.total_pages;
+    document.getElementById('totalInfo').textContent = data.total + ' total violations';
+    renderViolations(data.items);
+    updatePaginationUI();
+    setCache(page, data);
+  } catch(e) {
+    // Fallback: try to show cached data even if stale
+    const stale = getCached(page);
+    if (stale) {
+      renderViolations(stale.items);
+      msg.textContent = 'Showing cached data (offline)';
+    } else {
+      msg.textContent = 'Failed to load violations';
+    }
+  }
+}
+
+// ---- Mark enforced ----
+async function markSelectedEnforced() {
+  const checks = Array.from(document.querySelectorAll('.rowChk')).filter(c => c.checked && !c.disabled);
+  if (!checks.length) { document.getElementById('violationsMsg').textContent = 'No rows selected'; return; }
+  const ids = checks.map(c => parseInt(c.dataset.id, 10));
+  try {
+    const r = await fetch('/api/mark_enforced', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids})});
+    if (r.ok) {
+      document.getElementById('violationsMsg').textContent = 'Marked enforced';
+      setTimeout(() => document.getElementById('violationsMsg').textContent = '', 1500);
+      clearViolationsCache();
+      fetchViolations(currentPage, true);
+    } else {
+      document.getElementById('violationsMsg').textContent = 'Failed to mark enforced';
+    }
+  } catch(e) {
+    // Queue for background sync if offline
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      try {
+        const pending = JSON.parse(localStorage.getItem('dcgl_pending_enforced') || '[]');
+        pending.push({ ids, ts: Date.now() });
+        localStorage.setItem('dcgl_pending_enforced', JSON.stringify(pending));
+        document.getElementById('violationsMsg').textContent = 'Queued — will sync when online';
+        setTimeout(() => document.getElementById('violationsMsg').textContent = '', 3000);
+        const reg = await navigator.serviceWorker.ready;
+        await reg.sync.register('sync-enforced');
+      } catch(se) {
+        document.getElementById('violationsMsg').textContent = 'Error during request (offline)';
       }
+    } else {
+      document.getElementById('violationsMsg').textContent = 'Error during request';
     }
+  }
+}
 
-    async function markSelectedEnforced(){
-      const checks = Array.from(document.querySelectorAll('.rowChk')).filter(c=>c.checked && !c.disabled);
-      if(!checks.length){ document.getElementById('violationsMsg').textContent = 'No rows selected'; return; }
-      const ids = checks.map(c=>parseInt(c.dataset.id,10));
-      try{
-        const r = await fetch('/api/mark_enforced', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids})});
-        if(r.ok){
-          document.getElementById('violationsMsg').textContent = 'Marked enforced';
-          setTimeout(()=>document.getElementById('violationsMsg').textContent='',1500);
-          fetchViolations();
-        }else{
-          document.getElementById('violationsMsg').textContent = 'Failed to mark enforced';
-        }
-      }catch(e){ document.getElementById('violationsMsg').textContent = 'Error during request'; }
+// ---- Event Listeners ----
+document.getElementById('enforceBtn').addEventListener('click', markSelectedEnforced);
+document.getElementById('refreshViolations').addEventListener('click', () => { clearViolationsCache(); fetchViolations(currentPage, true); });
+document.getElementById('selectAll').addEventListener('change', function(){
+  document.querySelectorAll('.rowChk').forEach(c => { if (!c.disabled) c.checked = this.checked; });
+});
+document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) fetchViolations(currentPage - 1); });
+document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < totalPages) fetchViolations(currentPage + 1); });
+
+// Load initial data
+fetchViolations(1);
+
+// Fines UI
+async function fetchFines(){
+  document.getElementById('finesMsg').textContent = '';
+  try{
+    const r = await fetch('/api/fine_map');
+    const j = await r.json();
+    if(j && j.fine_map){
+      const fm = j.fine_map;
+      document.getElementById('fine_car').value = fm.CAR ?? fm.car ?? '';
+      document.getElementById('fine_motorcycle').value = fm.MOTORCYCLE ?? fm.motorcycle ?? '';
     }
+  }catch(e){ document.getElementById('finesMsg').textContent = 'Failed to load fines'; }
+}
 
-    document.getElementById('enforceBtn').addEventListener('click', markSelectedEnforced);
-    document.getElementById('refreshViolations').addEventListener('click', fetchViolations);
-    document.getElementById('selectAll').addEventListener('change', function(){
-      const chks = document.querySelectorAll('.rowChk'); chks.forEach(c=>{ if(!c.disabled) c.checked = this.checked; });
-    });
-
-    // Load initial data
-    fetchViolations();
-    // Fines UI
-    async function fetchFines(){
-      document.getElementById('finesMsg').textContent = '';
-      try{
-        const r = await fetch('/api/fine_map');
-        const j = await r.json();
-        if(j && j.fine_map){
-          const fm = j.fine_map;
-          document.getElementById('fine_car').value = fm.CAR ?? fm.car ?? '';
-          document.getElementById('fine_motorcycle').value = fm.MOTORCYCLE ?? fm.motorcycle ?? '';
-        }
-      }catch(e){ document.getElementById('finesMsg').textContent = 'Failed to load fines'; }
+async function saveFines(){
+  const car = parseFloat(document.getElementById('fine_car').value) || 0;
+  const motorcycle = parseFloat(document.getElementById('fine_motorcycle').value) || 0;
+  const payload = { fine_map: { CAR: car, MOTORCYCLE: motorcycle } };
+  try{
+    const r = await fetch('/api/set_fine_map', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const j = await r.json();
+    if(r.ok && j.success){
+      document.getElementById('finesMsg').textContent = 'Fines saved';
+      setTimeout(()=>document.getElementById('finesMsg').textContent='',1500);
+    }else{
+      document.getElementById('finesMsg').textContent = 'Failed to save fines';
     }
+  }catch(e){ document.getElementById('finesMsg').textContent = 'Error saving fines'; }
+  fetchFines();
+}
 
-    async function saveFines(){
-      const car = parseFloat(document.getElementById('fine_car').value) || 0;
-      const motorcycle = parseFloat(document.getElementById('fine_motorcycle').value) || 0;
-      const payload = { fine_map: { CAR: car, MOTORCYCLE: motorcycle } };
-      try{
-        const r = await fetch('/api/set_fine_map', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-        const j = await r.json();
-        if(r.ok && j.success){
-          document.getElementById('finesMsg').textContent = 'Fines saved';
-          setTimeout(()=>document.getElementById('finesMsg').textContent='',1500);
-        }else{
-          document.getElementById('finesMsg').textContent = 'Failed to save fines';
-        }
-      }catch(e){ document.getElementById('finesMsg').textContent = 'Error saving fines'; }
-      fetchFines();
-    }
-
-    document.getElementById('saveFines').addEventListener('click', saveFines);
-    document.getElementById('refreshFines').addEventListener('click', fetchFines);
-    fetchFines();
-    </script>
-    </body>
-    </html>
-  
+document.getElementById('saveFines').addEventListener('click', saveFines);
+document.getElementById('refreshFines').addEventListener('click', fetchFines);
+fetchFines();
+</script>
+{% endblock %}

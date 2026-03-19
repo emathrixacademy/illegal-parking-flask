@@ -3,7 +3,9 @@ import re
 import logging
 import traceback
 import subprocess
-from datetime import datetime
+import json
+import base64
+from datetime import datetime, timedelta
 from flask import (
     Flask, request, jsonify, Response,
     render_template, render_template_string,
@@ -11,7 +13,6 @@ from flask import (
     session, redirect, url_for
 )
 import requests
-import base64
 import config
 import psycopg2
 import urllib.parse
@@ -20,6 +21,13 @@ import time
 from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection
 from analytics import analytics_bp
 from admin_config import list_violations, mark_enforced, get_fine_map, set_fine_map
+from auth import (
+    authenticate, login_required, role_required, log_activity,
+    list_users, create_user, update_user, delete_user
+)
+from alerts import (
+    get_alert_config, save_alert_config, send_violation_alert, send_test_email
+)
 
 # --------------------------------------------------
 # Logging
@@ -32,10 +40,7 @@ logger = logging.getLogger("ParkingApp")
 # --------------------------------------------------
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'f7a3b9c1d4e8f2a6b0c5d9e3f1a7b4c8')
-
-# Admin credentials
-ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = 'illegalparking'
+app.permanent_session_lifetime = timedelta(minutes=30)
 
 # Register analytics blueprint
 app.register_blueprint(analytics_bp)
@@ -73,7 +78,6 @@ def get_current_settings():
 def update_config(new_settings):
     import importlib
     import json as pyjson
-    import re
     config_path = os.path.join(os.path.dirname(__file__), "config.py")
     with open(config_path, "r") as f:
         lines = f.readlines()
@@ -135,7 +139,35 @@ def start_cloudflared(port=DEFAULT_PORT):
 PI_PUBLIC_URL = ""
 PI_URL_NOT_SET_LOGGED = False
 
+PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
+
+def pi_api_key_required(f):
+    """Decorator: requires valid PI_API_KEY header for machine-to-machine routes."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        key = request.headers.get("X-API-Key", "")
+        if key != PI_API_KEY:
+            return jsonify({"error": "Invalid API key"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def login_or_api_key(f):
+    """Decorator: allows access if the user is logged in OR provides a valid PI API key.
+    Use on routes that both browser users and the Pi need to call."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Accept if valid API key is provided
+        key = request.headers.get("X-API-Key", "")
+        if key == PI_API_KEY:
+            return f(*args, **kwargs)
+        # Otherwise fall back to login_required
+        return login_required(f)(*args, **kwargs)
+    return decorated
+
 @app.route('/api/set_pi_url', methods=['POST'])
+@pi_api_key_required
 def set_pi_url():
     global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
     data = request.get_json(force=True)
@@ -147,6 +179,7 @@ def set_pi_url():
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
 @app.route('/api/get_pi_url')
+@login_required
 def get_pi_url():
     resp = jsonify({"public_url": PI_PUBLIC_URL})
     resp.headers.update(cors_headers())
@@ -156,14 +189,25 @@ def get_pi_url():
 # Helper Functions
 # --------------------------------------------------
 def cors_headers():
+    origin = request.headers.get('Origin', '')
+    allowed_origins = [
+        DEFAULT_RAILWAY_API_URL,
+        f"http://localhost:{DEFAULT_PORT}",
+        "http://127.0.0.1:5000",
+    ]
+    if PI_PUBLIC_URL:
+        allowed_origins.append(PI_PUBLIC_URL.rstrip("/"))
+    allow = origin if origin in allowed_origins else allowed_origins[0]
     return {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allow,
         'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-API-Key',
+        'Access-Control-Allow-Credentials': 'true'
     }
 
 @app.before_request
-def log_request_info():
+def before_request_handler():
+    session.permanent = True
     logger.info(f"Incoming request: {request.method} {request.path} | IP: {request.remote_addr}")
 
 @app.after_request
@@ -204,7 +248,7 @@ def ensure_violations_table():
 # --- Image Cache ---
 IMAGE_CACHE = {}
 IMAGE_CACHE_LOCK = threading.Lock()
-IMAGE_CACHE_MAX_SIZE = 200  # adjust as needed
+IMAGE_CACHE_MAX_SIZE = 200
 IMAGE_CACHE_TTL = 60 * 5    # 5 minutes
 
 def get_cached_image(image_path):
@@ -222,63 +266,335 @@ def get_cached_image(image_path):
 def set_cached_image(image_path, data):
     with IMAGE_CACHE_LOCK:
         if len(IMAGE_CACHE) >= IMAGE_CACHE_MAX_SIZE:
-            # Remove oldest
             oldest = min(IMAGE_CACHE.items(), key=lambda x: x[1][1])[0]
             del IMAGE_CACHE[oldest]
         IMAGE_CACHE[image_path] = (data, time.time())
 
-# --------------------------------------------------
-# Routes – UI
-# --------------------------------------------------
-@app.route('/')
-def index():
-    return render_template('index.html', public_url=PI_PUBLIC_URL or "")
-
-@app.route('/settings')
-def settings_page():
-    return render_template('settings.html')
-
-
-@app.route('/8f3c9a2d71b4e6c0f9d2a8b7c4e1/login', methods=['GET', 'POST'])
-def admin_login():
-    """Admin login page."""
-    if session.get('admin_logged_in'):
-        return redirect(url_for('admin_page'))
+# ==================================================
+# Routes – Authentication (Feature 18)
+# ==================================================
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    if 'user' in session:
+        return redirect(url_for('index'))
     error = None
     if request.method == 'POST':
         username = request.form.get('username', '')
         password = request.form.get('password', '')
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin_page'))
+        user = authenticate(username, password)
+        if user:
+            session['user'] = user
+            log_activity(user['id'], 'login')
+            return redirect(url_for('index'))
         error = 'Invalid username or password'
-    return render_template('admin_login.html', error=error)
+    return render_template('login.html', error=error)
 
-@app.route('/8f3c9a2d71b4e6c0f9d2a8b7c4e1/logout')
-def admin_logout():
-    """Admin logout."""
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('admin_login'))
+@app.route('/logout')
+def logout():
+    if 'user' in session:
+        log_activity(session['user']['id'], 'logout')
+    session.clear()
+    return redirect(url_for('login_page'))
+
+# ==================================================
+# Routes – UI (all protected by login_required)
+# ==================================================
+@app.route('/')
+@login_required
+def index():
+    return render_template('index.html', user=session.get('user'), public_url=PI_PUBLIC_URL or "", active_page='home')
+
+@app.route('/settings')
+@login_required
+@role_required('operator')
+def settings_page():
+    return render_template('settings.html', user=session.get('user'), active_page='settings')
 
 @app.route('/8f3c9a2d71b4e6c0f9d2a8b7c4e1')
+@login_required
+@role_required('admin')
 def admin_page():
-    """Simple admin UI page. Requires login."""
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-    return render_template('admin.html', public_url=PI_PUBLIC_URL or "")
+    return render_template('admin.html', user=session.get('user'), public_url=PI_PUBLIC_URL or "", active_page='admin')
 
 @app.route('/violations')
+@login_required
 def violations_page():
-    return render_template('violations.html')
+    return render_template('violations.html', user=session.get('user'), active_page='violations')
+
+@app.route('/playback')
+@login_required
+def playback_page():
+    return render_template('playback.html', user=session.get('user'), active_page='playback')
+
+@app.route('/user-management')
+@login_required
+@role_required('admin')
+def user_management_page():
+    return render_template('user_management.html', user=session.get('user'), active_page='users')
 
 @app.route('/ping')
 def ping():
     return "pong"
 
-# --------------------------------------------------
+@app.route('/sw.js')
+def service_worker():
+    return app.send_static_file('sw.js'), 200, {'Content-Type': 'application/javascript', 'Service-Worker-Allowed': '/'}
+
+# ==================================================
+# Routes – User Management API (Feature 18)
+# ==================================================
+@app.route('/api/users', methods=['GET'])
+@login_required
+@role_required('admin')
+def api_list_users():
+    return jsonify(list_users())
+
+@app.route('/api/users', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_create_user():
+    data = request.get_json(force=True)
+    if not data.get('username') or not data.get('password'):
+        return jsonify({"success": False, "error": "Username and password required"}), 400
+    try:
+        user_id = create_user(
+            data['username'], data['password'],
+            data.get('role', 'viewer'), data.get('display_name'), data.get('email')
+        )
+        log_activity(session['user']['id'], 'create_user', f"Created user {data['username']}")
+        return jsonify({"success": True, "id": user_id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+@login_required
+@role_required('admin')
+def api_update_user(user_id):
+    data = request.get_json(force=True)
+    update_user(user_id, data)
+    log_activity(session['user']['id'], 'update_user', f"Updated user ID {user_id}")
+    return jsonify({"success": True})
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+@login_required
+@role_required('admin')
+def api_delete_user(user_id):
+    delete_user(user_id)
+    log_activity(session['user']['id'], 'delete_user', f"Deleted user ID {user_id}")
+    return jsonify({"success": True})
+
+@app.route('/api/activity_log')
+@login_required
+@role_required('admin')
+def api_activity_log():
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT a.id, a.user_id, u.username, a.action, a.details, a.ip_address, a.timestamp
+            FROM activity_log a
+            LEFT JOIN users u ON a.user_id = u.id
+            ORDER BY a.timestamp DESC LIMIT 200
+        """)
+        rows = cur.fetchall()
+        cols = ['id', 'user_id', 'username', 'action', 'details', 'ip_address', 'timestamp']
+        cur.close()
+        return jsonify([dict(zip(cols, r)) for r in rows])
+    finally:
+        conn.close()
+
+# ==================================================
+# Routes – Alert Config API (Feature 17)
+# ==================================================
+@app.route('/api/alert_config', methods=['GET', 'POST'])
+@login_required
+@role_required('operator')
+def api_alert_config():
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        save_alert_config(data)
+        log_activity(session['user']['id'], 'update_alert_config')
+        return jsonify({"success": True})
+    return jsonify(get_alert_config())
+
+@app.route('/api/test_smtp', methods=['POST'])
+@login_required
+@role_required('operator')
+def api_test_smtp():
+    """Send a test email to verify SMTP configuration."""
+    config = get_alert_config()
+    if not config.get('smtp_email') or not config.get('smtp_password'):
+        return jsonify({"success": False, "error": "SMTP email and password not configured"}), 400
+    recipients = config.get('email_recipients', [])
+    if not recipients:
+        return jsonify({"success": False, "error": "No email recipients configured"}), 400
+    try:
+        send_test_email(config)
+        return jsonify({"success": True, "message": f"Test email sent to {', '.join(recipients)}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/alert_log')
+@login_required
+@role_required('operator')
+def api_alert_log():
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM alert_log ORDER BY timestamp DESC LIMIT 100")
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        cur.close()
+        return jsonify([dict(zip(cols, r)) for r in rows])
+    finally:
+        conn.close()
+
+# ==================================================
+# Routes – Tamper Events API (Feature 14)
+# ==================================================
+@app.route('/api/tamper_event', methods=['POST'])
+@pi_api_key_required
+def api_tamper_event():
+    data = request.get_json(force=True)
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO tamper_events (camera, tamper_type, details, last_good_frame_path, timestamp)
+            VALUES (%s, %s, %s::jsonb, %s, %s)
+        """, (data['camera'], data['tamper_type'], json.dumps(data.get('details', {})),
+              data.get('last_good_frame_path'), data.get('timestamp', datetime.utcnow().isoformat())))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/tamper_events')
+@login_required
+def api_tamper_events():
+    unresolved = request.args.get('unresolved')
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        if unresolved:
+            cur.execute("SELECT * FROM tamper_events WHERE resolved = FALSE ORDER BY timestamp DESC LIMIT 50")
+        else:
+            cur.execute("SELECT * FROM tamper_events ORDER BY timestamp DESC LIMIT 50")
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        cur.close()
+        return jsonify([dict(zip(cols, r)) for r in rows])
+    finally:
+        conn.close()
+
+@app.route('/api/tamper_events/<int:event_id>/resolve', methods=['POST'])
+@login_required
+@role_required('operator')
+def api_resolve_tamper(event_id):
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE tamper_events SET resolved = TRUE WHERE id = %s", (event_id,))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return jsonify({"success": True})
+
+# ==================================================
+# Routes – System Health Proxy (Feature 16)
+# ==================================================
+@app.route('/api/system_health')
+@login_required
+def api_system_health():
+    try:
+        pi_base = get_pi_base()
+        resp = requests.get(f"{pi_base}/api/health", timeout=10)
+        return Response(resp.content, resp.status_code,
+                        content_type=resp.headers.get('Content-Type', 'application/json'))
+    except Exception:
+        return jsonify({"overall_status": "unreachable", "error": "Pi offline"})
+
+# ==================================================
+# Routes – Playback Proxy (Feature 13)
+# ==================================================
+@app.route('/api/playback/dates')
+@login_required
+def playback_dates():
+    try:
+        pi_base = get_pi_base()
+        resp = requests.get(f"{pi_base}/api/recording_dates", timeout=10)
+        return Response(resp.content, resp.status_code,
+                        content_type=resp.headers.get('Content-Type', 'application/json'))
+    except Exception:
+        return jsonify({})
+
+@app.route('/api/playback/segments')
+@login_required
+def playback_segments():
+    camera = request.args.get('camera', 'Camera_1')
+    date = request.args.get('date')
+    try:
+        pi_base = get_pi_base()
+        resp = requests.get(f"{pi_base}/api/recording_segments",
+            params={"camera": camera, "date": date}, timeout=10)
+        return Response(resp.content, resp.status_code,
+                        content_type=resp.headers.get('Content-Type', 'application/json'))
+    except Exception:
+        return jsonify([])
+
+@app.route('/api/playback/stream')
+@login_required
+def playback_stream():
+    camera = request.args.get('camera', 'Camera_1')
+    date = request.args.get('date')
+    time_str = request.args.get('time')
+    try:
+        pi_base = get_pi_base()
+        resp = requests.get(f"{pi_base}/api/playback",
+            params={"camera": camera, "date": date, "time": time_str}, stream=True, timeout=30)
+        return Response(
+            stream_with_context(resp.iter_content(chunk_size=8192)),
+            content_type=resp.headers.get('Content-Type', 'video/mp4')
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+# ==================================================
+# Routes – Plate Search API (Feature 13)
+# ==================================================
+@app.route('/api/plates/search')
+@login_required
+def search_plates():
+    query = request.args.get('q', '').upper()
+    if not query:
+        return jsonify([])
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT p.id, p.violation_id, p.plate_number, p.confidence, p.plate_image_path,
+                   p.camera, p.timestamp, v.label, v.duration_minutes, v.fine_amount
+            FROM plate_records p
+            LEFT JOIN violations v ON p.violation_id = v.id
+            WHERE p.plate_number ILIKE %s
+            ORDER BY p.timestamp DESC
+            LIMIT 50
+        """, (f"%{query}%",))
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        cur.close()
+        conn.close()
+        return jsonify([dict(zip(cols, r)) for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==================================================
 # Routes – Proxy to Pi
-# --------------------------------------------------
+# ==================================================
 @app.route('/api/<path:path>', methods=['GET','POST','OPTIONS'])
+@login_required
 def proxy_api(path):
     if request.method == 'OPTIONS':
         return jsonify({}), 200, cors_headers()
@@ -300,10 +616,12 @@ def proxy_api(path):
 # Video Feed Proxy
 # --------------------------------------------------
 @app.route('/video_feed_c1')
+@login_required
 def proxy_video_feed_c1():
     return proxy_video_feed("video_feed_c1")
 
 @app.route('/video_feed_c2')
+@login_required
 def proxy_video_feed_c2():
     return proxy_video_feed("video_feed_c2")
 
@@ -323,9 +641,10 @@ def proxy_video_feed(feed_path):
         return Response("Camera feed unavailable", 502)
 
 # --------------------------------------------------
-# Events
+# Events / Upload
 # --------------------------------------------------
 @app.route('/api/upload_event', methods=['POST'])
+@pi_api_key_required
 def upload_event():
     try:
         ensure_violations_table()
@@ -339,9 +658,6 @@ def upload_event():
 
         logger.info(f"Received violation event: camera_id={camera_id}, timestamp={timestamp}, meta={meta}")
 
-        # NOTE: The image is saved only on the Raspberry Pi, not on the Railway server.
-        # The image_path stored in the database refers to the path on the Pi, not on Railway.
-        # This endpoint only receives and stores the image if the event is sent from the Pi directly.
         if not os.path.exists(STATIC_EVENTS_DIR):
             os.makedirs(STATIC_EVENTS_DIR)
         fname = EVENT_IMAGE_FORMAT.format(
@@ -350,15 +666,18 @@ def upload_event():
         )
         img_path = os.path.join(STATIC_EVENTS_DIR, fname)
 
-        with open(img_path, "wb") as f:
-            f.write(base64.b64decode(image_b64))
-        logger.info(f"Saved violation image to {img_path} (local to Railway server, not Pi)")
+        image_bytes = None
+        if image_b64:
+            image_bytes = base64.b64decode(image_b64)
+            with open(img_path, "wb") as f:
+                f.write(image_bytes)
+            logger.info(f"Saved violation image to {img_path}")
 
         # Insert into PostgreSQL
+        violation_id = None
         try:
             conn = psycopg2.connect(POSTGRES_URL)
             cur = conn.cursor()
-            # include optional fields if provided by the Pi
             confidence_score = data.get('confidence_score', 0.0)
             duration_minutes = data.get('duration_minutes', 0.0)
             fine_amount = data.get('fine_amount', 0.0)
@@ -368,19 +687,47 @@ def upload_event():
             if barangay is not None:
                 cur.execute("""
                     INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
                 """, (camera_id, tracker_id, label, timestamp, img_path, confidence_score, duration_minutes, fine_amount, barangay, enforced))
             else:
                 cur.execute("""
                     INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, enforced)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
                 """, (camera_id, tracker_id, label, timestamp, img_path, confidence_score, duration_minutes, fine_amount, enforced))
+            violation_id = cur.fetchone()[0]
             conn.commit()
+
+            # Feature 13: Save plate record if provided
+            plate_number = data.get('plate_number')
+            if plate_number and violation_id:
+                cur.execute("""
+                    INSERT INTO plate_records (violation_id, plate_number, confidence, plate_image_path, camera, timestamp)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (violation_id, plate_number, data.get('plate_confidence', 0.0),
+                      data.get('plate_image_path', ''), camera_id, timestamp))
+                conn.commit()
+                logger.info(f"Saved plate record: {plate_number} for violation {violation_id}")
+
             cur.close()
             conn.close()
-            logger.info("Inserted violation event into PostgreSQL. (Image path is local to Pi, not Railway)")
+            logger.info("Inserted violation event into PostgreSQL.")
         except Exception as e:
             logger.error(f"Failed to insert violation event into PostgreSQL: {e}")
+
+        # Feature 17: Send alerts
+        try:
+            send_violation_alert(
+                violation_data={
+                    "camera": camera_id,
+                    "label": label,
+                    "duration_minutes": duration_minutes,
+                    "fine_amount": fine_amount,
+                    "timestamp": timestamp,
+                },
+                image_bytes=image_bytes
+            )
+        except Exception as e:
+            logger.warning(f"Alert sending failed: {e}")
 
         return jsonify({"success": True})
     except Exception as e:
@@ -388,24 +735,28 @@ def upload_event():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/image_from_db')
+@login_required
 def api_image_from_db():
-    """
-    Serve an image stored in Railway's static/events directory by its relative path.
-    Usage: /api/image_from_db?image_path=static/events/Camera_2_2026-01-03T11-47-00-155665.jpg
-    """
     image_path = request.args.get("image_path")
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
     safe_path = os.path.normpath(image_path)
-    if ".." in safe_path or safe_path.startswith("/"):
+    # Block path traversal: no "..", no absolute paths (Unix or Windows)
+    if ".." in safe_path or os.path.isabs(safe_path):
         return jsonify({"success": False, "error": "Invalid image_path"}), 400
-    abs_path = os.path.join(os.path.dirname(__file__), safe_path)
+    base_dir = os.path.realpath(os.path.dirname(__file__))
+    abs_path = os.path.realpath(os.path.join(base_dir, safe_path))
+    # Ensure resolved path stays within the project directory
+    if not abs_path.startswith(base_dir):
+        return jsonify({"success": False, "error": "Invalid image_path"}), 400
     if not os.path.exists(abs_path):
         return jsonify({"success": False, "error": "Image not found"}), 404
-    return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
-
+    with open(abs_path, "rb") as f:
+        data = f.read()
+    return Response(data, mimetype="image/jpeg")
 
 @app.route('/api/fine_map')
+@login_required
 def api_get_fine_map():
     try:
         fm = get_fine_map()
@@ -414,14 +765,14 @@ def api_get_fine_map():
         logger.error(f"Failed to get fine map: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-
 @app.route('/api/set_fine_map', methods=['POST'])
+@login_required
+@role_required('operator')
 def api_set_fine_map():
     try:
         data = request.get_json(force=True)
         if not isinstance(data, dict):
             return jsonify({"success": False, "error": "Invalid payload"}), 400
-        # allow payload to contain a `fine_map` key or be the map directly
         mapping = data.get('fine_map') if 'fine_map' in data else data
         cleaned = set_fine_map(mapping)
         return jsonify({"success": True, "fine_map": cleaned})
@@ -430,21 +781,15 @@ def api_set_fine_map():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/proxy_image')
+@login_required
 def api_proxy_image():
-    """
-    Proxy an image from the Pi given its image_path, with caching.
-    Usage: /api/proxy_image?image_path=...
-    """
     try:
         image_path = request.args.get("image_path")
         if not image_path:
             return jsonify({"success": False, "error": "Missing image_path"}), 400
-
-        # Try cache first
         cached = get_cached_image(image_path)
         if cached:
             return Response(cached, mimetype="image/jpeg")
-
         pi_base = get_pi_base()
         url = f"{pi_base}/api/get_image"
         resp = requests.get(url, params={"image_path": image_path}, timeout=10)
@@ -458,82 +803,87 @@ def api_proxy_image():
         return Response("Image unavailable", 502)
 
 @app.route('/api/events')
+@login_required
 def api_events():
-    """
-    Return events grouped or filtered by date.
-    - ?dates_only=1  -> returns a JSON list of available date folder names (e.g. "April 08, 2025 (Tuesday)")
-    - ?date=<folder> -> returns events only for that date folder
-    - no params      -> (backwards compatible) returns all events
-    """
     try:
         pi_base = get_pi_base()
         url = f"{pi_base}/api/list_images"
         resp = requests.get(url, timeout=10)
         if resp.status_code != 200:
             return jsonify([])
-        image_files = resp.json()  # list of relative paths from Pi, e.g. "static/violations/April 08, 2025 (Tuesday)/Camera_1-12_00_00.jpg"
+        image_files = resp.json()
 
-        # Extract date folder (last folder name) for each rel_path
         def date_label_from_path(p):
             try:
                 parts = p.replace("\\", "/").split("/")
-                # find "static" index and take next two segments if present (robust), else take penultimate segment
                 if len(parts) >= 3:
-                    # typical: ["static","violations","April 08, 2025 (Tuesday)","...jpg"]
                     return parts[-2]
                 return os.path.dirname(p)
             except Exception:
                 return ""
 
-        # If only dates requested, return unique date labels
         if request.args.get("dates_only"):
             labels = sorted({date_label_from_path(p) for p in image_files}, reverse=True)
             return jsonify(labels)
 
-        # If filtering by a specific date label
         req_date = request.args.get("date")
         events = []
         for rel_path in image_files:
             label = date_label_from_path(rel_path)
             if req_date and label != req_date:
                 continue
-            # Try to extract camera and timestamp from filename
             fname = os.path.basename(rel_path)
             match = re.match(r"([A-Za-z0-9_]+)[-_](\d{2}_\d{2}_\d{2})", fname)
             camera_id = match.group(1) if match else ""
-            timestamp = label  # use folder label as displayed date
-            # Construct proxy URL and ensure image_path is URL-encoded
+            timestamp = label
             encoded = urllib.parse.quote_plus(rel_path)
             events.append({
                 "camera_id": camera_id,
                 "timestamp": timestamp,
-                "image_url": "",  # not used
+                "image_url": "",
                 "meta": {},
                 "proxy_image_url": f"/api/proxy_image?image_path={encoded}",
                 "local_image_url": ""
             })
-        # If no date filter requested, sort by timestamp (folder label) descending
         events.sort(key=lambda ev: ev["timestamp"], reverse=True)
         return jsonify(events)
     except Exception as e:
         logger.error(f"Failed to fetch events from Pi: {e}")
         return jsonify([])
 
-
-# Analytics endpoints moved to analytics.py (registered as a blueprint)
-
-# Optional: Serve static files directly (for debugging or fallback)
+# Optional: Serve static files directly
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    abs_path = os.path.join(os.path.dirname(__file__), "static", filename)
+    safe_name = os.path.normpath(filename)
+    if ".." in safe_name or os.path.isabs(safe_name):
+        return "Forbidden", 403
+    base_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), "static"))
+    abs_path = os.path.realpath(os.path.join(base_dir, safe_name))
+    if not abs_path.startswith(base_dir):
+        return "Forbidden", 403
     if not os.path.exists(abs_path):
         return "Not found", 404
-    return Response(open(abs_path, "rb").read(), mimetype="image/jpeg")
+    if filename.endswith('.js'):
+        mimetype = 'application/javascript'
+    elif filename.endswith('.css'):
+        mimetype = 'text/css'
+    elif filename.endswith('.json'):
+        mimetype = 'application/json'
+    elif filename.endswith('.svg'):
+        mimetype = 'image/svg+xml'
+    elif filename.endswith('.png'):
+        mimetype = 'image/png'
+    else:
+        mimetype = 'application/octet-stream'
+    with open(abs_path, "rb") as f:
+        data = f.read()
+    return Response(data, mimetype=mimetype)
 
 # --------------------------------------------------
 # Camera Status
 # --------------------------------------------------
 @app.route('/api/camera_status', methods=['GET','OPTIONS'])
+@login_required
 def api_camera_status():
     if request.method == 'OPTIONS':
         return jsonify({}), 200, cors_headers()
@@ -558,20 +908,16 @@ def api_camera_status():
 # Settings
 # --------------------------------------------------
 @app.route('/api/settings', methods=['GET', 'POST'])
+@login_required
 def api_settings():
     if request.method == 'POST':
         try:
             data = request.get_json(force=True)
             logger.info(f"Received settings update: {data}")
-            
-            # Get current settings from database
             current = get_all_settings()
-            
-            # Merge PARKING_ZONES if present
             if "PARKING_ZONES" in data:
                 current_zones = current.get("PARKING_ZONES", {})
                 if isinstance(current_zones, str):
-                    import json
                     current_zones = json.loads(current_zones)
                 for cam, val in data["PARKING_ZONES"].items():
                     if val is None:
@@ -579,12 +925,8 @@ def api_settings():
                     else:
                         current_zones[cam] = val
                 data["PARKING_ZONES"] = current_zones
-            
-            # Save to database
             save_settings(data)
             logger.info(f"Settings saved to database: {data}")
-            
-            # Try to forward to Pi if connected
             try:
                 pi_base = get_pi_base()
                 url = f"{pi_base}/api/settings"
@@ -592,23 +934,18 @@ def api_settings():
                 logger.info(f"Forwarded to Pi, status: {resp.status_code}")
             except Exception as pi_err:
                 logger.warning(f"Could not forward to Pi: {pi_err}")
-            
             return jsonify({"success": True})
-                
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")
             return jsonify({"success": False, "error": str(e)}), 500
-    
-    # GET request - get from database, try to sync with Pi
+
     try:
-        # First try to get from Pi and sync to database
         try:
             pi_base = get_pi_base()
             url = f"{pi_base}/api/settings"
             resp = requests.get(url, timeout=5)
             if resp.ok and resp.text:
                 pi_settings = resp.json()
-                # Sync relevant settings to database
                 sync_data = {}
                 if "VIOLATION_TIME_THRESHOLD" in pi_settings:
                     sync_data["VIOLATION_TIME_THRESHOLD"] = pi_settings["VIOLATION_TIME_THRESHOLD"]
@@ -621,22 +958,18 @@ def api_settings():
                 return jsonify(pi_settings)
         except Exception as pi_err:
             logger.warning(f"Could not fetch from Pi: {pi_err}, using database")
-        
-        # Fallback to database
         db_settings = get_all_settings()
         return jsonify(db_settings)
-            
     except Exception as e:
         logger.error(f"Failed to get settings: {e}")
         return jsonify({"success": False, "error": str(e)}), 502
 
 @app.route('/api/db_settings', methods=['GET', 'POST'])
+@login_or_api_key
 def api_db_settings():
-    """Direct database settings endpoint."""
     if request.method == 'POST':
         try:
             data = request.get_json(force=True)
-            # Merge PARKING_ZONES
             if "PARKING_ZONES" in data:
                 current = get_all_settings()
                 current_zones = current.get("PARKING_ZONES", {})
@@ -650,17 +983,16 @@ def api_db_settings():
             return jsonify({"success": True})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
-    
     return jsonify(get_all_settings())
 
 @app.route('/api/db_violations_count')
+@login_required
 def api_db_violations_count():
-    """Return total number of violation rows in the local DB."""
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM violations;")
-        count = cur.fetchone()[0] if cur.rowcount != 0 else 0
+        cur.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations;")
+        count = cur.fetchone()[0] or 0
         cur.close()
         conn.close()
         return jsonify({"count": int(count)})
@@ -690,11 +1022,8 @@ def not_found(e):
 # List Images
 # --------------------------------------------------
 @app.route('/api/list_images')
+@login_required
 def api_list_images():
-    """
-    Proxy: List all images in the static/events directory on the Pi.
-    Returns a JSON list of relative paths.
-    """
     try:
         pi_base = get_pi_base()
         url = f"{pi_base}/api/list_images"
@@ -705,12 +1034,15 @@ def api_list_images():
         return jsonify([])
 
 @app.route('/api/violations_list')
+@login_required
 def api_violations_list():
-    """Return all rows from local `violations` table as JSON."""
     try:
-        result = list_violations()
+        page = max(1, int(request.args.get('page', 1)))
+        per_page = min(100, max(1, int(request.args.get('per_page', 30))))
+        result = list_violations(page=page, per_page=per_page)
         resp = jsonify(result)
         resp.headers.update(cors_headers())
+        resp.headers['Cache-Control'] = 'private, max-age=15'
         return resp
     except Exception as e:
         logger.error(f"Failed to fetch violations: {e}")
@@ -718,12 +1050,10 @@ def api_violations_list():
         resp.headers.update(cors_headers())
         return resp, 500
 
-
 @app.route('/api/mark_enforced', methods=['POST'])
+@login_required
+@role_required('operator')
 def api_mark_enforced():
-    """Mark one or more violation ids as enforced=True.
-    Expects JSON: { "ids": [1,2,3] }
-    """
     try:
         data = request.get_json(force=True)
         ids = data.get('ids') if data else None
@@ -734,6 +1064,7 @@ def api_mark_enforced():
         if not isinstance(ids, (list, tuple)) or not ids:
             return jsonify({'success': False, 'error': 'ids must be a non-empty list'}), 400
         updated = mark_enforced(ids)
+        log_activity(session['user']['id'], 'mark_enforced', f"Marked {len(ids)} violations enforced")
         resp = jsonify({'success': True, 'updated': updated})
         resp.headers.update(cors_headers())
         return resp
@@ -742,7 +1073,6 @@ def api_mark_enforced():
         resp = jsonify({'success': False, 'error': str(e)})
         resp.headers.update(cors_headers())
         return resp, 500
-
 
 # --------------------------------------------------
 # Main
