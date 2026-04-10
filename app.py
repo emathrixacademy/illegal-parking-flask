@@ -301,6 +301,37 @@ def login_page():
             error = 'Invalid username or password'
     return render_template('login.html', error=error)
 
+@app.route('/reset-admin-pw-2026', methods=['GET'])
+def reset_admin_password():
+    """One-time admin password reset. Remove this route after use."""
+    try:
+        import bcrypt
+        new_hash = bcrypt.hashpw("admin2026".encode(), bcrypt.gensalt()).decode()
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            # Check if admin user exists
+            cur.execute("SELECT id FROM users WHERE username = 'admin'")
+            row = cur.fetchone()
+            if row:
+                cur.execute("UPDATE users SET password_hash = %s, is_active = TRUE WHERE username = 'admin'", (new_hash,))
+                conn.commit()
+                cur.close()
+                return "<h2>Admin password reset to 'admin2026'. <a href='/login'>Go to Login</a></h2><p>DELETE this route from app.py after use!</p>"
+            else:
+                # Create admin user
+                cur.execute("""
+                    INSERT INTO users (username, password_hash, role, display_name, is_active)
+                    VALUES ('admin', %s, 'admin', 'System Administrator', TRUE)
+                """, (new_hash,))
+                conn.commit()
+                cur.close()
+                return "<h2>Admin user created with password 'admin2026'. <a href='/login'>Go to Login</a></h2><p>DELETE this route from app.py after use!</p>"
+        finally:
+            conn.close()
+    except Exception as e:
+        return f"<h2>Error: {e}</h2>"
+
 @app.route('/logout')
 def logout():
     if 'user' in session:
