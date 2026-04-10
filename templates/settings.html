@@ -80,18 +80,35 @@
       </div>
       <!-- SMS Alerts -->
       <div>
-        <h6><i class="bi bi-phone-fill"></i> SMS Alerts (TextBee)</h6>
+        <h6><i class="bi bi-phone-fill"></i> SMS Alerts</h6>
         <div class="form-check mb-2">
           <input class="form-check-input" type="checkbox" id="smsEnabled">
           <label class="form-check-label">Enable SMS Alerts</label>
         </div>
         <div class="mb-2">
-          <label class="form-label">TextBee API Key</label>
-          <input type="text" class="form-control" id="textbeeApiKey" placeholder="API Key">
+          <label class="form-label">SMS Provider</label>
+          <select class="form-select" id="smsProvider" onchange="toggleSmsFields()">
+            <option value="unisms">UniSMS</option>
+            <option value="textbee">TextBee</option>
+          </select>
         </div>
-        <div class="mb-2">
-          <label class="form-label">TextBee Device ID</label>
-          <input type="text" class="form-control" id="textbeeDeviceId" placeholder="Device ID">
+        <!-- UniSMS fields -->
+        <div id="unismsFields">
+          <div class="mb-2">
+            <label class="form-label">UniSMS API Key</label>
+            <input type="text" class="form-control" id="unismsApiKey" placeholder="sk_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </div>
+        </div>
+        <!-- TextBee fields -->
+        <div id="textbeeFields" style="display:none;">
+          <div class="mb-2">
+            <label class="form-label">TextBee API Key</label>
+            <input type="text" class="form-control" id="textbeeApiKey" placeholder="API Key">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">TextBee Device ID</label>
+            <input type="text" class="form-control" id="textbeeDeviceId" placeholder="Device ID">
+          </div>
         </div>
         <div class="mb-2">
           <label class="form-label">SMS Recipients (comma separated)</label>
@@ -253,19 +270,28 @@
     });
 
     // Feature 17: Alert Configuration
+    function toggleSmsFields() {
+        const provider = document.getElementById('smsProvider').value;
+        document.getElementById('unismsFields').style.display = provider === 'unisms' ? 'block' : 'none';
+        document.getElementById('textbeeFields').style.display = provider === 'textbee' ? 'block' : 'none';
+    }
+
     async function loadAlertConfig() {
         try {
             const r = await fetch('/api/alert_config');
             const c = await r.json();
             document.getElementById('emailEnabled').checked = c.email_enabled || false;
             document.getElementById('smsEnabled').checked = c.sms_enabled || false;
+            document.getElementById('smsProvider').value = c.sms_provider || 'unisms';
             document.getElementById('smtpEmail').value = c.smtp_email || '';
             document.getElementById('smtpPassword').value = c.smtp_password || '';
             document.getElementById('emailRecipients').value = (c.email_recipients || []).join(', ');
+            document.getElementById('unismsApiKey').value = c.unisms_api_key || '';
             document.getElementById('textbeeApiKey').value = c.textbee_api_key || '';
             document.getElementById('textbeeDeviceId').value = c.textbee_device_id || '';
             document.getElementById('smsRecipients').value = (c.sms_recipients || []).join(', ');
             document.getElementById('alertCooldown').value = c.cooldown_seconds || 300;
+            toggleSmsFields();
         } catch(e) {
             document.getElementById('alertStatus').innerHTML = '<div class="alert alert-danger">Failed to load alert config</div>';
         }
@@ -275,11 +301,13 @@
         const config = {
             email_enabled: document.getElementById('emailEnabled').checked,
             sms_enabled: document.getElementById('smsEnabled').checked,
+            sms_provider: document.getElementById('smsProvider').value,
             smtp_server: 'smtp.gmail.com',
             smtp_port: 587,
             smtp_email: document.getElementById('smtpEmail').value,
             smtp_password: document.getElementById('smtpPassword').value,
             email_recipients: document.getElementById('emailRecipients').value.split(',').map(s=>s.trim()).filter(Boolean),
+            unisms_api_key: document.getElementById('unismsApiKey').value,
             textbee_api_key: document.getElementById('textbeeApiKey').value,
             textbee_device_id: document.getElementById('textbeeDeviceId').value,
             sms_recipients: document.getElementById('smsRecipients').value.split(',').map(s=>s.trim()).filter(Boolean),

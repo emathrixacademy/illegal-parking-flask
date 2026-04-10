@@ -16,12 +16,14 @@ ALERT_CONFIG_KEY = "ALERT_CONFIG"
 DEFAULT_ALERT_CONFIG = {
     "email_enabled": False,
     "sms_enabled": False,
+    "sms_provider": "unisms",
     "smtp_server": "smtp.gmail.com",
     "smtp_port": 587,
     "smtp_email": "",
     "smtp_password": "",
     "textbee_api_key": "",
     "textbee_device_id": "",
+    "unisms_api_key": "",
     "email_recipients": [],
     "sms_recipients": [],
     "cooldown_seconds": 300,
@@ -96,9 +98,8 @@ def _build_violation_email_html(violation_data, has_image=False):
     camera = violation_data.get('camera', 'N/A')
     label = violation_data.get('label', 'Vehicle')
     duration = violation_data.get('duration_minutes', 0)
-    fine = violation_data.get('fine_amount', 0)
     timestamp = violation_data.get('timestamp', 'N/A')
-    barangay = violation_data.get('barangay', 'Barangay Kanluran')
+    barangay = 'Brgy. Kanluran'
     confidence = violation_data.get('confidence_score', 0)
     tracker_id = violation_data.get('tracker_id', 'N/A')
 
@@ -115,7 +116,7 @@ def _build_violation_email_html(violation_data, has_image=False):
 <div class="email-wrapper">
     <!-- Header -->
     <div class="header">
-        <h1>Illegal Parking Violation Alert</h1>
+        <h1>Road Blocking Incident Alert</h1>
         <div class="subtitle">{now.strftime('%A, %B %d, %Y at %I:%M %p')}</div>
     </div>
     <div class="divider"></div>
@@ -123,16 +124,15 @@ def _build_violation_email_html(violation_data, has_image=False):
     <div class="content">
         <!-- Summary Box -->
         <div class="summary-box">
-            <div class="label">Violation Summary</div>
+            <div class="label">Incident Summary</div>
             <div class="row"><strong>Camera:</strong> {camera}</div>
             <div class="row"><strong>Vehicle Type:</strong> <span class="highlight">{label}</span></div>
             <div class="row"><strong>Duration:</strong> {duration} minutes</div>
-            <div class="row"><strong>Fine Amount:</strong> &#8369;{fine:.2f}</div>
             <div class="row"><strong>Location:</strong> {barangay}, Santa Rosa, Laguna</div>
         </div>
 
         <!-- Details Table -->
-        <div class="section-title">Violation Details</div>
+        <div class="section-title">Incident Details</div>
         <table class="detail-table">
             <tr>
                 <th>Field</th>
@@ -162,21 +162,13 @@ def _build_violation_email_html(violation_data, has_image=False):
                 <td>Confidence Score</td>
                 <td>{float(confidence):.3f}</td>
             </tr>
-            <tr>
-                <td>Fine Amount</td>
-                <td>&#8369;{fine:.2f}</td>
-            </tr>
-            <tr>
-                <td>Enforcement Status</td>
-                <td><span class="badge badge-violation">Pending</span></td>
-            </tr>
         </table>
 
         {"<p style='margin:16px 0 0;color:#888;font-size:12px;'><em>Violation photo attached.</em></p>" if has_image else ""}
 
         <p class="text-muted" style="margin-top:20px;">
-            This is an automated alert from the DECONGESTILAGUNA Illegal Parking Detection System.
-            Please review and take appropriate enforcement action.
+            This is an automated alert from the DECONGESTILAGUNA Road Blocking Detection System.
+            A vehicle has been detected blocking the road in Brgy. Kanluran.
         </p>
     </div>
 
@@ -318,41 +310,79 @@ def send_test_email(config):
 
 
 def send_sms_alert(violation_data):
-    """Send SMS via TextBee Android gateway."""
+    """Send SMS alert via UniSMS or TextBee."""
     config = get_alert_config()
     if not config.get("sms_enabled") or not config.get("sms_recipients"):
         return False
 
+    plate = violation_data.get('plate_number', '')
+    message = (
+        f"ROAD BLOCKING ALERT\n"
+        f"Brgy. Kanluran - {violation_data.get('camera', 'CCTV')}\n"
+        f"Vehicle: {violation_data.get('label', 'Unknown')}\n"
+        f"Duration: {violation_data.get('duration_minutes', 0):.1f} min\n"
+        f"{('Plate: ' + plate + chr(10)) if plate else ''}"
+        f"Time: {violation_data.get('timestamp', 'N/A')}"
+    )
+
+    provider = config.get("sms_provider", "unisms")
+
     try:
-        message = (
-            f"PARKING VIOLATION\n"
-            f"{violation_data.get('label', 'Vehicle')} on {violation_data.get('camera', 'N/A')}\n"
-            f"Duration: {violation_data.get('duration_minutes', 0)} min\n"
-            f"Fine: P{violation_data.get('fine_amount', 0):.0f}\n"
-            f"Time: {violation_data.get('timestamp', 'N/A')}"
-        )
+        if provider == "unisms":
+            success = _send_via_unisms(config, message)
+        else:
+            success = _send_via_textbee(config, message)
 
-        api_key = config['textbee_api_key']
-        device_id = config['textbee_device_id']
-
-        resp = requests.post(
-            f"https://api.textbee.dev/api/v1/gateway/devices/{device_id}/send-sms",
-            json={
-                "recipients": config['sms_recipients'],
-                "message": message,
-            },
-            headers={"x-api-key": api_key},
-            timeout=15
-        )
-
-        success = resp.ok
-        _log_alert("sms", violation_data, success, None if success else resp.text)
+        _log_alert("sms", violation_data, success, None if success else "SMS send failed")
         return success
 
     except Exception as e:
         logger.error(f"SMS alert failed: {e}")
         _log_alert("sms", violation_data, False, str(e))
         return False
+
+
+def _send_via_unisms(config, message):
+    """Send SMS via UniSMS API."""
+    api_key = config.get('unisms_api_key', '')
+    if not api_key:
+        logger.error("UniSMS API key not configured")
+        return False
+
+    recipients = config.get('sms_recipients', [])
+    all_ok = True
+    for recipient in recipients:
+        try:
+            resp = requests.post(
+                "https://unismsapi.com/api/sms",
+                auth=(api_key, ""),
+                json={"recipient": recipient.strip(), "content": message[:160]},
+                timeout=20
+            )
+            if resp.status_code != 201:
+                logger.error(f"UniSMS failed for {recipient}: {resp.status_code} {resp.text}")
+                all_ok = False
+        except Exception as e:
+            logger.error(f"UniSMS error for {recipient}: {e}")
+            all_ok = False
+    return all_ok
+
+
+def _send_via_textbee(config, message):
+    """Send SMS via TextBee Android gateway."""
+    api_key = config.get('textbee_api_key', '')
+    device_id = config.get('textbee_device_id', '')
+    if not api_key or not device_id:
+        logger.error("TextBee API key or device ID not configured")
+        return False
+
+    resp = requests.post(
+        f"https://api.textbee.dev/api/v1/gateway/devices/{device_id}/send-sms",
+        json={"recipients": config['sms_recipients'], "message": message},
+        headers={"x-api-key": api_key},
+        timeout=15
+    )
+    return resp.ok
 
 
 def send_violation_alert(violation_data, image_bytes=None):
