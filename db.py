@@ -38,10 +38,11 @@ def column_exists(cur, table_name, column_name):
 
 def ensure_tables():
     """Create violations and config tables if they don't exist."""
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
-        
+
         # Check and create violations table
         if not table_exists(cur, 'violations'):
             cur.execute("""
@@ -142,8 +143,8 @@ def ensure_tables():
                     camera VARCHAR(32),
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
-                CREATE INDEX idx_plate_number ON plate_records(plate_number);
-                CREATE INDEX idx_plate_timestamp ON plate_records(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_plate_number ON plate_records(plate_number);
+                CREATE INDEX IF NOT EXISTS idx_plate_timestamp ON plate_records(timestamp);
             """)
             logger.info("Created 'plate_records' table.")
 
@@ -223,15 +224,18 @@ def ensure_tables():
 
         conn.commit()
         cur.close()
-        conn.close()
         logger.info("Ensured all tables exist.")
     except Exception as e:
         logger.error(f"Failed to ensure tables: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def insert_violation_event(camera, tracker_id, label, timestamp, image_path, confidence_score=0.0, duration_minutes=0.0, fine_amount=0.0, barangay='Bgry. Kanluran', enforced=False):
     if not POSTGRES_URL:
         logging.warning("POSTGRES_URL not set, skipping DB insert.")
         return
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -241,26 +245,27 @@ def insert_violation_event(camera, tracker_id, label, timestamp, image_path, con
         """, (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced))
         conn.commit()
         cur.close()
-        conn.close()
     except Exception as e:
         logging.error(f"Failed to insert violation event: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def get_config_value(key, default=None):
     """Get a single config value from the database."""
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
-        
+
         # Check if table exists first
         if not table_exists(cur, 'config'):
             cur.close()
-            conn.close()
             return default
-        
+
         cur.execute("SELECT value FROM config WHERE key = %s", (key,))
         row = cur.fetchone()
         cur.close()
-        conn.close()
         if row:
             # Try to parse as JSON
             try:
@@ -271,25 +276,29 @@ def get_config_value(key, default=None):
     except Exception as e:
         logger.error(f"Failed to get config '{key}': {e}")
         return default
+    finally:
+        if conn:
+            conn.close()
 
 def set_config_value(key, value):
     """Set a single config value in the database (upsert)."""
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
-        
+
         # Ensure table exists
         if not table_exists(cur, 'config'):
             ensure_tables()
-        
+
         if isinstance(value, (dict, list)):
             value_str = json.dumps(value)
         else:
             value_str = str(value)
-        
+
         # Check if updated_at column exists
         has_updated_at = column_exists(cur, 'config', 'updated_at')
-        
+
         if has_updated_at:
             cur.execute("""
                 INSERT INTO config (key, value, updated_at)
@@ -302,13 +311,15 @@ def set_config_value(key, value):
                 VALUES (%s, %s)
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
             """, (key, value_str))
-        
+
         conn.commit()
         cur.close()
-        conn.close()
         logger.info(f"Config '{key}' updated in database.")
     except Exception as e:
         logger.error(f"Failed to set config '{key}': {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def get_all_settings():
     """Get all settings from the database as a dictionary."""
@@ -317,21 +328,20 @@ def get_all_settings():
         "REPEAT_CAPTURE_INTERVAL": 60,
         "PARKING_ZONES": {}
     }
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
-        
+
         # Check if table exists
         if not table_exists(cur, 'config'):
             cur.close()
-            conn.close()
             return defaults
-        
+
         cur.execute("SELECT key, value FROM config")
         rows = cur.fetchall()
         cur.close()
-        conn.close()
-        
+
         settings = defaults.copy()
         for key, value in rows:
             try:
@@ -349,29 +359,34 @@ def get_all_settings():
     except Exception as e:
         logger.error(f"Failed to get all settings: {e}")
         return defaults
+    finally:
+        if conn:
+            conn.close()
 
 def save_settings(settings_dict):
     """Save multiple settings to the database."""
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
-        
+
         # Ensure table exists
         if not table_exists(cur, 'config'):
             conn.close()
+            conn = None
             ensure_tables()
             conn = get_connection()
             cur = conn.cursor()
-        
+
         # Check if updated_at column exists
         has_updated_at = column_exists(cur, 'config', 'updated_at')
-        
+
         for key, value in settings_dict.items():
             if isinstance(value, (dict, list)):
                 value_str = json.dumps(value)
             else:
                 value_str = str(value)
-            
+
             if has_updated_at:
                 cur.execute("""
                     INSERT INTO config (key, value, updated_at)
@@ -384,13 +399,15 @@ def save_settings(settings_dict):
                     VALUES (%s, %s)
                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
                 """, (key, value_str))
-        
+
         conn.commit()
         cur.close()
-        conn.close()
         logger.info(f"Saved {len(settings_dict)} settings to database.")
     except Exception as e:
         logger.error(f"Failed to save settings: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def init_default_settings():
     """Initialize default settings in database if they don't exist."""
@@ -402,26 +419,28 @@ def init_default_settings():
             "Camera_2": [[46, 437], [453, 253], [664, 259], [678, 438]]
         }
     }
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
-        
+
         # Ensure table exists first
         if not table_exists(cur, 'config'):
             conn.close()
+            conn = None
             ensure_tables()
             conn = get_connection()
             cur = conn.cursor()
-        
+
         # Check if updated_at column exists
         has_updated_at = column_exists(cur, 'config', 'updated_at')
-        
+
         for key, value in defaults.items():
             if isinstance(value, (dict, list)):
                 value_str = json.dumps(value)
             else:
                 value_str = str(value)
-            
+
             # Only insert if key doesn't exist
             if has_updated_at:
                 cur.execute("""
@@ -435,10 +454,12 @@ def init_default_settings():
                     VALUES (%s, %s)
                     ON CONFLICT (key) DO NOTHING
                 """, (key, value_str))
-        
+
         conn.commit()
         cur.close()
-        conn.close()
         logger.info("Initialized default settings in database.")
     except Exception as e:
         logger.error(f"Failed to init default settings: {e}")
+    finally:
+        if conn:
+            conn.close()

@@ -99,7 +99,7 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 
 ### Feature 19: Progressive Web App (PWA) + Mobile-First UI
 - **Installable PWA** - Add to home screen on mobile/desktop; standalone app mode
-- **Web App Manifest** - App name, icons (192/512 SVG), dark theme color (#181c23)
+- **Web App Manifest** - App name, icons (192/512 SVG), theme color (#352070)
 - **Service Worker v3** - Aggressive caching for offline-first experience
   - Precaches all HTML pages, static assets, CDN resources (Bootstrap, Chart.js)
   - Separate data cache for API responses
@@ -116,8 +116,8 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 - **Bottom Navigation Bar** - Home, Violations, Playback, Settings (operator+), More menu
 - **Slide-Up "More" Sheet** - User info, Admin Panel, User Management (admin), Logout
 - **Desktop Sidebar** - Auto-switches at 1024px+ with full navigation links
-- **Dark Theme** - CSS variables: `--bg: #181c23`, `--card: #232733`, `--accent: #ff9800`
-- **Orange Accent Color** - All Bootstrap warning/yellow utilities overridden to #ff9800
+- **Clean Light Theme** - CSS variables: `--bg: #f0f2f7`, `--card: #ffffff`, `--primary: #352070`
+- **Deep Purple Accent Color** - Professional purple/indigo palette with Inter font family
 
 ### Feature 20: Notification Bell System
 - **Real-time Notification Bell** - Bell icon in dashboard status bar with badge count
@@ -128,6 +128,16 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 - **Bell Ring Animation** - CSS keyframe animation on new notifications
 - **localStorage Persistence** - Notifications and mute state persist across page loads
 - **Violation Banner** - Auto-dismissing banner overlay for new violations
+
+### Feature 22: SMS Notification Module (NOTIF)
+- **Standalone SMS Panel** - Separate Flask app for admin SMS decisions (`NOTIF/app.py`)
+- **UniSMS Integration** - Sends SMS via UniSMS API (`https://unismsapi.com/api/sms`)
+- **Reservation Decisions** - Approve, Reject, or Needs Appearance actions with SMS notification
+- **SMS Preview** - Live preview of generated message with 160-character limit
+- **Appearance Scheduling** - Date/time picker for "Needs Appearance" decisions
+- **Clean Admin UI** - Light theme card-based design (`NOTIF/admin.html`)
+- **Pre-configured Requests** - Sample lab reservation request data for testing
+- **API Key**: Set via `UNISMS_SECRET_KEY` environment variable
 
 ### Feature 21: Performance Optimization + Caching
 - **Server-Side Pagination** - Violations API supports `?page=1&per_page=30` (newest first)
@@ -541,7 +551,7 @@ illegal-parking/
 ├── requirements.txt            # Python dependencies
 ├── Procfile                    # Railway deployment (gunicorn)
 ├── templates/
-│   ├── base.html               # Master template (mobile-first, PWA, dark theme)
+│   ├── base.html               # Master template (mobile-first, PWA, clean light theme)
 │   ├── index.html              # Dashboard (live feeds, analytics, notification bell)
 │   ├── login.html              # Login page (standalone, PWA-enabled)
 │   ├── violations.html         # Violations timeline with image zoom
@@ -562,6 +572,10 @@ illegal-parking/
 │   ├── events/                 # Violation images (cloud storage)
 │   ├── violations/             # Violation images (Pi local)
 │   └── tamper/                 # Tamper event images (Pi local)
+├── NOTIF/
+│   ├── app.py                  # SMS notification Flask app (UniSMS integration)
+│   ├── admin.html              # SMS admin panel UI (reservation decisions)
+│   └── Running on.txt          # Local server URL and API key reference
 └── models/
     ├── yolov8s.hef             # Hailo-optimized YOLOv8s model
     ├── cctv_ai.hef             # CCTV AI detection model
@@ -581,10 +595,10 @@ illegal-parking/
 | Database | PostgreSQL (Railway) |
 | Frontend | Bootstrap 5.3.2, Vanilla JS, Chart.js |
 | PWA | Service Worker v3, Web App Manifest |
-| UI Framework | Mobile-first responsive, dark theme |
+| UI Framework | Mobile-first responsive, clean light theme (Inter font, purple accents) |
 | Authentication | bcrypt + Flask sessions |
 | Email Alerts | SMTP (Gmail) with HTML templates |
-| SMS Alerts | TextBee REST API |
+| SMS Alerts | TextBee REST API + UniSMS API |
 | Tunnel | Cloudflare (cloudflared) |
 | PDF Reports | ReportLab |
 | Health Monitoring | psutil |
@@ -609,6 +623,42 @@ illegal-parking/
 - Joseph Santander
 - Carlito Tagarro
 - Florante Sangrenes
+
+---
+
+### NOTIF SMS Module API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Admin SMS decision panel UI |
+| `/api/requests` | GET | List all reservation requests |
+| `/api/requests/<id>/decision` | POST | Save admin decision (approved/rejected/needs-appearance) |
+| `/send-sms` | POST | Send SMS via UniSMS API |
+
+**Environment Variable:** `UNISMS_SECRET_KEY` - UniSMS API key for SMS delivery
+
+To run the NOTIF module:
+```bash
+cd NOTIF
+export UNISMS_SECRET_KEY="sk_df5338f6-e788-4396-88b8-20b91b2aa26e"
+python app.py
+```
+
+## Changelog
+
+### April 2026 - UI Redesign & Bug Fixes
+- **UI Overhaul**: Complete redesign from dark theme (orange accents) to clean light theme (deep purple accents) inspired by modern admin panel design
+  - New color scheme: `--primary: #352070`, `--bg: #f0f2f7`, `--card: #ffffff`
+  - Inter font family for improved typography
+  - White cards with subtle shadows, purple sidebar, clean tables
+  - All 9 templates updated (base, index, violations, admin, playback, settings, user_management, login, admin_login)
+- **Bug Fixes**:
+  - Fixed database connection leaks in `analytics.py` (12 connections wrapped with try/finally)
+  - Fixed missing try/finally in `db.py` (7 functions)
+  - Added `IF NOT EXISTS` to 2 index creation statements in `db.py`
+  - Added JSON validation to 13 API endpoints in `app.py` and `server.py` to prevent TypeError crashes
+  - Fixed image cache empty dict edge case in `app.py`
+- **NOTIF Module**: Added SMS notification panel for reservation decisions via UniSMS API
 
 ---
 

@@ -217,6 +217,8 @@ def api_detection_control():
     global DETECTION_ENABLED, DETECTION_CONFIDENCE
     if request.method == 'POST':
         data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON"}), 400
         if 'enabled' in data:
             DETECTION_ENABLED = bool(data['enabled'])
             logger.info(f"Detection {'ENABLED' if DETECTION_ENABLED else 'DISABLED'} via remote control")
@@ -303,6 +305,8 @@ def api_settings():
     if request.method == 'POST':
         try:
             data = request.get_json(force=True)
+            if not isinstance(data, dict):
+                return jsonify({"error": "Invalid JSON"}), 400
             logger.info(f"Received settings update request: {data}")
             
             # Update local config

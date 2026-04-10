@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
-  <meta name="theme-color" content="#181c23">
+  <meta name="theme-color" content="#352070">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="DECONGESTILAGUNA">
@@ -14,12 +14,15 @@
   <title>Login — DECONGESTILAGUNA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     body {
-      background: #181c23;
-      color: #fff;
-      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      background: #f0f2f7;
+      color: #1a1a2e;
+      font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -30,45 +33,56 @@
       -webkit-tap-highlight-color: transparent;
     }
     .login-card {
-      background: #232733;
+      background: #fff;
       border-radius: 16px;
-      padding: 2rem 1.5rem;
+      padding: 2.5rem 2rem;
       width: 100%;
-      max-width: 380px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      max-width: 400px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+      border: 1px solid #e5e7eb;
     }
-    .login-card h4 { margin-bottom: 0.3rem; color: #ff9800; font-weight: 700; font-size: 1.2rem; }
-    .login-card .subtitle { color: #888; font-size: 0.82rem; margin-bottom: 1.25rem; }
-    .login-logo { font-size: 2.2rem; color: #ff9800; margin-bottom: 0.4rem; }
+    .login-card h4 { margin-bottom: 0.3rem; color: #352070; font-weight: 700; font-size: 1.3rem; }
+    .login-card .subtitle { color: #6b7280; font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .login-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: #352070;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .login-logo i { font-size: 1.6rem; color: #fff; }
     .form-control {
-      background: #1a1e25;
-      color: #fff;
-      border: 1px solid #2d3342;
-      font-size: 0.95rem;
-      padding: 0.6rem 0.75rem;
+      background: #fff;
+      color: #1a1a2e;
+      border: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+      padding: 0.65rem 0.75rem;
       border-radius: 8px;
     }
     .form-control:focus {
-      background: #1a1e25;
-      color: #fff;
-      border-color: #ff9800;
-      box-shadow: 0 0 0 0.15rem rgba(255,152,0,0.2);
+      background: #fff;
+      color: #1a1a2e;
+      border-color: #6c3ec7;
+      box-shadow: 0 0 0 0.15rem rgba(108,62,199,0.15);
     }
-    .form-label { font-size: 0.85rem; color: #bfc7d5; }
+    .form-label { font-size: 0.82rem; color: #6b7280; font-weight: 500; }
     .btn-login {
-      background: #ff9800;
-      border-color: #ff9800;
-      color: #000;
-      font-weight: 700;
+      background: #352070;
+      border-color: #352070;
+      color: #fff;
+      font-weight: 600;
       font-size: 0.95rem;
-      padding: 0.6rem;
+      padding: 0.65rem;
       border-radius: 8px;
     }
-    .btn-login:hover { background: #e68a00; border-color: #e68a00; color: #000; }
-    .alert-danger { background: rgba(220,53,69,0.15); border: 1px solid #dc3545; color: #f88; font-size: 0.85rem; border-radius: 8px; }
+    .btn-login:hover { background: #281860; border-color: #281860; color: #fff; }
+    .alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; font-size: 0.85rem; border-radius: 8px; }
     @media (min-width: 768px) {
-      .login-card { padding: 2.5rem 2rem; }
-      .login-card h4 { font-size: 1.4rem; }
+      .login-card { padding: 3rem 2.5rem; }
+      .login-card h4 { font-size: 1.5rem; }
     }
   </style>
 </head>

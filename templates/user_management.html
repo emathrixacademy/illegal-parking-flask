@@ -22,7 +22,7 @@
       </button>
     </div>
     <div class="table-responsive">
-      <table id="usersTable" class="table table-sm table-dark table-striped">
+      <table id="usersTable" class="table table-sm table-striped table-hover">
         <thead>
           <tr>
             <th>ID</th>
@@ -45,7 +45,7 @@
   <div class="content-card">
     <h2><i class="bi bi-clock-history"></i> Activity Log</h2>
     <div class="table-responsive">
-      <table id="activityTable" class="table table-sm table-dark table-striped">
+      <table id="activityTable" class="table table-sm table-striped table-hover">
         <thead>
           <tr>
             <th>Time</th>
@@ -63,38 +63,38 @@
   <!-- Add User Modal -->
   <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-white">
-        <div class="modal-header border-secondary">
+      <div class="modal-content">
+        <div class="modal-header">
           <h5 class="modal-title" id="addUserModalLabel"><i class="bi bi-person-plus"></i> Add User</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label" for="newUsername">Username</label>
-            <input id="newUsername" type="text" class="form-control bg-dark text-white border-secondary" required>
+            <input id="newUsername" type="text" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label" for="newPassword">Password</label>
-            <input id="newPassword" type="password" class="form-control bg-dark text-white border-secondary" required>
+            <input id="newPassword" type="password" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label" for="newDisplayName">Display Name</label>
-            <input id="newDisplayName" type="text" class="form-control bg-dark text-white border-secondary">
+            <input id="newDisplayName" type="text" class="form-control">
           </div>
           <div class="mb-3">
             <label class="form-label" for="newEmail">Email</label>
-            <input id="newEmail" type="email" class="form-control bg-dark text-white border-secondary">
+            <input id="newEmail" type="email" class="form-control">
           </div>
           <div class="mb-3">
             <label class="form-label" for="newRole">Role</label>
-            <select id="newRole" class="form-select bg-dark text-white border-secondary">
+            <select id="newRole" class="form-select">
               <option value="viewer">Viewer</option>
               <option value="operator">Operator</option>
               <option value="admin">Admin</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer border-secondary">
+        <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-success" onclick="addUser()">Create User</button>
         </div>
@@ -105,24 +105,24 @@
   <!-- Edit User Modal -->
   <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-white">
-        <div class="modal-header border-secondary">
+      <div class="modal-content">
+        <div class="modal-header">
           <h5 class="modal-title" id="editUserModalLabel"><i class="bi bi-pencil"></i> Edit User</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <input id="editUserId" type="hidden">
           <div class="mb-3">
             <label class="form-label" for="editDisplayName">Display Name</label>
-            <input id="editDisplayName" type="text" class="form-control bg-dark text-white border-secondary">
+            <input id="editDisplayName" type="text" class="form-control">
           </div>
           <div class="mb-3">
             <label class="form-label" for="editEmail">Email</label>
-            <input id="editEmail" type="email" class="form-control bg-dark text-white border-secondary">
+            <input id="editEmail" type="email" class="form-control">
           </div>
           <div class="mb-3">
             <label class="form-label" for="editRole">Role</label>
-            <select id="editRole" class="form-select bg-dark text-white border-secondary">
+            <select id="editRole" class="form-select">
               <option value="viewer">Viewer</option>
               <option value="operator">Operator</option>
               <option value="admin">Admin</option>
@@ -130,14 +130,14 @@
           </div>
           <div class="mb-3">
             <label class="form-label" for="editPassword">New Password (leave blank to keep)</label>
-            <input id="editPassword" type="password" class="form-control bg-dark text-white border-secondary">
+            <input id="editPassword" type="password" class="form-control">
           </div>
           <div class="form-check mb-3">
             <input id="editActive" class="form-check-input" type="checkbox" checked>
             <label class="form-check-label" for="editActive">Active</label>
           </div>
         </div>
-        <div class="modal-footer border-secondary">
+        <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-accent" onclick="saveEditUser()">Save Changes</button>
         </div>

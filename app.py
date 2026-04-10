@@ -171,6 +171,8 @@ def login_or_api_key(f):
 def set_pi_url():
     global PI_PUBLIC_URL, PI_URL_NOT_SET_LOGGED
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
     new_url = data.get("public_url", "")
     if new_url and new_url != PI_PUBLIC_URL:
         logger.info(f"Received new Pi public URL: {new_url} (old: {PI_PUBLIC_URL})")
@@ -266,8 +268,9 @@ def get_cached_image(image_path):
 def set_cached_image(image_path, data):
     with IMAGE_CACHE_LOCK:
         if len(IMAGE_CACHE) >= IMAGE_CACHE_MAX_SIZE:
-            oldest = min(IMAGE_CACHE.items(), key=lambda x: x[1][1])[0]
-            del IMAGE_CACHE[oldest]
+            if IMAGE_CACHE:
+                oldest = min(IMAGE_CACHE.items(), key=lambda x: x[1][1])[0]
+                del IMAGE_CACHE[oldest]
         IMAGE_CACHE[image_path] = (data, time.time())
 
 # ==================================================
@@ -354,6 +357,8 @@ def api_list_users():
 @role_required('admin')
 def api_create_user():
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
     if not data.get('username') or not data.get('password'):
         return jsonify({"success": False, "error": "Username and password required"}), 400
     try:
@@ -371,6 +376,8 @@ def api_create_user():
 @role_required('admin')
 def api_update_user(user_id):
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
     update_user(user_id, data)
     log_activity(session['user']['id'], 'update_user', f"Updated user ID {user_id}")
     return jsonify({"success": True})
@@ -412,6 +419,8 @@ def api_activity_log():
 def api_alert_config():
     if request.method == 'POST':
         data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON"}), 400
         save_alert_config(data)
         log_activity(session['user']['id'], 'update_alert_config')
         return jsonify({"success": True})
@@ -456,6 +465,8 @@ def api_alert_log():
 @pi_api_key_required
 def api_tamper_event():
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -642,6 +653,8 @@ def api_restart_detection():
 def api_health_summary_email():
     """Receive health summary from Pi and email it."""
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
     summary = data.get('summary', '')
     status = data.get('status', 'unknown')
 
@@ -729,6 +742,8 @@ def upload_event():
     try:
         ensure_violations_table()
         data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON"}), 400
         camera_id = data.get("camera_id")
         tracker_id = data.get("tracker_id")
         label = data.get("label")
@@ -993,6 +1008,8 @@ def api_settings():
     if request.method == 'POST':
         try:
             data = request.get_json(force=True)
+            if not isinstance(data, dict):
+                return jsonify({"error": "Invalid JSON"}), 400
             logger.info(f"Received settings update: {data}")
             current = get_all_settings()
             if "PARKING_ZONES" in data:
@@ -1050,6 +1067,8 @@ def api_db_settings():
     if request.method == 'POST':
         try:
             data = request.get_json(force=True)
+            if not isinstance(data, dict):
+                return jsonify({"error": "Invalid JSON"}), 400
             if "PARKING_ZONES" in data:
                 current = get_all_settings()
                 current_zones = current.get("PARKING_ZONES", {})
@@ -1136,6 +1155,8 @@ def api_violations_list():
 def api_mark_enforced():
     try:
         data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON"}), 400
         ids = data.get('ids') if data else None
         if ids is None:
             return jsonify({'success': False, 'error': 'missing ids'}), 400

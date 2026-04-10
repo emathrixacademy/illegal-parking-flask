@@ -12,14 +12,14 @@
   padding-left: 1rem;
 }
 .violation-card {
-  background: var(--bg);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
   margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   cursor: pointer;
   transition: border-color 0.2s;
 }
@@ -31,8 +31,8 @@
   height: 110px;
   object-fit: cover;
   border-radius: 10px 10px 0 0;
-  border-bottom: 2px solid var(--card);
-  background: #222;
+  border-bottom: 2px solid var(--border-light);
+  background: var(--bg);
 }
 .violation-card-body {
   padding: 0.7rem 0.85rem;
@@ -61,19 +61,20 @@
 
 /* Date buttons */
 .date-btn {
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
   font-size: 0.82rem;
 }
 .date-btn:hover, .date-btn.active {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #000 !important;
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
 }
 
 /* Search section */
 .search-section {
-  background: var(--bg);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.85rem;
   margin-bottom: 1rem;
@@ -170,10 +171,10 @@
 <!-- Image Zoom Modal -->
 <div class="modal fade" id="zoomModal" tabindex="-1" aria-labelledby="zoomModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content bg-dark">
+    <div class="modal-content">
       <div class="modal-header border-0">
-        <h5 class="modal-title text-accent" id="zoomModalLabel">Violation Image</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title text-primary" id="zoomModalLabel">Violation Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body text-center">
         <img id="zoomedImage" src="" alt="Zoomed Violation">
@@ -208,7 +209,7 @@ function formatHour(ts) {
     return d.toLocaleDateString() + ' ' + d.getHours() + ':00';
 }
 
-const FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22250%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23222%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23ff9800%22%20font-size%3D%2220%22%20font-family%3D%22Arial%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3EImage%20unavailable%3C/text%3E%3C/svg%3E';
+const FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22250%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f0f2f7%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23352070%22%20font-size%3D%2220%22%20font-family%3D%22Arial%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3EImage%20unavailable%3C/text%3E%3C/svg%3E';
 
 function parseDateLabel(label) {
     return label;
@@ -245,7 +246,7 @@ function violationCard(ev) {
         <div class="violation-card-body">
             <div class="violation-card-title">
                 <i class="bi bi-camera-video"></i> <b>${camera_id}</b>
-                ${label ? `<span class="badge bg-warning text-dark ms-2">${label}</span>` : ""}
+                ${label ? `<span class="badge bg-primary text-white ms-2">${label}</span>` : ""}
                 ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
             </div>
             <div class="violation-card-meta">
@@ -383,7 +384,7 @@ async function searchPlates() {
         const data = await resp.json();
         if (data.error) { container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; return; }
         if (!data.length) { container.innerHTML = '<div class="alert alert-info py-1">No records found.</div>'; return; }
-        let html = '<div class="table-responsive"><table class="table table-sm table-dark table-striped mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Fine</th><th>Time</th></tr></thead><tbody>';
+        let html = '<div class="table-responsive"><table class="table table-sm table-striped table-hover mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Fine</th><th>Time</th></tr></thead><tbody>';
         data.forEach(r => {
             html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td><td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td><td>${r.fine_amount ? 'P'+r.fine_amount.toFixed(0) : ''}</td><td>${r.timestamp||''}</td></tr>`;
         });

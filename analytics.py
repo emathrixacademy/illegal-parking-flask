@@ -41,17 +41,19 @@ def api_violation_counts():
             CLASS_MAP[lbl] = lbl
             CLASS_MAP[lbl.lower()] = lbl
         conn = psycopg2.connect(POSTGRES_URL)
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT label,
-                   COUNT(DISTINCT (camera, tracker_id)) AS distinct_ids,
-                   SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_count
-            FROM violations
-            GROUP BY label;
-        """)
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT label,
+                       COUNT(DISTINCT (camera, tracker_id)) AS distinct_ids,
+                       SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_count
+                FROM violations
+                GROUP BY label;
+            """)
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            conn.close()
 
         counts = {"CAR": 0, "MOTORCYCLE": 0}
         for lbl in CCTV_AI_LABELS:
@@ -67,12 +69,14 @@ def api_violation_counts():
 
         try:
             conn2 = psycopg2.connect(POSTGRES_URL)
-            cur2 = conn2.cursor()
-            cur2.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations WHERE tracker_id IS NOT NULL;")
-            uniq_row = cur2.fetchone()
-            cur2.close()
-            conn2.close()
-            total_unique = int(uniq_row[0]) if uniq_row and uniq_row[0] is not None else 0
+            try:
+                cur2 = conn2.cursor()
+                cur2.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations WHERE tracker_id IS NOT NULL;")
+                uniq_row = cur2.fetchone()
+                cur2.close()
+                total_unique = int(uniq_row[0]) if uniq_row and uniq_row[0] is not None else 0
+            finally:
+                conn2.close()
         except Exception:
             total_unique = 0
 
@@ -80,19 +84,21 @@ def api_violation_counts():
 
         try:
             conn3 = psycopg2.connect(POSTGRES_URL)
-            cur3 = conn3.cursor()
-            cur3.execute("""
-                SELECT COUNT(DISTINCT (camera, tracker_id)) AS unique_today,
-                       SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_today
-                FROM violations
-                WHERE (timestamp AT TIME ZONE 'Asia/Manila')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date;
-            """)
-            today_row = cur3.fetchone()
-            cur3.close()
-            conn3.close()
-            unique_today = int(today_row[0]) if today_row and today_row[0] is not None else 0
-            null_today = int(today_row[1]) if today_row and today_row[1] is not None else 0
-            recent_total = unique_today + null_today
+            try:
+                cur3 = conn3.cursor()
+                cur3.execute("""
+                    SELECT COUNT(DISTINCT (camera, tracker_id)) AS unique_today,
+                           SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_today
+                    FROM violations
+                    WHERE (timestamp AT TIME ZONE 'Asia/Manila')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date;
+                """)
+                today_row = cur3.fetchone()
+                cur3.close()
+                unique_today = int(today_row[0]) if today_row and today_row[0] is not None else 0
+                null_today = int(today_row[1]) if today_row and today_row[1] is not None else 0
+                recent_total = unique_today + null_today
+            finally:
+                conn3.close()
         except Exception:
             recent_total = 0
 
@@ -109,8 +115,8 @@ def api_violation_stats():
     """
     Return basic violation statistics from the local PostgreSQL `violations` table.
     """
+    conn = psycopg2.connect(POSTGRES_URL)
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("""
             SELECT
@@ -125,7 +131,6 @@ def api_violation_stats():
         """)
         row = cur.fetchone()
         cur.close()
-        conn.close()
 
         if not row:
             return jsonify({
@@ -160,6 +165,8 @@ def api_violation_stats():
             "enforced_count": 0,
             "total_fines_collected": 0.0
         })
+    finally:
+        conn.close()
 
 
 # ==================================================
@@ -170,6 +177,7 @@ def api_violation_stats():
 @login_required
 def api_analytics_heatmap():
     """Returns a 7x24 grid of violation counts (day-of-week x hour)."""
+    conn = None
     try:
         days_back = int(request.args.get('days', 7))
         conn = psycopg2.connect(POSTGRES_URL)
@@ -186,7 +194,6 @@ def api_analytics_heatmap():
         """, (days_back,))
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         day_remap = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
         day_labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
@@ -203,12 +210,16 @@ def api_analytics_heatmap():
     except Exception as e:
         logger.error(f"Heatmap query failed: {e}")
         return jsonify({"data": [], "max_count": 0, "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 @analytics_bp.route('/api/analytics/daily_trend')
 @login_required
 def api_analytics_daily_trend():
     """Returns daily violation counts for trend chart."""
+    conn = None
     try:
         days_back = int(request.args.get('days', 30))
         conn = psycopg2.connect(POSTGRES_URL)
@@ -224,7 +235,6 @@ def api_analytics_daily_trend():
         """, (days_back,))
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         labels = [r[0].strftime('%b %d') for r in rows]
         counts = [int(r[1]) for r in rows]
@@ -232,12 +242,16 @@ def api_analytics_daily_trend():
     except Exception as e:
         logger.error(f"Daily trend query failed: {e}")
         return jsonify({"labels": [], "counts": [], "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 @analytics_bp.route('/api/analytics/hourly')
 @login_required
 def api_analytics_hourly():
     """Returns violation counts per hour of day (0-23)."""
+    conn = None
     try:
         days_back = int(request.args.get('days', 30))
         conn = psycopg2.connect(POSTGRES_URL)
@@ -253,7 +267,6 @@ def api_analytics_hourly():
         """, (days_back,))
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         hourly = {i: 0 for i in range(24)}
         for hour, count in rows:
@@ -262,14 +275,17 @@ def api_analytics_hourly():
     except Exception as e:
         logger.error(f"Hourly query failed: {e}")
         return jsonify({"hours": [], "counts": [], "error": str(e)}), 500
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 @analytics_bp.route('/api/analytics/camera_comparison')
 @login_required
 def api_analytics_camera_comparison():
     """Returns per-camera, per-vehicle-type violation counts."""
+    conn = psycopg2.connect(POSTGRES_URL)
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("""
             SELECT camera, UPPER(label) AS vehicle_type,
@@ -280,7 +296,6 @@ def api_analytics_camera_comparison():
         """)
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         cameras = []
         data = {}
@@ -293,14 +308,16 @@ def api_analytics_camera_comparison():
     except Exception as e:
         logger.error(f"Camera comparison query failed: {e}")
         return jsonify({"cameras": [], "data": {}, "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @analytics_bp.route('/api/analytics/duration_distribution')
 @login_required
 def api_analytics_duration_distribution():
     """Returns violation counts in duration buckets."""
+    conn = psycopg2.connect(POSTGRES_URL)
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         cur.execute("""
             SELECT bucket, cnt FROM (
@@ -330,7 +347,6 @@ def api_analytics_duration_distribution():
         """)
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         buckets = [r[0] for r in rows]
         counts = [int(r[1]) for r in rows]
@@ -338,14 +354,16 @@ def api_analytics_duration_distribution():
     except Exception as e:
         logger.error(f"Duration distribution query failed: {e}")
         return jsonify({"buckets": [], "counts": [], "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @analytics_bp.route('/api/analytics/insights')
 @login_required
 def api_analytics_insights():
     """Analyzes violation data and returns AI-generated insights."""
+    conn = psycopg2.connect(POSTGRES_URL)
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
         insights = []
 
@@ -445,19 +463,20 @@ def api_analytics_insights():
                 "description": f"{worst_row[0].strip()} has the most violations ({int(worst_row[1])} in the last 30 days). Consider scheduling enforcement patrols on {worst_row[0].strip()}s."})
 
         cur.close()
-        conn.close()
         return jsonify({"insights": insights[:3]})
     except Exception as e:
         logger.error(f"Insights generation failed: {e}")
         return jsonify({"insights": [], "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @analytics_bp.route('/api/analytics/summary')
 @login_required
 def api_analytics_summary():
     """Returns enhanced summary metrics for top metric cards."""
+    conn = psycopg2.connect(POSTGRES_URL)
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
 
         cur.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations;")
@@ -507,7 +526,6 @@ def api_analytics_summary():
         worst_day_avg = round(int(worst[1] or 0) / 4.3) if worst else 0
 
         cur.close()
-        conn.close()
 
         return jsonify({
             "total_violations": total, "change_vs_last_month": change,
@@ -518,6 +536,8 @@ def api_analytics_summary():
     except Exception as e:
         logger.error(f"Summary query failed: {e}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @analytics_bp.route('/api/generate_report', methods=['GET'])
@@ -589,20 +609,20 @@ def api_generate_report():
 
     where_sql = " AND ".join(where_clauses)
 
+    conn = psycopg2.connect(POSTGRES_URL)
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
         cur = conn.cursor()
-        
+
         # Per-label counts
         cur.execute(f"""
-            SELECT COALESCE(label,'UNKNOWN'), COUNT(*) 
-            FROM violations 
-            WHERE {where_sql} 
-            GROUP BY label 
+            SELECT COALESCE(label,'UNKNOWN'), COUNT(*)
+            FROM violations
+            WHERE {where_sql}
+            GROUP BY label
             ORDER BY COUNT(*) DESC;
         """, params)
         label_rows = cur.fetchall()
-        
+
         # Summary stats
         cur.execute(f"""
             SELECT
@@ -616,12 +636,12 @@ def api_generate_report():
             WHERE {where_sql};
         """, params)
         stats_row = cur.fetchone()
-        
+
         # Daily breakdown for week/month/custom
         daily_data = []
         if period in ['week', 'month', 'custom']:
             cur.execute(f"""
-                SELECT 
+                SELECT
                     timestamp::date as date,
                     COUNT(DISTINCT (camera, tracker_id)) as unique_count,
                     COUNT(*) as total_count
@@ -631,12 +651,13 @@ def api_generate_report():
                 ORDER BY timestamp::date;
             """, params)
             daily_data = cur.fetchall()
-        
+
         cur.close()
-        conn.close()
     except Exception as e:
         logging.error(f"Failed to query DB for PDF report: {e}")
         return jsonify({"error": "database query failed"}), 500
+    finally:
+        conn.close()
 
     # Generate PDF using reportlab
     try:

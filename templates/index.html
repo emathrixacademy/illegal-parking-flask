@@ -56,7 +56,7 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   z-index: 500;
   overflow-y: auto;
   display: none;
@@ -74,7 +74,7 @@
 }
 .notif-dropdown .notif-item {
   padding: 0.6rem 0.85rem;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
   font-size: 0.8rem;
 }
 .notif-dropdown .notif-item:last-child { border-bottom: none; }
@@ -93,24 +93,25 @@
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 .cam-label {
   position: absolute;
   top: 0.4rem;
   left: 0.4rem;
-  background: rgba(0,0,0,0.7);
-  color: var(--accent);
+  background: rgba(255,255,255,0.92);
+  color: var(--primary);
   font-weight: 700;
   font-size: 0.75rem;
   padding: 0.25rem 0.6rem;
   border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
   z-index: 2;
 }
 .cam-feed-wrap {
   width: 100%;
   aspect-ratio: 16/9;
-  background: #111;
+  background: #e5e7eb;
   position: relative;
   overflow: hidden;
 }
@@ -119,7 +120,7 @@
   height: 100%;
   object-fit: contain;
   display: block;
-  background: #000;
+  background: #f0f2f7;
 }
 .reconnect-overlay {
   position: absolute;
@@ -127,7 +128,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(30,30,30,0.55);
+  background: rgba(255,255,255,0.65);
   backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
@@ -135,7 +136,7 @@
 }
 .reconnect-overlay.active { opacity: 1; pointer-events: auto; }
 .reconnect-overlay .spinner-border { width: 2rem; height: 2rem; color: var(--accent); }
-.reconnect-overlay span { color: #fff; font-size: 0.85rem; font-weight: 600; animation: pulse 1.2s infinite; }
+.reconnect-overlay span { color: var(--text); font-size: 0.85rem; font-weight: 600; animation: pulse 1.2s infinite; }
 @keyframes pulse { 0%{opacity:1} 50%{opacity:0.5} 100%{opacity:1} }
 .zoom-btns {
   position: absolute;
@@ -163,7 +164,7 @@
 .legend { display: flex; gap: 0.75rem; padding: 0.25rem 0.75rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 .legend-dot.red { background: #ff4d4d; }
-.legend-dot.blue { background: #e68a00; }
+.legend-dot.blue { background: #352070; }
 .legend-dot.orange { background: #ffb74d; }
 
 /* Analytics */
@@ -173,13 +174,13 @@
   gap: 0.75rem;
 }
 .stat-card {
-  background: var(--bg);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.75rem;
 }
 .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-.stat-value { font-size: 1.5rem; font-weight: 800; color: #fff; }
+.stat-value { font-size: 1.5rem; font-weight: 800; color: var(--text); }
 .stat-value.accent { color: var(--accent); }
 .chart-wrap { display: flex; justify-content: center; align-items: center; min-height: 160px; }
 .chart-wrap canvas { max-width: 180px; max-height: 180px; }
@@ -190,7 +191,7 @@
 .vehicle-card .count { font-size: 2rem; font-weight: 800; }
 .vehicle-card .label { font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-.color-dot.blue { background: #e68a00; }
+.color-dot.blue { background: #352070; }
 .color-dot.orange { background: #ffb74d; }
 
 /* Detailed stats */
@@ -214,7 +215,7 @@
   color: #111;
   background: #ffd966;
   font-size: 0.85rem;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
 #serverStatusBanner {
   position: fixed;
@@ -229,14 +230,14 @@
 }
 
 /* Summary cards */
-#summary-cards .scard { background: var(--card); border-radius: 10px; padding: 0.85rem; }
+#summary-cards .scard { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; }
 #summary-cards .scard .sc-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
-#summary-cards .scard .sc-value { font-size: 1.5rem; font-weight: 800; color: #fff; }
+#summary-cards .scard .sc-value { font-size: 1.5rem; font-weight: 800; color: var(--text); }
 #summary-cards .scard .sc-sub { font-size: 0.7rem; color: var(--muted); }
 /* Insight cards */
 .insight-card { border-radius: 10px; padding: 0.85rem; }
 .insight-card .ic-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
-.insight-card .ic-desc { font-size: 0.8rem; line-height: 1.45; color: rgba(255,255,255,0.6); }
+.insight-card .ic-desc { font-size: 0.8rem; line-height: 1.45; color: var(--text-secondary); }
 
 /* ===== Tablet+ ===== */
 @media (min-width: 768px) {
@@ -275,9 +276,9 @@
         </div>
       </div>
       <div class="zoom-btns">
-        <button class="btn btn-sm btn-dark" onclick="zoomC1.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
-        <button class="btn btn-sm btn-dark" onclick="zoomC1.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
-        <button class="btn btn-sm btn-dark" onclick="zoomC1.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC1.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC1.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC1.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
         <span class="zoom-level badge bg-warning text-dark">1.0x</span>
       </div>
     </div>
@@ -293,9 +294,9 @@
         </div>
       </div>
       <div class="zoom-btns">
-        <button class="btn btn-sm btn-dark" onclick="zoomC2.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
-        <button class="btn btn-sm btn-dark" onclick="zoomC2.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
-        <button class="btn btn-sm btn-dark" onclick="zoomC2.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
         <span class="zoom-level badge bg-warning text-dark">1.0x</span>
       </div>
     </div>
@@ -553,13 +554,13 @@ function fetchAnalyticsAjax() {
         if (!analyticsChart && ctx) {
             analyticsChart = new Chart(ctx, {
                 type: 'pie',
-                data: { labels, datasets: [{ data: counts, backgroundColor: ['#e68a00','#ffb74d'] }] },
+                data: { labels, datasets: [{ data: counts, backgroundColor: ['#352070','#6c3ec7'] }] },
                 options: { plugins: { legend: { display: false } }, maintainAspectRatio: true, responsive: true }
             });
         }
         if (analyticsChart) {
             if (total === 0) { analyticsChart.data.labels = ['No data']; analyticsChart.data.datasets[0].data = [1]; analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76']; }
-            else { analyticsChart.data.labels = labels; analyticsChart.data.datasets[0].data = counts; analyticsChart.data.datasets[0].backgroundColor = ['#e68a00','#ffb74d']; }
+            else { analyticsChart.data.labels = labels; analyticsChart.data.datasets[0].data = counts; analyticsChart.data.datasets[0].backgroundColor = ['#352070','#6c3ec7']; }
             analyticsChart.update();
         }
         labels.forEach(l => { const el = document.getElementById('count-'+l); if(el) el.textContent = data[l] || 0; });
@@ -850,7 +851,7 @@ renderNotifications();
 // =====================================================
 // INTELLIGENT ANALYTICS DASHBOARD
 // =====================================================
-const CT = 'rgba(255,255,255,0.6)', CG = 'rgba(255,255,255,0.08)', AC = '#ff9800', ACL = 'rgba(255,152,0,0.4)', ACF = 'rgba(255,152,0,0.1)', BL = '#4da6ff';
+const CT = 'rgba(0,0,0,0.6)', CG = 'rgba(0,0,0,0.06)', AC = '#352070', ACL = 'rgba(53,32,112,0.4)', ACF = 'rgba(53,32,112,0.1)', BL = '#6c3ec7';
 const cOpts = {
   responsive: true, maintainAspectRatio: false,
   plugins: { legend: { display: false } },
@@ -879,14 +880,14 @@ async function loadHeatmap() {
     d.data.forEach(x => { if(!hm[x.day_index]) hm[x.day_index]={}; hm[x.day_index][x.hour]=x.count; });
     let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:10px;">';
     html += '<div></div>';
-    for(let h=0;h<24;h++) html += `<div style="text-align:center;color:rgba(255,255,255,0.4)">${String(h).padStart(2,'0')}</div>`;
+    for(let h=0;h<24;h++) html += `<div style="text-align:center;color:rgba(0,0,0,0.4)">${String(h).padStart(2,'0')}</div>`;
     for(let di=0;di<7;di++){
-      html += `<div style="color:rgba(255,255,255,0.5);text-align:right;padding-right:4px;line-height:20px">${days[di]}</div>`;
+      html += `<div style="color:rgba(0,0,0,0.5);text-align:right;padding-right:4px;line-height:20px">${days[di]}</div>`;
       for(let h=0;h<24;h++){
         const c = (hm[di]&&hm[di][h])||0;
         const i = d.max_count>0 ? c/d.max_count : 0;
         const a = Math.max(0.08, i);
-        html += `<div style="height:20px;border-radius:3px;background:rgba(${Math.round(255*i)},${Math.round(152*i)},0,${a});cursor:pointer" title="${days[di]} ${h}:00 — ${c} violations"></div>`;
+        html += `<div style="height:20px;border-radius:3px;background:rgba(53,32,112,${a});cursor:pointer" title="${days[di]} ${h}:00 — ${c} violations"></div>`;
       }
     }
     html += '</div>';
@@ -946,9 +947,9 @@ async function loadInsights() {
   try {
     const d = await ApiCache.fetch('/api/analytics/insights', { ttl: 120000, cacheKey: 'analytics_insights' });
     const colors = {
-      info: { bg: 'rgba(52,152,219,0.12)', border: 'rgba(52,152,219,0.3)', title: '#4da6ff' },
-      warning: { bg: 'rgba(255,152,0,0.12)', border: 'rgba(255,152,0,0.3)', title: '#ff9800' },
-      success: { bg: 'rgba(46,204,113,0.12)', border: 'rgba(46,204,113,0.3)', title: '#2ecc71' }
+      info: { bg: 'rgba(53,32,112,0.08)', border: 'rgba(53,32,112,0.2)', title: '#352070' },
+      warning: { bg: 'rgba(255,152,0,0.1)', border: 'rgba(255,152,0,0.25)', title: '#d97706' },
+      success: { bg: 'rgba(22,163,74,0.1)', border: 'rgba(22,163,74,0.25)', title: '#16a34a' }
     };
     const c = document.getElementById('insights-container');
     if (!d.insights || !d.insights.length) { c.innerHTML = '<div class="small-muted">Collecting data for insights...</div>'; return; }

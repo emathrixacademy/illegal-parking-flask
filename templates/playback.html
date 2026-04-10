@@ -16,14 +16,14 @@
     font-size: 0.8rem;
   }
   .btn-outline-accent {
-    color: var(--accent);
-    border-color: var(--accent);
+    color: var(--primary);
+    border-color: var(--primary);
   }
   .btn-outline-accent:hover,
   .btn-outline-accent:active {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
   }
   .plate-results .table { color: var(--text); }
 
@@ -70,8 +70,8 @@
   <!-- ===== Timeline Scrubber ===== -->
   <div class="content-card">
     <h2><i class="bi bi-film"></i> Recording Timeline</h2>
-    <div id="timeline-bar" style="display:flex;height:32px;background:rgba(255,255,255,0.05);border-radius:6px;overflow:hidden;cursor:pointer;"></div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">
+    <div id="timeline-bar" style="display:flex;height:32px;background:#e5e7eb;border-radius:6px;overflow:hidden;cursor:pointer;"></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;margin-top:4px;">
       <span>00:00</span><span>04:00</span><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>23:59</span>
     </div>
   </div>
@@ -85,10 +85,10 @@
         Your browser does not support video playback.
       </video>
       <div class="pb-zoom-btns">
-        <button class="btn btn-sm btn-outline-warning" id="pb-zoom-in" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
-        <button class="btn btn-sm btn-outline-warning" id="pb-zoom-out" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
-        <button class="btn btn-sm btn-outline-warning" id="pb-zoom-reset" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
-        <span class="zoom-level badge bg-warning text-dark">1.0x</span>
+        <button class="btn btn-sm btn-outline-secondary" id="pb-zoom-in" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="pb-zoom-out" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" id="pb-zoom-reset" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+        <span class="zoom-level badge bg-secondary text-white">1.0x</span>
       </div>
     </div>
     <div id="playerStatus" class="small-muted mt-2"></div>
@@ -230,10 +230,10 @@ function renderTimeline(segments) {
     for (let h = 0; h < 24; h++) {
         const block = document.createElement('div');
         block.style.flex = '1';
-        block.style.borderRight = '1px solid rgba(255,255,255,0.05)';
+        block.style.borderRight = '1px solid rgba(0,0,0,0.06)';
         block.style.transition = 'background 0.2s';
         if (segMap[h]) {
-            block.style.background = 'rgba(255,152,0,0.5)';
+            block.style.background = 'rgba(53,32,112,0.4)';
             block.title = String(h).padStart(2,'0') + ':00 — Recording available (click to play)';
             block.style.cursor = 'pointer';
             block.onclick = () => {
@@ -241,8 +241,8 @@ function renderTimeline(segments) {
                 const date = document.getElementById('dateSelect').value;
                 playSegment(camera, date, segMap[h].time);
             };
-            block.onmouseover = () => { block.style.background = 'rgba(255,152,0,0.8)'; };
-            block.onmouseout = () => { block.style.background = 'rgba(255,152,0,0.5)'; };
+            block.onmouseover = () => { block.style.background = 'rgba(53,32,112,0.7)'; };
+            block.onmouseout = () => { block.style.background = 'rgba(53,32,112,0.4)'; };
         } else {
             block.style.background = 'transparent';
             block.title = String(h).padStart(2,'0') + ':00 — No recording';

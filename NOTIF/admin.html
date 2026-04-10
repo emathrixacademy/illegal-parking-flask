@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin SMS Panel</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #eef3fb;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --line: #dbe3ef;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success-bg: #dcfce7;
+            --success-border: #22c55e;
+            --success-text: #166534;
+            --danger-bg: #fee2e2;
+            --danger-border: #ef4444;
+            --danger-text: #991b1b;
+            --warn-bg: #fef3c7;
+            --warn-border: #f59e0b;
+            --warn-text: #92400e;
+            --soft-blue: #eff6ff;
+            --soft-blue-border: #bfdbfe;
+            --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, #dbeafe 0%, transparent 35%),
+                radial-gradient(circle at bottom right, #e0e7ff 0%, transparent 30%),
+                var(--bg);
+            color: var(--text);
+            padding: 28px 16px;
+        }
+
+        .wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .page-title {
+            margin-bottom: 18px;
+        }
+
+        .page-title h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .page-title p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid #edf2f7;
+        }
+
+        .card-header {
+            padding: 22px 24px;
+            border-bottom: 1px solid #edf2f7;
+            background: linear-gradient(135deg, #f8fbff, #eef4ff);
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .card-header span {
+            display: block;
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .card-body {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+        }
+
+        .section {
+            background: #fcfdff;
+            border: 1px solid #edf2f7;
+            border-radius: 16px;
+            padding: 18px;
+        }
+
+        .section h3 {
+            margin: 0 0 16px;
+            font-size: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #374151;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            color: var(--text);
+            outline: none;
+            transition: 0.2s ease;
+        }
+
+        select:focus,
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .request-meta {
+            margin-top: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .meta-item {
+            background: #f8fafc;
+            border: 1px solid #e5edf7;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .meta-label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .meta-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .btn-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .status-btn {
+            padding: 12px 10px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: #f9fafb;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s ease;
+        }
+
+        .status-btn:hover {
+            transform: translateY(-1px);
+            border-color: #b8c5d6;
+        }
+
+        .status-btn.active.approved {
+            background: var(--success-bg);
+            border-color: var(--success-border);
+            color: var(--success-text);
+        }
+
+        .status-btn.active.rejected {
+            background: var(--danger-bg);
+            border-color: var(--danger-border);
+            color: var(--danger-text);
+        }
+
+        .status-btn.active.needs-appearance {
+            background: var(--warn-bg);
+            border-color: var(--warn-border);
+            color: var(--warn-text);
+        }
+
+        .appearance-box {
+            display: none;
+            margin-top: 16px;
+            padding: 16px;
+            background: #fffaf0;
+            border: 1px solid #fde68a;
+            border-radius: 14px;
+        }
+
+        .appearance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .preview-box {
+            border: 1px dashed var(--soft-blue-border);
+            background: var(--soft-blue);
+            border-radius: 16px;
+            padding: 16px;
+            min-height: 180px;
+        }
+
+        .preview-title {
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+
+        .preview-bubble {
+            background: white;
+            border-radius: 16px 16px 16px 4px;
+            padding: 14px;
+            border: 1px solid #dce8ff;
+            line-height: 1.6;
+            color: #374151;
+            min-height: 88px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .char-row {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .char-badge {
+            font-weight: bold;
+        }
+
+        .status-box {
+            margin-top: 16px;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-box.success {
+            display: block;
+            background: #ecfdf5;
+            border: 1px solid #86efac;
+            color: #166534;
+        }
+
+        .status-box.error {
+            display: block;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+        }
+
+        .save-btn {
+            width: 100%;
+            margin-top: 16px;
+            border: none;
+            border-radius: 14px;
+            background: var(--primary);
+            color: white;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .save-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .save-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 760px) {
+            .card-body {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-row {
+                grid-template-columns: 1fr;
+            }
+
+            .appearance-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Reservation Decision Panel</h2>
+                <span>Select a request, choose a decision, then send the SMS update.</span>
+            </div>
+
+            <div class="card-body">
+                <div class="section">
+                    <h3>Request Details</h3>
+
+                    <label for="requestSelect">Select Request</label>
+                    <select id="requestSelect"></select>
+
+                    <div class="request-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Requestor</span>
+                            <span class="meta-value" id="metaName">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Date</span>
+                            <span class="meta-value" id="metaDate">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Time</span>
+                            <span class="meta-value" id="metaTime">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Phone Number</span>
+                            <span class="meta-value" id="metaPhone">—</span>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top:20px;">Decision</h3>
+                    <div class="btn-row">
+                        <button class="status-btn" id="btnApproved" onclick="setDecision('approved')">Approved</button>
+                        <button class="status-btn" id="btnRejected" onclick="setDecision('rejected')">Rejected</button>
+                        <button class="status-btn" id="btnAppearance" onclick="setDecision('needs-appearance')">Needs Appearance</button>
+                    </div>
+
+                    <div class="appearance-box" id="appearanceBox">
+                        <strong style="display:block; margin-bottom:10px;">Appearance Schedule</strong>
+                        <div class="appearance-grid">
+                            <div>
+                                <label for="appearanceDate">Appearance Date</label>
+                                <input type="date" id="appearanceDate">
+                            </div>
+                            <div>
+                                <label for="appearanceTime">Appearance Time</label>
+                                <input type="time" id="appearanceTime">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>SMS Preview</h3>
+
+                    <div class="preview-box">
+                        <div class="preview-title">Message</div>
+                        <div class="preview-bubble" id="preview">No message yet.</div>
+                        <div class="char-row">
+                            <span>SMS Limit</span>
+                            <span class="char-badge" id="charCount">0 / 160 characters</span>
+                        </div>
+                    </div>
+
+                    <div id="statusBox" class="status-box"></div>
+
+                    <button class="save-btn" id="saveBtn" onclick="save()">Save & Send SMS</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let requests = [];
+        let selected = null;
+
+        function showStatus(message, type = "success") {
+            const box = document.getElementById("statusBox");
+            box.className = "status-box " + type;
+            box.textContent = message;
+        }
+
+        function clearStatus() {
+            const box = document.getElementById("statusBox");
+            box.className = "status-box";
+            box.textContent = "";
+        }
+
+        async function load() {
+            try {
+                const res = await fetch("/api/requests");
+                requests = await res.json();
+
+                const select = document.getElementById("requestSelect");
+                select.innerHTML = "";
+
+                requests.forEach(r => {
+                    const opt = document.createElement("option");
+                    opt.value = r.id;
+                    opt.textContent = `${r.requestor_name} (ID ${r.id})`;
+                    select.appendChild(opt);
+                });
+
+                select.onchange = () => {
+                    selected = requests.find(r => String(r.id) === String(select.value));
+                    renderSelected();
+                };
+
+                if (requests.length > 0) {
+                    select.value = requests[0].id;
+                    selected = requests[0];
+                    renderSelected();
+                } else {
+                    document.getElementById("preview").textContent = "No request data found.";
+                }
+            } catch (err) {
+                showStatus("Failed to load requests: " + err.message, "error");
+            }
+        }
+
+        function formatTime(t) {
+            if (!t) return "";
+            let [h, m] = t.split(":");
+            h = parseInt(h, 10);
+            const ampm = h >= 12 ? "PM" : "AM";
+            h = h % 12 || 12;
+            return `${h}:${m} ${ampm}`;
+        }
+
+        function buildMessage() {
+            if (!selected) return "";
+
+            const name = selected.requestor_name || "User";
+
+            if (selected.status === "approved") {
+                return `Hello ${name}, your lab reservation has been approved.`;
+            }
+
+            if (selected.status === "rejected") {
+                return `Hello ${name}, your lab reservation has been rejected.`;
+            }
+
+            if (selected.status === "needs-appearance") {
+                const d = document.getElementById("appearanceDate").value;
+                const t = formatTime(document.getElementById("appearanceTime").value);
+
+                if (!d || !t) {
+                    return `Hello ${name}, your lab reservation needs personal appearance. Please wait for the schedule details.`;
+                }
+
+                return `Hello ${name}, please appear at the lab on ${d} at ${t} regarding your reservation.`;
+            }
+
+            return "Please choose a decision first.";
+        }
+
+        function updateButtons() {
+            document.getElementById("btnApproved").classList.remove("active", "approved");
+            document.getElementById("btnRejected").classList.remove("active", "rejected");
+            document.getElementById("btnAppearance").classList.remove("active", "needs-appearance");
+
+            if (!selected) return;
+
+            if (selected.status === "approved") {
+                document.getElementById("btnApproved").classList.add("active", "approved");
+            } else if (selected.status === "rejected") {
+                document.getElementById("btnRejected").classList.add("active", "rejected");
+            } else if (selected.status === "needs-appearance") {
+                document.getElementById("btnAppearance").classList.add("active", "needs-appearance");
+            }
+        }
+
+        function updatePreview() {
+            const msg = buildMessage();
+            document.getElementById("preview").textContent = msg || "No message yet.";
+            document.getElementById("charCount").textContent = `${msg.length} / 160 characters`;
+
+            const badge = document.getElementById("charCount");
+            badge.style.color = msg.length > 160 ? "#b91c1c" : "";
+        }
+
+        function renderSelected() {
+            if (!selected) return;
+
+            document.getElementById("metaName").textContent = selected.requestor_name || "—";
+            document.getElementById("metaDate").textContent = selected.date || "—";
+            document.getElementById("metaTime").textContent = selected.time || "—";
+            document.getElementById("metaPhone").textContent = selected.phone_number || "—";
+
+            document.getElementById("appearanceDate").value = selected.appearance_date || "";
+            document.getElementById("appearanceTime").value = selected.appearance_time || "";
+
+            document.getElementById("appearanceBox").style.display =
+                selected.status === "needs-appearance" ? "block" : "none";
+
+            updateButtons();
+            updatePreview();
+            clearStatus();
+        }
+
+        function setDecision(status) {
+            if (!selected) return;
+
+            selected.status = status;
+
+            if (status === "needs-appearance") {
+                document.getElementById("appearanceBox").style.display = "block";
+            } else {
+                document.getElementById("appearanceBox").style.display = "none";
+                selected.appearance_date = "";
+                selected.appearance_time = "";
+                document.getElementById("appearanceDate").value = "";
+                document.getElementById("appearanceTime").value = "";
+            }
+
+            updateButtons();
+            updatePreview();
+            clearStatus();
+        }
+
+        document.getElementById("appearanceDate").addEventListener("input", () => {
+            if (!selected) return;
+            selected.appearance_date = document.getElementById("appearanceDate").value;
+            updatePreview();
+        });
+
+        document.getElementById("appearanceTime").addEventListener("input", () => {
+            if (!selected) return;
+            selected.appearance_time = document.getElementById("appearanceTime").value;
+            updatePreview();
+        });
+
+        async function sendSmsForRequest(req) {
+            const message = buildMessage();
+
+            if (message.length > 160) {
+                throw new Error("SMS message is too long.");
+            }
+
+            const smsRes = await fetch("/send-sms", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    recipient: req.phone_number,
+                    content: message
+                })
+            });
+
+            const data = await smsRes.json();
+
+            if (!smsRes.ok) {
+                throw new Error(typeof data === "object" ? JSON.stringify(data) : "SMS send failed");
+            }
+
+            return data;
+        }
+
+        async function save() {
+            if (!selected) return;
+
+            clearStatus();
+
+            if (!selected.status) {
+                showStatus("Please choose a decision first.", "error");
+                return;
+            }
+
+            if (selected.status === "needs-appearance") {
+                const d = document.getElementById("appearanceDate").value;
+                const t = document.getElementById("appearanceTime").value;
+
+                if (!d || !t) {
+                    showStatus("Please set the appearance date and time first.", "error");
+                    return;
+                }
+
+                selected.appearance_date = d;
+                selected.appearance_time = t;
+            }
+
+            const message = buildMessage();
+            if (message.length > 160) {
+                showStatus("SMS is too long. Please shorten the message.", "error");
+                return;
+            }
+
+            const saveBtn = document.getElementById("saveBtn");
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Sending...";
+
+            try {
+                const saveRes = await fetch(`/api/requests/${selected.id}/decision`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(selected)
+                });
+
+                const saveData = await saveRes.json();
+
+                if (!saveRes.ok) {
+                    showStatus("Save failed: " + JSON.stringify(saveData), "error");
+                    return;
+                }
+
+                const smsData = await sendSmsForRequest(selected);
+
+		showStatus("SMS sent successfully.", "success");
+            } catch (err) {
+                showStatus("Error: " + err.message, "error");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Save & Send SMS";
+            }
+        }
+
+        load();
+    </script>
+</body>
+</html>
