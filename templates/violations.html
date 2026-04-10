@@ -384,9 +384,9 @@ async function searchPlates() {
         const data = await resp.json();
         if (data.error) { container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; return; }
         if (!data.length) { container.innerHTML = '<div class="alert alert-info py-1">No records found.</div>'; return; }
-        let html = '<div class="table-responsive"><table class="table table-sm table-striped table-hover mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Fine</th><th>Time</th></tr></thead><tbody>';
+        let html = '<div class="table-responsive"><table class="table table-sm table-striped table-hover mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Time</th></tr></thead><tbody>';
         data.forEach(r => {
-            html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td><td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td><td>${r.fine_amount ? 'P'+r.fine_amount.toFixed(0) : ''}</td><td>${r.timestamp||''}</td></tr>`;
+            html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td><td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td><td>${r.timestamp||''}</td></tr>`;
         });
         html += '</tbody></table></div>';
         container.innerHTML = html;

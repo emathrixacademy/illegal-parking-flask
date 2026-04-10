@@ -429,57 +429,8 @@
     <div class="detail-item"><div class="dl">Total Violations</div><div id="stat-total-violations" class="dv">0</div></div>
     <div class="detail-item"><div class="dl">Active Cameras</div><div id="stat-active-cameras" class="dv">0</div></div>
     <div class="detail-item"><div class="dl">Affected Barangays</div><div id="stat-affected-barangays" class="dv">0</div></div>
-    <div class="detail-item"><div class="dl">Enforced Count</div><div id="stat-enforced-count" class="dv">0</div></div>
     <div class="detail-item"><div class="dl">Avg Confidence</div><div id="stat-avg-confidence" class="dv">0.00</div></div>
     <div class="detail-item"><div class="dl">Avg Duration (min)</div><div id="stat-avg-duration" class="dv">0.00</div></div>
-    <div class="detail-item"><div class="dl">Total Fines Collected</div><div id="stat-total-fines" class="dv">&#8369;0.00</div></div>
-  </div>
-</div>
-
-<!-- Report Generator -->
-<div class="content-card">
-  <h2><i class="bi bi-file-earmark-pdf-fill"></i> Generate Report</h2>
-  <div class="report-grid">
-    <div>
-      <label class="form-label">Period</label>
-      <select id="reportPeriod" class="form-select">
-        <option value="day">Single Day</option>
-        <option value="week">Week</option>
-        <option value="month">Month</option>
-        <option value="custom">Custom Range</option>
-      </select>
-    </div>
-    <div id="singleDateContainer">
-      <label class="form-label">Date</label>
-      <input id="reportDate" type="date" class="form-control">
-    </div>
-    <div id="customRangeContainer" style="display:none;" class="full-span">
-      <label class="form-label">Date Range</label>
-      <div class="d-flex gap-2 align-items-center">
-        <input id="reportStartDate" type="date" class="form-control" style="flex:1;">
-        <span class="text-muted">to</span>
-        <input id="reportEndDate" type="date" class="form-control" style="flex:1;">
-      </div>
-    </div>
-    <div>
-      <label class="form-label">Vehicle Type</label>
-      <select id="reportVehicleType" class="form-select">
-        <option value="all">All Vehicles</option>
-        <option value="CAR">Cars Only</option>
-        <option value="MOTORCYCLE">Motorcycles Only</option>
-      </select>
-    </div>
-    <div>
-      <label class="form-label">Camera</label>
-      <select id="reportCamera" class="form-select">
-        <option value="all">All Cameras</option>
-        <option value="Camera_1">Camera 1</option>
-        <option value="Camera_2">Camera 2</option>
-      </select>
-    </div>
-    <div class="full-span text-end">
-      <button id="generateReportBtn" class="btn btn-accent"><i class="bi bi-download"></i> Generate PDF</button>
-    </div>
   </div>
 </div>
 
@@ -575,8 +526,6 @@ function fetchAnalyticsAjax() {
         document.getElementById('stat-affected-barangays').textContent = data.affected_barangays || 0;
         document.getElementById('stat-avg-confidence').textContent = (data.avg_confidence || 0).toFixed(2);
         document.getElementById('stat-avg-duration').textContent = (data.avg_duration_minutes || 0).toFixed(2);
-        document.getElementById('stat-enforced-count').textContent = data.enforced_count || 0;
-        document.getElementById('stat-total-fines').textContent = '\u20B1' + (data.total_fines_collected || 0).toFixed(2);
     }).catch(() => {});
 }
 
@@ -616,34 +565,6 @@ function setupViolatorNotification() {
     poll(); setInterval(poll, 5000);
 }
 
-// ===== Report =====
-document.getElementById('reportPeriod').addEventListener('change', function() {
-    document.getElementById('singleDateContainer').style.display = this.value === 'custom' ? 'none' : 'block';
-    document.getElementById('customRangeContainer').style.display = this.value === 'custom' ? 'block' : 'none';
-});
-document.getElementById('generateReportBtn').addEventListener('click', async () => {
-    const period = document.getElementById('reportPeriod').value;
-    const date = document.getElementById('reportDate').value;
-    const sd = document.getElementById('reportStartDate').value;
-    const ed = document.getElementById('reportEndDate').value;
-    const vt = document.getElementById('reportVehicleType').value;
-    const cam = document.getElementById('reportCamera').value;
-    let url = '/api/generate_report?period=' + encodeURIComponent(period);
-    if (period === 'custom') { if(!sd||!ed){alert('Select both dates');return;} url+='&start_date='+sd+'&end_date='+ed; }
-    else if (date) url += '&date=' + date;
-    if (vt !== 'all') url += '&vehicle_type=' + vt;
-    if (cam !== 'all') url += '&camera=' + cam;
-    try {
-        const resp = await fetch(url);
-        if (!resp.ok) { try{const e=await resp.json();alert(e.error||'Failed');}catch(e){alert('Failed');} return; }
-        const blob = await resp.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `violations_${period}_${date||sd||new Date().toISOString().slice(0,10)}.pdf`;
-        document.body.appendChild(a); a.click(); a.remove();
-    } catch(e) { alert('Failed to fetch report'); }
-});
-
 // ===== Audio =====
 let _audioCtx = null;
 function _ensureAudioContext() { if(!_audioCtx) _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return _audioCtx; }
@@ -662,7 +583,6 @@ function fetchRaspiBaseAndInit() {
 window.onload = function() {
     fetchRaspiBaseAndInit();
     setupViolatorNotification();
-    document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
 };
 </script>
 <script src="/static/js/zoom.js"></script>
