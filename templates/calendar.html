@@ -116,25 +116,47 @@
 
   <!-- Side Panel -->
   <div class="cal-card side-panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;padding:1rem 1.25rem 0;">
       <h3>Incident Overview</h3>
       <span class="live-badge">Live view</span>
     </div>
-    <p class="sp-subtitle">Click a date to view its recorded incidents.</p>
+    <p class="sp-subtitle" style="padding:0 1.25rem;">Click a date to view incidents and recordings.</p>
 
-    <div class="sp-info">
-      <div class="sp-info-title">Selected Date</div>
-      <div class="sp-stat"><span class="sp-stat-label">Date:</span> <span class="sp-stat-value" id="spDate">--</span></div>
-      <div class="sp-stat"><span class="sp-stat-label">Incidents:</span> <span class="sp-stat-value" id="spCount">--</span></div>
-      <div class="sp-stat"><span class="sp-stat-label">Cameras:</span> <span class="sp-stat-value" id="spCameras">--</span></div>
-    </div>
+    <div style="padding:0 1.25rem;">
+      <div class="sp-info">
+        <div class="sp-info-title">Selected Date</div>
+        <div class="sp-stat"><span class="sp-stat-label">Date:</span> <span class="sp-stat-value" id="spDate">--</span></div>
+        <div class="sp-stat"><span class="sp-stat-label">Incidents:</span> <span class="sp-stat-value" id="spCount">--</span></div>
+        <div class="sp-stat"><span class="sp-stat-label">Cameras:</span> <span class="sp-stat-value" id="spCameras">--</span></div>
+      </div>
 
-    <div class="sp-info">
-      <div class="sp-info-title">Incidents</div>
-      <div class="sp-incidents" id="spIncidents">
-        <div class="sp-empty">
-          <i class="bi bi-calendar3"></i>
-          Select a date to view incidents
+      <!-- Playback Section -->
+      <div class="sp-info" id="playbackSection" style="display:none;">
+        <div class="sp-info-title"><i class="bi bi-play-circle"></i> Recording Playback</div>
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;flex-wrap:wrap;" id="segmentBtns"></div>
+        <div style="border-radius:10px;overflow:hidden;background:#111;margin-bottom:0.5rem;">
+          <video id="sidePlayer" controls style="width:100%;max-height:220px;display:none;"></video>
+        </div>
+        <div id="playerStatus" style="font-size:0.72rem;color:var(--text-secondary);"></div>
+      </div>
+
+      <!-- Plate Search -->
+      <div class="sp-info">
+        <div class="sp-info-title"><i class="bi bi-search"></i> Plate Number Search</div>
+        <div style="display:flex;gap:0.4rem;">
+          <input type="text" class="form-control" id="plateSearchInput" placeholder="e.g. ABC-1234" style="font-size:0.8rem;">
+          <button class="btn btn-accent btn-sm" onclick="searchPlate()" style="white-space:nowrap;"><i class="bi bi-search"></i></button>
+        </div>
+        <div id="plateResults" style="margin-top:0.5rem;"></div>
+      </div>
+
+      <div class="sp-info">
+        <div class="sp-info-title">Incidents</div>
+        <div class="sp-incidents" id="spIncidents">
+          <div class="sp-empty">
+            <i class="bi bi-calendar3"></i>
+            Select a date to view incidents
+          </div>
         </div>
       </div>
     </div>
@@ -262,6 +284,9 @@ async function selectDate(dateStr) {
     const cameras = [...new Set((data.incidents || []).map(i => i.camera))];
     document.getElementById('spCameras').textContent = cameras.length ? cameras.join(', ') : '--';
 
+    // Load playback segments for this date
+    loadPlaybackForDate(dateStr, cameras);
+
     if (!data.incidents || !data.incidents.length) {
       document.getElementById('spIncidents').innerHTML = `<div class="sp-empty"><i class="bi bi-check-circle"></i>No incidents on this date</div>`;
       return;
@@ -285,7 +310,6 @@ async function selectDate(dateStr) {
         </div>
         <div class="sp-incident-actions">
           ${inc.image_url ? `<a href="${inc.image_url}" target="_blank" class="btn-img"><i class="bi bi-image"></i> View Image</a>` : ''}
-          <a href="/playback" class="btn-vid"><i class="bi bi-play-circle"></i> Playback</a>
         </div>
       </div>`;
     });
@@ -297,6 +321,72 @@ async function selectDate(dateStr) {
     document.getElementById('spCameras').textContent = '--';
   }
 }
+
+// ===== Playback integration =====
+async function loadPlaybackForDate(dateStr, cameras) {
+  const section = document.getElementById('playbackSection');
+  const btns = document.getElementById('segmentBtns');
+  const player = document.getElementById('sidePlayer');
+  const status = document.getElementById('playerStatus');
+  player.style.display = 'none';
+  status.textContent = '';
+
+  try {
+    // Try loading segments for Camera_1 first
+    const camera = 'Camera_1';
+    const resp = await fetch(`/api/playback/segments?camera=${camera}&date=${dateStr}`);
+    const segments = await resp.json();
+
+    if (!segments || !segments.length) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    btns.innerHTML = segments.map(s =>
+      `<button class="btn btn-sm" style="background:var(--primary-lighter);color:var(--primary);font-size:0.7rem;font-weight:600;border-radius:8px;padding:0.25rem 0.5rem;" onclick="playSeg('${camera}','${dateStr}','${s.time}')"><i class="bi bi-play-fill"></i> ${s.time}</button>`
+    ).join('');
+  } catch(e) {
+    section.style.display = 'none';
+  }
+}
+
+function playSeg(camera, date, time) {
+  const player = document.getElementById('sidePlayer');
+  player.src = `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(time)}`;
+  player.style.display = 'block';
+  player.load();
+  player.play();
+  document.getElementById('playerStatus').textContent = `Playing: ${camera} - ${date} ${time}`;
+}
+
+// ===== Plate search =====
+async function searchPlate() {
+  const q = document.getElementById('plateSearchInput').value.trim();
+  const container = document.getElementById('plateResults');
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const resp = await fetch(`/api/plates/search?q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    if (data.error) { container.innerHTML = `<div class="alert alert-danger py-1" style="font-size:0.75rem;">${data.error}</div>`; return; }
+    if (!data.length) { container.innerHTML = '<div style="font-size:0.78rem;color:var(--muted);padding:0.5rem 0;">No records found.</div>'; return; }
+    let html = '<div style="max-height:200px;overflow-y:auto;">';
+    data.forEach(r => {
+      html += `<div class="sp-incident" style="padding:0.5rem;">
+        <div style="font-weight:700;color:var(--primary);font-size:0.78rem;">${r.plate_number}</div>
+        <div class="sp-incident-meta">
+          <span>${r.camera||''}</span>
+          <span>${r.label||''}</span>
+          <span>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</span>
+          <span>${r.timestamp||''}</span>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<div style="font-size:0.75rem;color:var(--danger);">Search failed.</div>'; }
+}
+document.getElementById('plateSearchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchPlate(); });
 
 init();
 </script>
