@@ -23,7 +23,11 @@ def check_password(password, hashed):
 
 def authenticate(username, password):
     """Verify credentials. Returns user dict or None."""
-    conn = get_connection()
+    try:
+        conn = get_connection()
+    except Exception as e:
+        logger.error(f"Database connection failed during authentication: {e}")
+        return None
     try:
         cur = conn.cursor()
         cur.execute(
@@ -44,14 +48,17 @@ def authenticate(username, password):
         return None
 
     # Update last login
-    conn = get_connection()
     try:
-        cur = conn.cursor()
-        cur.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s", (user_id,))
-        conn.commit()
-        cur.close()
-    finally:
-        conn.close()
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s", (user_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"Failed to update last_login: {e}")
 
     return {
         "id": user_id,

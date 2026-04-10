@@ -284,12 +284,21 @@ def login_page():
     if request.method == 'POST':
         username = request.form.get('username', '')
         password = request.form.get('password', '')
-        user = authenticate(username, password)
+        try:
+            user = authenticate(username, password)
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
+            user = None
+            error = 'System error. Please try again.'
         if user:
             session['user'] = user
-            log_activity(user['id'], 'login')
+            try:
+                log_activity(user['id'], 'login')
+            except Exception:
+                pass
             return redirect(url_for('index'))
-        error = 'Invalid username or password'
+        if not error:
+            error = 'Invalid username or password'
     return render_template('login.html', error=error)
 
 @app.route('/logout')
