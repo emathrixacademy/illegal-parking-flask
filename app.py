@@ -1214,6 +1214,23 @@ def api_list_images():
         logger.error(f"Proxy list_images error: {e}")
         return jsonify([])
 
+@app.route('/api/pending_review_count')
+@login_required
+def api_pending_review_count():
+    """Return count of violations pending admin review."""
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM violations WHERE COALESCE(review_status, 'for_review') = 'for_review'")
+            count = cur.fetchone()[0]
+            cur.close()
+            return jsonify({"count": count})
+        finally:
+            conn.close()
+    except Exception as e:
+        return jsonify({"count": 0})
+
 @app.route('/api/model_performance')
 @login_required
 def api_model_performance():

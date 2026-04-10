@@ -607,24 +607,39 @@ function markAllRead() {
   renderNotifications();
 }
 
-// Poll for new violations
+// Poll for new violations AND pending review count
 async function pollViolations() {
   try {
     const resp = await fetch('/api/db_violations_count');
     if (!resp.ok) return;
     const data = await resp.json();
     const count = Number(data.count || 0);
-    if (!_notifSeeded) { _lastKnownCount = count; _notifSeeded = true; localStorage.setItem('dcgl_lastKnownCount', String(count)); return; }
-    const prev = Number(localStorage.getItem('dcgl_lastKnownCount') || _lastKnownCount);
-    if (count > prev) {
-      const delta = count - prev;
-      addNotification(
-        `<strong>${delta} new incident${delta>1?'s':''}</strong> detected`,
-        `Illegal road blocking in Brgy. Kanluran`
-      );
+    if (!_notifSeeded) { _lastKnownCount = count; _notifSeeded = true; localStorage.setItem('dcgl_lastKnownCount', String(count)); }
+    else {
+      const prev = Number(localStorage.getItem('dcgl_lastKnownCount') || _lastKnownCount);
+      if (count > prev) {
+        const delta = count - prev;
+        addNotification(
+          `<strong>${delta} new incident${delta>1?'s':''}</strong> detected`,
+          `Illegal road blocking in Brgy. Kanluran`
+        );
+      }
+      localStorage.setItem('dcgl_lastKnownCount', String(count));
+      _lastKnownCount = count;
     }
-    localStorage.setItem('dcgl_lastKnownCount', String(count));
-    _lastKnownCount = count;
+  } catch(e) {}
+
+  // Also fetch pending review count for badge
+  try {
+    const resp2 = await fetch('/api/pending_review_count');
+    if (resp2.ok) {
+      const d2 = await resp2.json();
+      const pending = Number(d2.count || 0);
+      const badge = document.getElementById('notifBadge');
+      if (badge && pending > 0 && _notifCount === 0) {
+        badge.textContent = pending > 99 ? '99+' : pending;
+      }
+    }
   } catch(e) {}
 }
 
