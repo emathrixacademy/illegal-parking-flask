@@ -1143,6 +1143,50 @@ def api_list_images():
         logger.error(f"Proxy list_images error: {e}")
         return jsonify([])
 
+@app.route('/api/model_performance')
+@login_required
+def api_model_performance():
+    """Return YOLOv8 detection and OCR performance metrics."""
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            # YOLOv8 detection stats from violations table
+            cur.execute("""
+                SELECT COUNT(*) as total,
+                       AVG(confidence_score) as avg_conf,
+                       COUNT(CASE WHEN confidence_score >= 0.7 THEN 1 END) as high_conf,
+                       COUNT(CASE WHEN confidence_score < 0.5 THEN 1 END) as low_conf
+                FROM violations
+            """)
+            yolo = cur.fetchone()
+
+            # OCR stats from plate_records table
+            cur.execute("""
+                SELECT COUNT(*) as total,
+                       AVG(confidence) as avg_conf,
+                       COUNT(DISTINCT plate_number) as unique_plates
+                FROM plate_records
+                WHERE plate_number IS NOT NULL AND plate_number != ''
+            """)
+            ocr = cur.fetchone()
+            cur.close()
+
+            return jsonify({
+                "yolo_total": yolo[0] or 0,
+                "yolo_avg_confidence": float(yolo[1] or 0),
+                "yolo_high_conf": yolo[2] or 0,
+                "yolo_low_conf": yolo[3] or 0,
+                "ocr_total": ocr[0] or 0,
+                "ocr_avg_confidence": float(ocr[1] or 0),
+                "ocr_unique_plates": ocr[2] or 0,
+            })
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"Model performance API error: {e}")
+        return jsonify({"yolo_total": 0, "yolo_avg_confidence": 0, "yolo_high_conf": 0, "yolo_low_conf": 0, "ocr_total": 0, "ocr_avg_confidence": 0, "ocr_unique_plates": 0})
+
 @app.route('/api/calendar')
 @login_required
 def api_calendar():

@@ -414,11 +414,45 @@
   </div>
 </div>
 
-<!-- AI Insights -->
+<!-- Model Performance -->
 <div class="content-card">
-  <h2><i class="bi bi-lightbulb"></i> AI Insights</h2>
-  <div id="insights-container" style="display:grid; grid-template-columns:1fr; gap:0.5rem;">
-    <div class="small-muted">Analyzing patterns...</div>
+  <h2><i class="bi bi-cpu"></i> Model Performance</h2>
+  <p class="small-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Detection and recognition model evaluation metrics.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+    <!-- YOLOv8 -->
+    <div style="background:var(--bg);border-radius:12px;padding:1rem;border:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;">
+        <span style="background:var(--primary-lighter);color:var(--primary);padding:0.3rem 0.5rem;border-radius:8px;font-size:0.7rem;font-weight:700;">YOLOv8s</span>
+        <span style="font-size:0.82rem;font-weight:700;">Vehicle Detection</span>
+      </div>
+      <div id="yoloMetrics" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Total Detections</div><div id="yolo-total" style="font-size:1.2rem;font-weight:800;">--</div></div>
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Avg Confidence</div><div id="yolo-avg-conf" style="font-size:1.2rem;font-weight:800;">--</div></div>
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">High Confidence (&gt;70%)</div><div id="yolo-high" style="font-size:1.2rem;font-weight:800;color:var(--success);">--</div></div>
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Low Confidence (&lt;50%)</div><div id="yolo-low" style="font-size:1.2rem;font-weight:800;color:var(--danger);">--</div></div>
+      </div>
+      <div style="margin-top:0.75rem;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div id="yolo-bar" style="height:100%;background:var(--success);border-radius:3px;width:0%;transition:width 0.5s;"></div>
+      </div>
+      <div style="font-size:0.68rem;color:var(--text-secondary);margin-top:0.25rem;">Confidence distribution</div>
+    </div>
+    <!-- OCR -->
+    <div style="background:var(--bg);border-radius:12px;padding:1rem;border:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;">
+        <span style="background:var(--info-bg);color:var(--info);padding:0.3rem 0.5rem;border-radius:8px;font-size:0.7rem;font-weight:700;">EasyOCR</span>
+        <span style="font-size:0.82rem;font-weight:700;">Plate Recognition</span>
+      </div>
+      <div id="ocrMetrics" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Plates Read</div><div id="ocr-total" style="font-size:1.2rem;font-weight:800;">--</div></div>
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Avg OCR Confidence</div><div id="ocr-avg-conf" style="font-size:1.2rem;font-weight:800;">--</div></div>
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Read Rate</div><div id="ocr-rate" style="font-size:1.2rem;font-weight:800;color:var(--primary);">--</div></div>
+        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Unique Plates</div><div id="ocr-unique" style="font-size:1.2rem;font-weight:800;">--</div></div>
+      </div>
+      <div style="margin-top:0.75rem;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div id="ocr-bar" style="height:100%;background:var(--info);border-radius:3px;width:0%;transition:width 0.5s;"></div>
+      </div>
+      <div style="font-size:0.68rem;color:var(--text-secondary);margin-top:0.25rem;">Plate read success rate</div>
+    </div>
   </div>
 </div>
 
@@ -861,24 +895,27 @@ async function loadDurationChart() {
   } catch(e) { console.error('Duration failed:', e); }
 }
 
-async function loadInsights() {
+async function loadModelPerformance() {
   try {
-    const d = await ApiCache.fetch('/api/analytics/insights', { ttl: 120000, cacheKey: 'analytics_insights' });
-    const colors = {
-      info: { bg: 'rgba(53,32,112,0.08)', border: 'rgba(53,32,112,0.2)', title: '#352070' },
-      warning: { bg: 'rgba(255,152,0,0.1)', border: 'rgba(255,152,0,0.25)', title: '#d97706' },
-      success: { bg: 'rgba(22,163,74,0.1)', border: 'rgba(22,163,74,0.25)', title: '#16a34a' }
-    };
-    const c = document.getElementById('insights-container');
-    if (!d.insights || !d.insights.length) { c.innerHTML = '<div class="small-muted">Collecting data for insights...</div>'; return; }
-    c.innerHTML = d.insights.map(ins => {
-      const cl = colors[ins.type] || colors.info;
-      return `<div class="insight-card" style="background:${cl.bg};border:1px solid ${cl.border}"><div class="ic-title" style="color:${cl.title}">${ins.title}</div><div class="ic-desc">${ins.description}</div></div>`;
-    }).join('');
-  } catch(e) { console.error('Insights failed:', e); }
+    const d = await ApiCache.fetch('/api/model_performance', { ttl: 60000, cacheKey: 'model_perf' });
+    document.getElementById('yolo-total').textContent = (d.yolo_total || 0).toLocaleString();
+    const avgConf = d.yolo_avg_confidence || 0;
+    document.getElementById('yolo-avg-conf').textContent = (avgConf * 100).toFixed(1) + '%';
+    document.getElementById('yolo-high').textContent = (d.yolo_high_conf || 0).toLocaleString();
+    document.getElementById('yolo-low').textContent = (d.yolo_low_conf || 0).toLocaleString();
+    const yoloPct = d.yolo_total > 0 ? (d.yolo_high_conf / d.yolo_total * 100) : 0;
+    document.getElementById('yolo-bar').style.width = yoloPct.toFixed(0) + '%';
+    document.getElementById('ocr-total').textContent = (d.ocr_total || 0).toLocaleString();
+    const ocrConf = d.ocr_avg_confidence || 0;
+    document.getElementById('ocr-avg-conf').textContent = (ocrConf * 100).toFixed(1) + '%';
+    const readRate = d.yolo_total > 0 ? (d.ocr_total / d.yolo_total * 100) : 0;
+    document.getElementById('ocr-rate').textContent = readRate.toFixed(1) + '%';
+    document.getElementById('ocr-unique').textContent = (d.ocr_unique_plates || 0).toLocaleString();
+    document.getElementById('ocr-bar').style.width = Math.min(readRate, 100).toFixed(0) + '%';
+  } catch(e) { console.error('Model perf failed:', e); }
 }
 
 // Load all analytics on page ready
-setTimeout(() => { loadSummaryCards(); loadHeatmap(); loadTrendChart(); loadHourlyChart(); loadCameraChart(); loadDurationChart(); loadInsights(); }, 500);
+setTimeout(() => { loadSummaryCards(); loadHeatmap(); loadTrendChart(); loadHourlyChart(); loadCameraChart(); loadDurationChart(); loadModelPerformance(); }, 500);
 </script>
 {% endblock %}
