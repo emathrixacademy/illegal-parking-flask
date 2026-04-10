@@ -59,10 +59,7 @@ STATIC_EVENTS_DIR = "static/events"
 EVENT_IMAGE_FORMAT = "{camera_id}_{timestamp}.jpg"
 EVENT_IMAGE_TIMESTAMP_REPL = lambda ts: ts.replace(":", "-").replace(".", "-")
 
-POSTGRES_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@postgres-pote.railway.internal:5432/railway"
-)
+POSTGRES_URL = os.environ.get("DATABASE_URL") or "postgresql://postgres:osBsKkhgPnjxUCtzUDZFSLAVTEvuqCNH@postgres.railway.internal:5432/railway"
 
 # Initialize database tables and default settings on startup
 ensure_tables()

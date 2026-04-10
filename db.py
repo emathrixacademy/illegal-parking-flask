@@ -3,7 +3,7 @@ import psycopg2
 import logging
 import json
 
-POSTGRES_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:ltymHUMvXphOojaHeJRJGnyQUfWsghwq@postgres-pote.railway.internal:5432/railway")
+POSTGRES_URL = os.environ.get("DATABASE_URL") or "postgresql://postgres:osBsKkhgPnjxUCtzUDZFSLAVTEvuqCNH@postgres.railway.internal:5432/railway"
 
 logger = logging.getLogger("db")
 
