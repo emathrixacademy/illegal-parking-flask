@@ -344,6 +344,7 @@
   <div class="sb-nav">
     <a href="/" class="{% if active_page == 'home' %}active{% endif %}"><i class="bi bi-house-door-fill"></i> Dashboard</a>
     <a href="/violations" class="{% if active_page == 'violations' %}active{% endif %}"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
+    <a href="/calendar" class="{% if active_page == 'calendar' %}active{% endif %}"><i class="bi bi-calendar3"></i> Calendar</a>
     <a href="/playback" class="{% if active_page == 'playback' %}active{% endif %}"><i class="bi bi-play-circle-fill"></i> Playback</a>
     {% if user and user.role in ['admin','operator'] %}
     <a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}"><i class="bi bi-gear-fill"></i> Settings</a>

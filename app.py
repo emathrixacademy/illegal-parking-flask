@@ -313,6 +313,11 @@ def logout():
 def index():
     return render_template('index.html', user=session.get('user'), public_url=PI_PUBLIC_URL or "", active_page='home')
 
+@app.route('/calendar')
+@login_required
+def calendar_page():
+    return render_template('calendar.html', user=session.get('user'), active_page='calendar')
+
 @app.route('/settings')
 @login_required
 @role_required('operator')
@@ -1137,6 +1142,78 @@ def api_list_images():
     except Exception as e:
         logger.error(f"Proxy list_images error: {e}")
         return jsonify([])
+
+@app.route('/api/calendar')
+@login_required
+def api_calendar():
+    """Return incident counts per day for a given month (YYYY-MM)."""
+    month = request.args.get('month', '')
+    if not month:
+        from datetime import datetime as dt
+        month = dt.now().strftime('%Y-%m')
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT DATE(timestamp) as day, COUNT(*) as cnt
+                FROM violations
+                WHERE TO_CHAR(timestamp, 'YYYY-MM') = %s
+                GROUP BY DATE(timestamp)
+                ORDER BY day
+            """, (month,))
+            rows = cur.fetchall()
+            cur.close()
+            result = {}
+            for day, cnt in rows:
+                result[str(day)] = {"count": cnt}
+            return jsonify(result)
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"Calendar API error: {e}")
+        return jsonify({})
+
+@app.route('/api/calendar/details')
+@login_required
+def api_calendar_details():
+    """Return incident details for a specific date."""
+    date = request.args.get('date', '')
+    if not date:
+        return jsonify({"total": 0, "incidents": []})
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT v.id, v.camera, v.tracker_id, v.label, v.timestamp,
+                       v.image_path, v.confidence_score, v.duration_minutes,
+                       p.plate_number
+                FROM violations v
+                LEFT JOIN plate_records p ON p.violation_id = v.id
+                WHERE DATE(v.timestamp) = %s
+                ORDER BY v.timestamp DESC
+            """, (date,))
+            rows = cur.fetchall()
+            cur.close()
+            incidents = []
+            for r in rows:
+                img_url = ''
+                if r[5]:
+                    img_url = f'/api/image_from_db?image_path={urllib.parse.quote(r[5])}'
+                incidents.append({
+                    "id": r[0], "camera": r[1], "tracker_id": r[2],
+                    "label": r[3], "timestamp": r[4].isoformat() if r[4] else None,
+                    "image_url": img_url,
+                    "confidence": r[6], "duration_minutes": r[7],
+                    "plate_number": r[8]
+                })
+            return jsonify({"total": len(incidents), "incidents": incidents})
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"Calendar details API error: {e}")
+        return jsonify({"total": 0, "incidents": [], "error": str(e)})
 
 @app.route('/api/violations_list')
 @login_required

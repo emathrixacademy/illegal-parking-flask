@@ -428,7 +428,6 @@
   <div class="detail-grid">
     <div class="detail-item"><div class="dl">Total Violations</div><div id="stat-total-violations" class="dv">0</div></div>
     <div class="detail-item"><div class="dl">Active Cameras</div><div id="stat-active-cameras" class="dv">0</div></div>
-    <div class="detail-item"><div class="dl">Affected Barangays</div><div id="stat-affected-barangays" class="dv">0</div></div>
     <div class="detail-item"><div class="dl">Avg Confidence</div><div id="stat-avg-confidence" class="dv">0.00</div></div>
     <div class="detail-item"><div class="dl">Avg Duration (min)</div><div id="stat-avg-duration" class="dv">0.00</div></div>
   </div>
@@ -523,7 +522,6 @@ function fetchAnalyticsAjax() {
     fetch('/api/violation_stats').then(r => r.json()).then(data => {
         document.getElementById('stat-total-violations').textContent = data.total_violations || 0;
         document.getElementById('stat-active-cameras').textContent = data.active_cameras || 0;
-        document.getElementById('stat-affected-barangays').textContent = data.affected_barangays || 0;
         document.getElementById('stat-avg-confidence').textContent = (data.avg_confidence || 0).toFixed(2);
         document.getElementById('stat-avg-duration').textContent = (data.avg_duration_minutes || 0).toFixed(2);
     }).catch(() => {});

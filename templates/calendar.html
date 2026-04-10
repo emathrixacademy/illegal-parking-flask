@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% set active_page = 'calendar' %}
+{% block title %}Incident Calendar — DECONGESTILAGUNA{% endblock %}
+{% block header_title %}<i class="bi bi-calendar3"></i> Incident Calendar{% endblock %}
+
+{% block extra_css %}
+.cal-page { display: grid; grid-template-columns: 1fr; gap: 0.75rem; padding: 0.75rem; }
+.cal-card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 1.25rem; }
+
+/* Calendar header */
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.cal-header h2 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.cal-nav { display: flex; align-items: center; gap: 0.5rem; }
+.cal-nav-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; font-size: 0.9rem; }
+.cal-nav-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cal-today-btn { padding: 0.4rem 0.9rem; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
+.cal-today-btn:hover { background: var(--accent-hover); }
+
+/* Legend */
+.cal-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.75rem; color: var(--text-secondary); }
+.cal-legend-item { display: flex; align-items: center; gap: 0.35rem; }
+.cal-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cal-legend-dot.green { background: #16a34a; }
+.cal-legend-dot.yellow { background: #d97706; }
+.cal-legend-dot.red { background: #dc2626; }
+.cal-legend-dot.gray { background: #cbd5e1; }
+
+/* Calendar grid */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.cal-dow { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; padding: 0.65rem 0; background: var(--bg); border-bottom: 1px solid var(--border); letter-spacing: 0.5px; }
+.cal-cell { min-height: 80px; padding: 0.5rem; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; position: relative; background: var(--card); }
+.cal-cell:nth-child(7n) { border-right: none; }
+.cal-cell:hover { background: var(--primary-lighter); }
+.cal-cell.selected { background: var(--primary-lighter); box-shadow: inset 0 0 0 2px var(--primary); border-radius: 2px; }
+.cal-cell.today { background: #eff6ff; }
+.cal-cell.today .cal-day { color: var(--primary); font-weight: 800; }
+.cal-cell.other-month { background: var(--bg); opacity: 0.5; }
+.cal-cell.other-month:hover { opacity: 0.7; }
+.cal-day { font-size: 0.78rem; font-weight: 600; color: var(--text); margin-bottom: 0.25rem; }
+.cal-count { font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 8px; display: inline-block; }
+.cal-count.none { background: transparent; }
+.cal-count.low { background: var(--success-bg); color: var(--success); }
+.cal-count.mid { background: var(--warning-bg); color: var(--warning); }
+.cal-count.high { background: var(--danger-bg); color: var(--danger); }
+.cal-passed { color: var(--muted); font-size: 0.62rem; margin-top: 2px; }
+
+/* Side panel */
+.side-panel h3 { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.3rem; }
+.side-panel .sp-subtitle { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 1rem; }
+.sp-info { margin-bottom: 1.25rem; }
+.sp-info-title { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+.sp-stat { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
+.sp-stat-label { font-size: 0.78rem; color: var(--text-secondary); min-width: 60px; }
+.sp-stat-value { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+
+/* Incident list in side panel */
+.sp-incidents { max-height: 400px; overflow-y: auto; }
+.sp-incident { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.5rem; transition: border-color 0.15s; cursor: pointer; }
+.sp-incident:hover { border-color: var(--primary-light); }
+.sp-incident-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
+.sp-incident-camera { font-size: 0.78rem; font-weight: 700; color: var(--primary); }
+.sp-incident-time { font-size: 0.72rem; color: var(--text-secondary); }
+.sp-incident-meta { font-size: 0.72rem; color: var(--text-secondary); display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.sp-incident-actions { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+.sp-incident-actions a {
+  font-size: 0.72rem; padding: 0.25rem 0.55rem;
+  border-radius: 8px; text-decoration: none; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  transition: all 0.15s;
+}
+.sp-incident-actions .btn-img { background: var(--primary-lighter); color: var(--primary); }
+.sp-incident-actions .btn-img:hover { background: var(--primary); color: #fff; }
+.sp-incident-actions .btn-vid { background: var(--info-bg); color: var(--info); }
+.sp-incident-actions .btn-vid:hover { background: var(--info); color: #fff; }
+
+.sp-empty { text-align: center; color: var(--muted); padding: 2rem 0; font-size: 0.85rem; }
+.sp-empty i { font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.4; }
+
+/* Live badge */
+.live-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 20px; background: #16a34a; color: #fff; font-size: 0.7rem; font-weight: 600; }
+.live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: livePulse 1.5s ease infinite; }
+@keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+@media (min-width: 1024px) {
+  .cal-page { grid-template-columns: 1fr 340px; padding: 1rem 1.5rem; }
+  .cal-cell { min-height: 90px; }
+}
+@media (min-width: 1400px) {
+  .cal-page { grid-template-columns: 1fr 380px; }
+  .cal-cell { min-height: 100px; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="cal-page">
+  <!-- Calendar -->
+  <div class="cal-card">
+    <div class="cal-header">
+      <div>
+        <h2 id="calTitle">April 2026</h2>
+        <div class="cal-legend">
+          <span class="cal-legend-item"><span class="cal-legend-dot green"></span> No incidents</span>
+          <span class="cal-legend-item"><span class="cal-legend-dot yellow"></span> 1-3 incidents</span>
+          <span class="cal-legend-item"><span class="cal-legend-dot red"></span> 4+ incidents</span>
+          <span class="cal-legend-item"><span class="cal-legend-dot gray"></span> Passed</span>
+        </div>
+      </div>
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)" title="Previous"><i class="bi bi-chevron-left"></i></button>
+        <button class="cal-today-btn" onclick="goToday()"><i class="bi bi-calendar-check"></i> Today</button>
+        <button class="cal-nav-btn" onclick="changeMonth(1)" title="Next"><i class="bi bi-chevron-right"></i></button>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="cal-card side-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+      <h3>Incident Overview</h3>
+      <span class="live-badge">Live view</span>
+    </div>
+    <p class="sp-subtitle">Click a date to view its recorded incidents.</p>
+
+    <div class="sp-info">
+      <div class="sp-info-title">Selected Date</div>
+      <div class="sp-stat"><span class="sp-stat-label">Date:</span> <span class="sp-stat-value" id="spDate">--</span></div>
+      <div class="sp-stat"><span class="sp-stat-label">Incidents:</span> <span class="sp-stat-value" id="spCount">--</span></div>
+      <div class="sp-stat"><span class="sp-stat-label">Cameras:</span> <span class="sp-stat-value" id="spCameras">--</span></div>
+    </div>
+
+    <div class="sp-info">
+      <div class="sp-info-title">Incidents</div>
+      <div class="sp-incidents" id="spIncidents">
+        <div class="sp-empty">
+          <i class="bi bi-calendar3"></i>
+          Select a date to view incidents
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentYear, currentMonth;
+let incidentData = {};
+let selectedDate = null;
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function init() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  loadMonth();
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  loadMonth();
+}
+
+function goToday() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  loadMonth();
+  const todayStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  selectDate(todayStr);
+}
+
+async function loadMonth() {
+  document.getElementById('calTitle').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+  const ym = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+
+  try {
+    const resp = await fetch(`/api/calendar?month=${ym}`);
+    incidentData = await resp.json();
+  } catch(e) {
+    incidentData = {};
+  }
+
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const lastDay = new Date(currentYear, currentMonth + 1, 0);
+  const startDow = firstDay.getDay(); // 0=Sun
+
+  let html = '';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    html += `<div class="cal-dow">${d}</div>`;
+  });
+
+  // Previous month padding
+  const prevLast = new Date(currentYear, currentMonth, 0);
+  for (let i = startDow - 1; i >= 0; i--) {
+    const d = prevLast.getDate() - i;
+    html += `<div class="cal-cell other-month"><div class="cal-day">${d}</div></div>`;
+  }
+
+  // Current month days
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const count = (incidentData[dateStr] && incidentData[dateStr].count) || 0;
+    const isPassed = new Date(dateStr) < new Date(todayStr) && dateStr !== todayStr;
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === selectedDate;
+
+    let classes = 'cal-cell';
+    if (isToday) classes += ' today';
+    if (isSelected) classes += ' selected';
+
+    let countHtml = '';
+    if (count === 0) {
+      countHtml = isPassed ? '<div class="cal-passed">No incidents</div>' : '';
+    } else if (count <= 3) {
+      countHtml = `<span class="cal-count mid">${count} incident${count>1?'s':''}</span>`;
+    } else {
+      countHtml = `<span class="cal-count high">${count} incidents</span>`;
+    }
+
+    html += `<div class="${classes}" onclick="selectDate('${dateStr}')">
+      <div class="cal-day">${d}${isToday ? ' <span style="font-size:0.62rem;color:var(--primary);font-weight:700;">Today</span>' : ''}</div>
+      ${countHtml}
+    </div>`;
+  }
+
+  // Next month padding
+  const totalCells = startDow + lastDay.getDate();
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="cal-cell other-month"><div class="cal-day">${i}</div></div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+async function selectDate(dateStr) {
+  selectedDate = dateStr;
+  renderCalendar();
+
+  document.getElementById('spDate').textContent = dateStr;
+  document.getElementById('spCount').textContent = 'Loading...';
+  document.getElementById('spCameras').textContent = '...';
+  document.getElementById('spIncidents').innerHTML = '<div class="sp-empty"><div class="spinner-border spinner-border-sm text-muted"></div> Loading...</div>';
+
+  try {
+    const resp = await fetch(`/api/calendar/details?date=${dateStr}`);
+    const data = await resp.json();
+
+    document.getElementById('spCount').textContent = data.total || 0;
+    const cameras = [...new Set((data.incidents || []).map(i => i.camera))];
+    document.getElementById('spCameras').textContent = cameras.length ? cameras.join(', ') : '--';
+
+    if (!data.incidents || !data.incidents.length) {
+      document.getElementById('spIncidents').innerHTML = `<div class="sp-empty"><i class="bi bi-check-circle"></i>No incidents on this date</div>`;
+      return;
+    }
+
+    let html = '';
+    data.incidents.forEach(inc => {
+      const timeStr = inc.timestamp ? new Date(inc.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+      const duration = inc.duration_minutes ? inc.duration_minutes.toFixed(1) + ' min' : '';
+      const plate = inc.plate_number || '';
+
+      html += `<div class="sp-incident">
+        <div class="sp-incident-header">
+          <span class="sp-incident-camera"><i class="bi bi-camera-video"></i> ${inc.camera || 'Unknown'}</span>
+          <span class="sp-incident-time"><i class="bi bi-clock"></i> ${timeStr}</span>
+        </div>
+        <div class="sp-incident-meta">
+          <span><i class="bi bi-car-front"></i> ${inc.label || 'Vehicle'}</span>
+          ${duration ? `<span><i class="bi bi-hourglass-split"></i> ${duration}</span>` : ''}
+          ${plate ? `<span><i class="bi bi-card-text"></i> ${plate}</span>` : ''}
+        </div>
+        <div class="sp-incident-actions">
+          ${inc.image_url ? `<a href="${inc.image_url}" target="_blank" class="btn-img"><i class="bi bi-image"></i> View Image</a>` : ''}
+          <a href="/playback" class="btn-vid"><i class="bi bi-play-circle"></i> Playback</a>
+        </div>
+      </div>`;
+    });
+
+    document.getElementById('spIncidents').innerHTML = html;
+  } catch(e) {
+    document.getElementById('spIncidents').innerHTML = '<div class="sp-empty"><i class="bi bi-exclamation-circle"></i>Failed to load incidents</div>';
+    document.getElementById('spCount').textContent = 'Error';
+    document.getElementById('spCameras').textContent = '--';
+  }
+}
+
+init();
+</script>
+{% endblock %}
