@@ -104,7 +104,67 @@
       display: flex; align-items: center; gap: 0.3rem;
     }
     .header-badge.live { background: #16a34a; color: #fff; }
+    .header-badge.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: livePulse 1.5s ease infinite; }
+    @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
     .header-badge.locked { background: #dc2626; color: #fff; }
+    .header-badge.updates { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.15); cursor: pointer; }
+    .header-badge.updates:hover { background: rgba(255,255,255,0.2); }
+    .header-badge.logout-btn { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; text-decoration: none; }
+    .header-badge.logout-btn:hover { background: rgba(220,38,38,0.3); color: #fff; border-color: rgba(220,38,38,0.5); }
+
+    /* Notification Bell */
+    .notif-wrapper { position: relative; }
+    .notif-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; font-size: 1.05rem; position: relative;
+    }
+    .notif-btn:hover { background: rgba(255,255,255,0.2); }
+    .notif-btn .notif-count {
+      position: absolute; top: -4px; right: -4px;
+      background: #dc2626; color: #fff; font-size: 0.58rem; font-weight: 800;
+      min-width: 18px; height: 18px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 4px; border: 2px solid var(--primary);
+    }
+    .notif-btn .notif-count:empty { display: none; }
+    @keyframes bellRing { 0%{transform:rotate(0)} 15%{transform:rotate(14deg)} 30%{transform:rotate(-14deg)} 45%{transform:rotate(10deg)} 60%{transform:rotate(-6deg)} 75%{transform:rotate(3deg)} 100%{transform:rotate(0)} }
+    .notif-btn.ringing i { animation: bellRing 0.6s ease; }
+
+    /* Notification Dropdown */
+    .notif-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: 360px; max-width: calc(100vw - 2rem);
+      max-height: 440px; overflow-y: auto;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+      z-index: 600; display: none;
+    }
+    .notif-dropdown.open { display: block; }
+    .notif-dropdown-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.85rem 1rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--card); z-index: 1;
+      border-radius: 14px 14px 0 0;
+    }
+    .notif-dropdown-header h4 { margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--text); }
+    .notif-mark-read { font-size: 0.75rem; color: var(--primary); cursor: pointer; font-weight: 600; background: none; border: none; }
+    .notif-mark-read:hover { text-decoration: underline; }
+    .notif-item {
+      display: flex; gap: 0.65rem; padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-light); transition: background 0.1s;
+    }
+    .notif-item:hover { background: var(--bg); }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0; }
+    .notif-dot.read { background: transparent; }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-text { font-size: 0.8rem; color: var(--text); line-height: 1.4; }
+    .notif-text strong { font-weight: 700; }
+    .notif-time { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+    .notif-ago { font-size: 0.68rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+    .notif-empty { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: 0.82rem; }
 
     /* ===== CONTENT CARDS ===== */
     .content-card {
@@ -373,7 +433,24 @@
     <span class="page-title">{% block header_title %}{% endblock %}</span>
     <div class="header-actions">
       {% if user %}
-      <span class="user-pill"><i class="bi bi-person-circle"></i> {{ user.display_name or user.username }}</span>
+      <span class="user-pill"><i class="bi bi-person-gear"></i> {{ user.display_name or user.username }} ({{ user.role }})</span>
+      <span class="header-badge live"><span>Live</span></span>
+      <div class="notif-wrapper">
+        <button class="notif-btn" id="notifBellBtn" onclick="toggleNotifDropdown()" title="Notifications">
+          <i class="bi bi-bell-fill"></i>
+          <span class="notif-count" id="notifBadge"></span>
+        </button>
+        <div class="notif-dropdown" id="notifDropdown">
+          <div class="notif-dropdown-header">
+            <h4>Notifications</h4>
+            <button class="notif-mark-read" onclick="markAllRead()">Mark all read</button>
+          </div>
+          <div id="notifList">
+            <div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:0.4rem;opacity:0.3;"></i>No notifications yet</div>
+          </div>
+        </div>
+      </div>
+      <a href="/logout" class="header-badge logout-btn" title="Logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
       {% endif %}
     </div>
   </header>
@@ -465,6 +542,96 @@ if('serviceWorker' in navigator){
     reg.addEventListener('updatefound', () => { const nw = reg.installing; nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) { nw.postMessage('SKIP_WAITING'); } }); });
   }).catch(()=>{});
 }
+</script>
+<script>
+// ===== NOTIFICATION BELL SYSTEM =====
+let _notifications = JSON.parse(localStorage.getItem('dcgl_notifications') || '[]');
+let _notifCount = 0;
+let _lastKnownCount = Number(localStorage.getItem('dcgl_lastKnownCount') || 0);
+let _notifSeeded = localStorage.getItem('dcgl_lastKnownCount') !== null;
+
+function toggleNotifDropdown() {
+  const dd = document.getElementById('notifDropdown');
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) { _notifCount = 0; document.getElementById('notifBadge').textContent = ''; }
+}
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('notifDropdown');
+  const btn = document.getElementById('notifBellBtn');
+  if (dd && btn && dd.classList.contains('open') && !dd.contains(e.target) && !btn.contains(e.target)) dd.classList.remove('open');
+});
+
+function timeAgo(isoStr) {
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function renderNotifications() {
+  const list = document.getElementById('notifList');
+  if (!list) return;
+  if (!_notifications.length) {
+    list.innerHTML = '<div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:0.4rem;opacity:0.3;"></i>No notifications yet</div>';
+    return;
+  }
+  list.innerHTML = _notifications.slice(0, 30).map(n => `
+    <div class="notif-item">
+      <div class="notif-dot${n.read ? ' read' : ''}"></div>
+      <div class="notif-body">
+        <div class="notif-text">${n.msg}</div>
+        <div class="notif-time">${n.detail || ''}</div>
+      </div>
+      <div class="notif-ago">${timeAgo(n.ts)}</div>
+    </div>
+  `).join('');
+}
+
+function addNotification(msg, detail) {
+  _notifications.unshift({ msg, detail, ts: new Date().toISOString(), read: false });
+  if (_notifications.length > 50) _notifications = _notifications.slice(0, 50);
+  localStorage.setItem('dcgl_notifications', JSON.stringify(_notifications));
+  _notifCount++;
+  const badge = document.getElementById('notifBadge');
+  if (badge) badge.textContent = _notifCount > 99 ? '99+' : _notifCount;
+  const btn = document.getElementById('notifBellBtn');
+  if (btn) { btn.classList.remove('ringing'); void btn.offsetWidth; btn.classList.add('ringing'); }
+  renderNotifications();
+}
+
+function markAllRead() {
+  _notifications.forEach(n => n.read = true);
+  localStorage.setItem('dcgl_notifications', JSON.stringify(_notifications));
+  _notifCount = 0;
+  document.getElementById('notifBadge').textContent = '';
+  renderNotifications();
+}
+
+// Poll for new violations
+async function pollViolations() {
+  try {
+    const resp = await fetch('/api/db_violations_count');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const count = Number(data.count || 0);
+    if (!_notifSeeded) { _lastKnownCount = count; _notifSeeded = true; localStorage.setItem('dcgl_lastKnownCount', String(count)); return; }
+    const prev = Number(localStorage.getItem('dcgl_lastKnownCount') || _lastKnownCount);
+    if (count > prev) {
+      const delta = count - prev;
+      addNotification(
+        `<strong>${delta} new incident${delta>1?'s':''}</strong> detected`,
+        `Illegal road blocking in Brgy. Kanluran`
+      );
+    }
+    localStorage.setItem('dcgl_lastKnownCount', String(count));
+    _lastKnownCount = count;
+  } catch(e) {}
+}
+
+renderNotifications();
+pollViolations();
+setInterval(pollViolations, 5000);
 </script>
 {% block scripts %}{% endblock %}
 </body>
