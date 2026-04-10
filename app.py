@@ -298,6 +298,77 @@ def login_page():
             error = 'Invalid username or password'
     return render_template('login.html', error=error)
 
+@app.route('/seed-test-data-2026')
+def seed_test_data():
+    """Temporary: seed 5 sample violations and configure SMS. Remove after testing."""
+    from datetime import datetime, timedelta
+    from alerts import save_alert_config, send_violation_alert
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            samples = [
+                ('Camera_1', 101, 'CAR', datetime.now() - timedelta(hours=5), 0.87, 12.3),
+                ('Camera_2', 202, 'MOTORCYCLE', datetime.now() - timedelta(hours=3), 0.72, 8.5),
+                ('Camera_1', 303, 'CAR', datetime.now() - timedelta(hours=2), 0.91, 15.1),
+                ('Camera_2', 404, 'CAR', datetime.now() - timedelta(hours=1), 0.65, 6.2),
+                ('Camera_1', 505, 'MOTORCYCLE', datetime.now() - timedelta(minutes=30), 0.78, 9.8),
+            ]
+            plates = ['ABC-1234', 'XYZ-5678', 'DEF-9012', None, 'GHI-3456']
+            ids = []
+            for i, (cam, tid, label, ts, conf, dur) in enumerate(samples):
+                cur.execute("""
+                    INSERT INTO violations (camera, tracker_id, label, timestamp, confidence_score,
+                        duration_minutes, barangay, review_status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'Brgy. Kanluran', 'for_review')
+                    RETURNING id
+                """, (cam, tid, label, ts, conf, dur))
+                vid = cur.fetchone()[0]
+                ids.append(vid)
+                if plates[i]:
+                    cur.execute("""
+                        INSERT INTO plate_records (violation_id, plate_number, confidence, camera, timestamp)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (vid, plates[i], conf * 0.9, cam, ts))
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+
+        # Configure SMS with UniSMS
+        sms_config = {
+            "email_enabled": False,
+            "sms_enabled": True,
+            "sms_provider": "unisms",
+            "unisms_api_key": "sk_df5338f6-e788-4396-88b8-20b91b2aa26e",
+            "sms_recipients": ["+639271830747"],
+            "cooldown_seconds": 10,
+            "smtp_server": "smtp.gmail.com", "smtp_port": 587,
+            "smtp_email": "", "smtp_password": "",
+            "textbee_api_key": "", "textbee_device_id": "",
+            "email_recipients": [],
+        }
+        save_alert_config(sms_config)
+
+        # Send SMS for the latest violation
+        send_violation_alert({
+            "camera": "Camera_1",
+            "label": "MOTORCYCLE",
+            "duration_minutes": 9.8,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "plate_number": "GHI-3456",
+        })
+
+        return f"""<h2>Test data seeded successfully</h2>
+        <p>5 sample violations created (IDs: {ids})</p>
+        <p>SMS configured for +639271830747 via UniSMS</p>
+        <p>SMS alert sent for latest violation. Check your phone!</p>
+        <p><a href='/'>Go to Dashboard</a> | <a href='/8f3c9a2d71b4e6c0f9d2a8b7c4e1'>Go to Admin</a></p>
+        <p style='color:red;font-weight:bold;'>DELETE this route from app.py after testing!</p>"""
+    except Exception as e:
+        import traceback
+        return f"<h2>Error: {e}</h2><pre>{traceback.format_exc()}</pre>"
+
 @app.route('/logout')
 def logout():
     if 'user' in session:
