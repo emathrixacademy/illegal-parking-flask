@@ -1233,6 +1233,37 @@ def api_violations_list():
         return resp, 500
 
 @app.route('/api/mark_enforced', methods=['POST'])
+@app.route('/api/review_incident', methods=['POST'])
+@login_required
+@role_required('operator')
+def api_review_incident():
+    """Admin reviews an incident: approved, rejected, or needs_investigation."""
+    try:
+        data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON"}), 400
+        incident_id = data.get('id')
+        status = data.get('status')
+        notes = data.get('notes', '')
+        if not incident_id or status not in ('approved', 'rejected', 'needs_investigation', 'for_review'):
+            return jsonify({"success": False, "error": "Invalid id or status"}), 400
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE violations SET review_status = %s, review_notes = %s WHERE id = %s
+            """, (status, notes, incident_id))
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+        log_activity(session['user']['id'], 'review_incident', f"ID {incident_id} -> {status}")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Review incident error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/mark_enforced', methods=['POST'])
 @login_required
 @role_required('operator')
 def api_mark_enforced():

@@ -130,6 +130,22 @@ def ensure_tables():
                     logger.info("Added 'barangay' column to violations table.")
                 except Exception as e:
                     logger.warning(f"Could not add barangay column to violations: {e}")
+            if not column_exists(cur, 'violations', 'review_status'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN review_status VARCHAR(32) DEFAULT 'for_review';
+                    """)
+                    logger.info("Added 'review_status' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add review_status column: {e}")
+            if not column_exists(cur, 'violations', 'review_notes'):
+                try:
+                    cur.execute("""
+                        ALTER TABLE violations ADD COLUMN review_notes TEXT DEFAULT '';
+                    """)
+                    logger.info("Added 'review_notes' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add review_notes column: {e}")
 
         # --- Feature 13: plate_records table ---
         if not table_exists(cur, 'plate_records'):

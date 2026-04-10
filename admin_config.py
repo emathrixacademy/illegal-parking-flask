@@ -56,7 +56,9 @@ def list_violations(page: int = 1, per_page: int = 30) -> Dict[str, Any]:
             SELECT * FROM (
                 SELECT DISTINCT ON (camera, tracker_id)
                     id, camera, tracker_id, label, timestamp, image_path,
-                    confidence_score, duration_minutes, fine_amount, barangay, enforced
+                    confidence_score, duration_minutes, fine_amount, barangay, enforced,
+                    COALESCE(review_status, 'for_review') as review_status,
+                    COALESCE(review_notes, '') as review_notes
                 FROM violations
                 ORDER BY camera, tracker_id, timestamp DESC
             ) sub
@@ -65,7 +67,8 @@ def list_violations(page: int = 1, per_page: int = 30) -> Dict[str, Any]:
         """, (per_page, offset))
         rows = cur.fetchall()
         cols = ['id', 'camera', 'tracker_id', 'label', 'timestamp', 'image_path',
-                'confidence_score', 'duration_minutes', 'fine_amount', 'barangay', 'enforced']
+                'confidence_score', 'duration_minutes', 'fine_amount', 'barangay', 'enforced',
+                'review_status', 'review_notes']
         items = [dict(zip(cols, r)) for r in rows]
         cur.close()
         return {

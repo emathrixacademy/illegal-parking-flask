@@ -1,155 +1,354 @@
 {% extends "base.html" %}
-
 {% set active_page = 'admin' %}
-
 {% block title %}Admin — DECONGESTILAGUNA{% endblock %}
+{% block header_title %}<i class="bi bi-shield-lock-fill"></i> Incident Review{% endblock %}
 
-{% block header_title %}<i class="bi bi-shield-lock-fill"></i> Admin Panel{% endblock %}
+{% block extra_css %}
+.admin-layout { display: grid; grid-template-columns: 1fr; gap: 0.75rem; padding: 0.75rem; }
+.admin-card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 0; overflow: hidden; }
+
+/* Header bar inside cards */
+.card-topbar { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.card-topbar h2 { margin: 0; font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; }
+.card-topbar h2 i { color: var(--primary-light); }
+.card-topbar .badge-count { background: var(--primary-lighter); color: var(--primary); padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; gap: 0.25rem; }
+
+/* Filter bar */
+.filter-bar { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; background: var(--bg); }
+.filter-bar .form-control, .filter-bar .form-select { font-size: 0.78rem; padding: 0.35rem 0.6rem; border-radius: 8px; max-width: 160px; }
+.filter-btn { padding: 0.35rem 0.75rem; font-size: 0.75rem; border-radius: 8px; font-weight: 600; }
+
+/* Table */
+.admin-table { margin: 0; }
+.admin-table thead th { position: sticky; top: 0; z-index: 1; }
+.admin-table tbody tr { cursor: pointer; transition: background 0.1s; }
+.admin-table tbody tr.selected { background: var(--primary-lighter) !important; }
+
+.table-scroll { max-height: 600px; overflow-y: auto; }
+
+/* Side panel */
+.detail-panel { padding: 0; }
+.dp-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.dp-header h3 { margin: 0 0 0.15rem; font-size: 0.92rem; font-weight: 700; }
+.dp-header .dp-sub { font-size: 0.75rem; color: var(--text-secondary); }
+.dp-body { padding: 1.25rem; }
+
+/* Incident detail fields */
+.dp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1rem; }
+.dp-field { }
+.dp-field-label { font-size: 0.68rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 0.15rem; }
+.dp-field-value { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+
+/* AI Detection badge */
+.ai-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.75rem; border-radius: 10px; font-size: 0.78rem; font-weight: 600; margin-bottom: 1rem; }
+.ai-badge.detected { background: var(--success-bg); color: var(--success); border: 1px solid #bbf7d0; }
+.ai-badge.low-conf { background: var(--warning-bg); color: var(--warning); border: 1px solid #fde68a; }
+
+/* Captured image */
+.dp-image-wrap { margin-bottom: 1rem; }
+.dp-image-title { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 0.5rem; }
+.dp-image { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+.dp-no-image { display: flex; align-items: center; gap: 0.5rem; padding: 1.25rem; background: var(--bg); border-radius: 10px; color: var(--text-secondary); font-size: 0.82rem; }
+.dp-no-image i { font-size: 1.5rem; opacity: 0.4; }
+
+/* Review status section */
+.dp-review { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.dp-review-title { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 0.5rem; }
+
+/* Progress steps */
+.review-progress { display: flex; align-items: center; gap: 0; margin-bottom: 1rem; }
+.rp-step { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.rp-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; border: 2px solid var(--border); color: var(--text-secondary); background: var(--card); }
+.rp-circle.active { border-color: var(--primary); color: var(--primary); background: var(--primary-lighter); }
+.rp-circle.done { border-color: var(--success); color: #fff; background: var(--success); }
+.rp-label { font-size: 0.62rem; color: var(--text-secondary); margin-top: 0.25rem; text-align: center; font-weight: 600; }
+.rp-line { height: 2px; flex: 1; background: var(--border); margin: 0 -0.25rem; margin-bottom: 1.2rem; }
+.rp-line.done { background: var(--success); }
+
+/* Decision buttons */
+.decision-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
+.decision-btn {
+  padding: 0.6rem 0.5rem; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--card);
+  cursor: pointer; font-weight: 700; font-size: 0.75rem;
+  text-align: center; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+}
+.decision-btn:hover { transform: translateY(-1px); border-color: #94a3b8; }
+.decision-btn.active.approved { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+.decision-btn.active.rejected { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+.decision-btn.active.investigate { background: var(--warning-bg); border-color: var(--warning); color: var(--warning); }
+
+.save-decision-btn {
+  width: 100%; padding: 0.7rem; border: none; border-radius: 12px;
+  background: var(--primary); color: #fff; font-weight: 700;
+  font-size: 0.82rem; cursor: pointer; transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+}
+.save-decision-btn:hover { background: var(--accent-hover); }
+.save-decision-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.dp-audit-note { font-size: 0.68rem; color: var(--muted); margin-top: 0.75rem; text-align: center; }
+
+.dp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; color: var(--muted); }
+.dp-empty i { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.25; }
+.dp-empty p { font-size: 0.85rem; margin: 0; }
+
+@media (min-width: 1024px) {
+  .admin-layout { grid-template-columns: 1fr 380px; padding: 1rem 1.5rem; }
+  .table-scroll { max-height: 700px; }
+}
+@media (min-width: 1400px) {
+  .admin-layout { grid-template-columns: 1fr 420px; }
+}
+{% endblock %}
 
 {% block content %}
-<!-- Violations Section -->
-<div class="content-card">
-  <h2><i class="bi bi-exclamation-octagon-fill"></i> Violations</h2>
-  <p class="small-muted">List of detected illegal road blocking incidents.</p>
-  <div class="table-responsive">
-    <table id="violationsTable" class="table table-sm table-hover">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Camera</th>
-          <th>Tracker</th>
-          <th>Label</th>
-          <th>Timestamp</th>
-          <th>Confidence</th>
-          <th>Duration (min)</th>
-          <th>Image</th>
-          <th>Barangay</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <!-- Pagination Controls -->
-  <nav id="paginationNav" class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2 mb-2">
-    <div class="d-flex align-items-center gap-2">
-      <button id="prevPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-left"></i></button>
-      <span id="pageInfo" class="small-muted">Page 1 / 1</span>
-      <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
+<div class="admin-layout">
+  <!-- Left: Incident List -->
+  <div class="admin-card">
+    <div class="card-topbar">
+      <h2><i class="bi bi-exclamation-octagon-fill"></i> Road Blocking Incidents</h2>
+      <span class="badge-count" id="totalBadge"><i class="bi bi-collection"></i> <span id="totalInfo">0</span> incidents</span>
     </div>
-    <span id="totalInfo" class="small-muted"></span>
-  </nav>
-  <div class="d-flex gap-2 flex-wrap mt-2">
-    <button id="refreshViolations" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-    <div id="violationsMsg" class="align-self-center small-muted"></div>
+    <div class="filter-bar">
+      <input type="date" class="form-control" id="filterDate" title="Filter by date">
+      <select class="form-select" id="filterStatus">
+        <option value="">All Status</option>
+        <option value="for_review">For Review</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+        <option value="needs_investigation">Needs Investigation</option>
+      </select>
+      <button class="btn btn-accent filter-btn" onclick="applyFilter()"><i class="bi bi-funnel-fill"></i> Filter</button>
+      <button class="btn btn-outline-secondary filter-btn" onclick="clearFilter()"><i class="bi bi-x-lg"></i> Clear</button>
+      <button class="btn btn-outline-secondary filter-btn" onclick="goToday()">Today</button>
+    </div>
+    <div class="table-scroll">
+      <table class="table table-sm table-hover admin-table" id="violationsTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Vehicle</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Detection</th>
+            <th>Admin Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+      <div class="d-flex align-items-center gap-2">
+        <button id="prevPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-left"></i></button>
+        <span id="pageInfo" class="small-muted">Page 1 / 1</span>
+        <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+  </div>
+
+  <!-- Right: Detail Panel -->
+  <div class="admin-card detail-panel">
+    <div class="dp-header">
+      <h3>Incident Details</h3>
+      <div class="dp-sub">Review the detected incident and record your decision.</div>
+    </div>
+    <div class="dp-body" id="detailBody">
+      <div class="dp-empty">
+        <i class="bi bi-arrow-left-circle"></i>
+        <p>Select an incident to start reviewing.</p>
+      </div>
+    </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-// ---- Pagination State ----
-let currentPage = 1;
-let totalPages = 1;
-const PER_PAGE = 10;
-const CACHE_KEY = 'dcgl_violations_cache';
-const CACHE_TTL = 15000; // 15 seconds
+let currentPage = 1, totalPages = 1, allItems = [], selectedId = null, selectedDecision = null;
+const PER_PAGE = 15;
 
-// ---- localStorage Cache Helpers ----
-function getCached(page) {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY + '_p' + page);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (Date.now() - obj._ts > CACHE_TTL) { localStorage.removeItem(CACHE_KEY + '_p' + page); return null; }
-    return obj.data;
-  } catch(e) { return null; }
-}
-function setCache(page, data) {
-  try { localStorage.setItem(CACHE_KEY + '_p' + page, JSON.stringify({ data, _ts: Date.now() })); } catch(e) {}
-}
-function clearViolationsCache() {
-  try {
-    Object.keys(localStorage).filter(k => k.startsWith(CACHE_KEY)).forEach(k => localStorage.removeItem(k));
-  } catch(e) {}
+function formatDate(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleDateString(); } catch(e) { return ts; } }
+function formatTime(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; } }
+
+function statusBadge(s) {
+  const map = {
+    'for_review': '<span class="status-badge review"><i class="bi bi-hourglass-split"></i> For review</span>',
+    'approved': '<span class="status-badge approved"><i class="bi bi-check-circle"></i> Approved</span>',
+    'rejected': '<span class="status-badge rejected"><i class="bi bi-x-circle"></i> Rejected</span>',
+    'needs_investigation': '<span class="status-badge warning"><i class="bi bi-search"></i> Investigate</span>',
+  };
+  return map[s] || map['for_review'];
 }
 
-// ---- Render violations into table ----
-function renderViolations(rows) {
+function renderTable(items) {
+  allItems = items;
   const tbody = document.querySelector('#violationsTable tbody');
   tbody.innerHTML = '';
-  for (const row of rows) {
+  items.forEach(row => {
     const tr = document.createElement('tr');
+    tr.className = row.id === selectedId ? 'selected' : '';
+    tr.onclick = () => selectIncident(row.id);
+    const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;
+    const detBadge = conf >= 0.5
+      ? '<span class="status-badge success"><i class="bi bi-cpu"></i> Detected</span>'
+      : '<span class="status-badge warning"><i class="bi bi-cpu"></i> Low conf</span>';
     tr.innerHTML = `
-      <td>${row.id}</td>
-      <td>${row.camera || ''}</td>
-      <td>${row.tracker_id ?? ''}</td>
-      <td>${row.label || ''}</td>
-      <td>${row.timestamp || ''}</td>
-      <td>${row.confidence_score !== undefined && row.confidence_score !== null ? Number(row.confidence_score).toFixed(3) : ''}</td>
-      <td>${row.duration_minutes !== undefined && row.duration_minutes !== null ? Number(row.duration_minutes).toFixed(1) : ''}</td>
-      <td>${row.image_path ? '<a class="text-decoration-none" style="color:var(--primary);font-weight:600;" target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
-      <td>${row.barangay || ''}</td>
+      <td style="font-weight:600;color:var(--text-secondary);">${row.id}</td>
+      <td><strong>${row.label || 'Vehicle'}</strong><br><span style="font-size:0.68rem;color:var(--text-secondary);">${row.camera || ''}</span></td>
+      <td>${formatDate(row.timestamp)}</td>
+      <td>${formatTime(row.timestamp)}</td>
+      <td>${detBadge}</td>
+      <td>${statusBadge(row.review_status || 'for_review')}</td>
     `;
     tbody.appendChild(tr);
-  }
+  });
 }
 
-// ---- Update pagination UI ----
+function selectIncident(id) {
+  selectedId = id;
+  selectedDecision = null;
+  const row = allItems.find(r => r.id === id);
+  if (!row) return;
+
+  // Highlight row
+  document.querySelectorAll('#violationsTable tbody tr').forEach(tr => {
+    tr.classList.toggle('selected', tr.querySelector('td')?.textContent == id);
+  });
+
+  const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;
+  const dur = row.duration_minutes != null ? Number(row.duration_minutes).toFixed(1) : '0.0';
+  const imgUrl = row.image_path ? '/api/image_from_db?image_path=' + encodeURIComponent(row.image_path) : '';
+  const status = row.review_status || 'for_review';
+
+  // Progress steps
+  const step1Done = true;
+  const step2Done = status !== 'for_review';
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="dp-fields">
+      <div class="dp-field"><div class="dp-field-label">Incident ID</div><div class="dp-field-value">${row.id}</div></div>
+      <div class="dp-field"><div class="dp-field-label">Date</div><div class="dp-field-value">${formatDate(row.timestamp)}</div></div>
+      <div class="dp-field"><div class="dp-field-label">Camera</div><div class="dp-field-value">${row.camera || 'N/A'}</div></div>
+      <div class="dp-field"><div class="dp-field-label">Time</div><div class="dp-field-value">${formatTime(row.timestamp)}</div></div>
+      <div class="dp-field"><div class="dp-field-label">Vehicle</div><div class="dp-field-value">${row.label || 'Unknown'}</div></div>
+      <div class="dp-field"><div class="dp-field-label">Duration</div><div class="dp-field-value">${dur} min</div></div>
+    </div>
+
+    <div class="ai-badge ${conf >= 0.5 ? 'detected' : 'low-conf'}">
+      <i class="bi bi-cpu"></i> AI Detection: ${conf >= 0.5 ? 'Confirmed' : 'Low Confidence'} (${(conf*100).toFixed(1)}%)
+    </div>
+
+    <div class="dp-image-wrap">
+      <div class="dp-image-title">Captured Image</div>
+      ${imgUrl
+        ? `<img class="dp-image" src="${imgUrl}" alt="Incident capture" onerror="this.parentElement.innerHTML='<div class=dp-no-image><i class=\\'bi bi-image\\'></i> Image unavailable</div>'">`
+        : '<div class="dp-no-image"><i class="bi bi-image"></i> No captured image for this incident</div>'
+      }
+    </div>
+
+    <div class="dp-review">
+      <div class="dp-review-title">Review Status</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+        <span style="font-size:0.85rem;font-weight:600;">For Admin Review</span>
+        <span class="status-badge ${step2Done ? 'success' : 'info'}">${step2Done ? 'Reviewed' : 'In progress'}</span>
+      </div>
+      <div class="review-progress">
+        <div class="rp-step"><div class="rp-circle done"><i class="bi bi-check"></i></div><div class="rp-label">AI<br>Detected</div></div>
+        <div class="rp-line ${step2Done ? 'done' : ''}"></div>
+        <div class="rp-step"><div class="rp-circle ${step2Done ? 'done' : 'active'}">2</div><div class="rp-label">Admin<br>Review</div></div>
+      </div>
+
+      <div class="dp-review-title">Admin Decision</div>
+      <div class="decision-btns">
+        <button class="decision-btn ${status==='approved'?'active approved':''}" id="btnApproved" onclick="setDecision('approved')"><i class="bi bi-check-circle"></i> Approved</button>
+        <button class="decision-btn ${status==='rejected'?'active rejected':''}" id="btnRejected" onclick="setDecision('rejected')"><i class="bi bi-x-circle"></i> Rejected</button>
+        <button class="decision-btn ${status==='needs_investigation'?'active investigate':''}" id="btnInvestigate" onclick="setDecision('needs_investigation')"><i class="bi bi-search"></i> Investigate</button>
+      </div>
+
+      <button class="save-decision-btn" id="saveDecisionBtn" onclick="saveDecision()"><i class="bi bi-floppy"></i> Save decision</button>
+      <div class="dp-audit-note">All actions are logged for audit.</div>
+      <div id="decisionMsg" style="margin-top:0.5rem;"></div>
+    </div>
+  `;
+  selectedDecision = status !== 'for_review' ? status : null;
+}
+
+function setDecision(d) {
+  selectedDecision = d;
+  document.querySelectorAll('.decision-btn').forEach(b => b.classList.remove('active','approved','rejected','investigate'));
+  if (d === 'approved') document.getElementById('btnApproved').classList.add('active','approved');
+  if (d === 'rejected') document.getElementById('btnRejected').classList.add('active','rejected');
+  if (d === 'needs_investigation') document.getElementById('btnInvestigate').classList.add('active','investigate');
+}
+
+async function saveDecision() {
+  if (!selectedId || !selectedDecision) {
+    document.getElementById('decisionMsg').innerHTML = '<div class="alert alert-warning py-1">Please select a decision first.</div>';
+    return;
+  }
+  const btn = document.getElementById('saveDecisionBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+  try {
+    const r = await fetch('/api/review_incident', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id: selectedId, status: selectedDecision, notes: '' })
+    });
+    const j = await r.json();
+    if (j.success) {
+      document.getElementById('decisionMsg').innerHTML = '<div class="alert alert-success py-1">Decision saved.</div>';
+      // Update local data
+      const item = allItems.find(r => r.id === selectedId);
+      if (item) item.review_status = selectedDecision;
+      renderTable(allItems);
+      selectIncident(selectedId);
+    } else {
+      document.getElementById('decisionMsg').innerHTML = `<div class="alert alert-danger py-1">${j.error || 'Failed'}</div>`;
+    }
+  } catch(e) {
+    document.getElementById('decisionMsg').innerHTML = '<div class="alert alert-danger py-1">Error saving decision.</div>';
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="bi bi-floppy"></i> Save decision';
+}
+
 function updatePaginationUI() {
   document.getElementById('pageInfo').textContent = `Page ${currentPage} / ${totalPages}`;
   document.getElementById('prevPage').disabled = currentPage <= 1;
   document.getElementById('nextPage').disabled = currentPage >= totalPages;
 }
 
-// ---- Fetch violations (with cache) ----
-async function fetchViolations(page, forceRefresh) {
+async function fetchViolations(page) {
   page = page || currentPage;
-  const msg = document.getElementById('violationsMsg');
-  msg.textContent = '';
-
-  // Try cache first (unless forced refresh)
-  if (!forceRefresh) {
-    const cached = getCached(page);
-    if (cached) {
-      currentPage = cached.page;
-      totalPages = cached.total_pages;
-      document.getElementById('totalInfo').textContent = cached.total + ' total violations';
-      renderViolations(cached.items);
-      updatePaginationUI();
-      return;
-    }
-  }
-
   try {
     const r = await fetch(`/api/violations_list?page=${page}&per_page=${PER_PAGE}`);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
-    currentPage = data.page;
-    totalPages = data.total_pages;
-    document.getElementById('totalInfo').textContent = data.total + ' total violations';
-    renderViolations(data.items);
+    currentPage = data.page; totalPages = data.total_pages;
+    document.getElementById('totalInfo').textContent = data.total || 0;
+    renderTable(data.items);
     updatePaginationUI();
-    setCache(page, data);
   } catch(e) {
-    // Fallback: try to show cached data even if stale
-    const stale = getCached(page);
-    if (stale) {
-      renderViolations(stale.items);
-      msg.textContent = 'Showing cached data (offline)';
-    } else {
-      msg.textContent = 'Failed to load violations';
-    }
+    document.getElementById('totalInfo').textContent = 'Error';
   }
 }
 
-// ---- Event Listeners ----
-document.getElementById('refreshViolations').addEventListener('click', () => { clearViolationsCache(); fetchViolations(currentPage, true); });
+function refreshData() { fetchViolations(currentPage); }
+function applyFilter() { fetchViolations(1); }
+function clearFilter() {
+  document.getElementById('filterDate').value = '';
+  document.getElementById('filterStatus').value = '';
+  fetchViolations(1);
+}
+function goToday() {
+  document.getElementById('filterDate').value = new Date().toISOString().split('T')[0];
+  fetchViolations(1);
+}
+
 document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) fetchViolations(currentPage - 1); });
 document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < totalPages) fetchViolations(currentPage + 1); });
 
-// Load initial data
 fetchViolations(1);
-
 </script>
 {% endblock %}
