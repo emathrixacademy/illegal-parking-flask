@@ -7,9 +7,6 @@
 {% block header_title %}<i class="bi bi-people-fill"></i> User Management{% endblock %}
 
 {% block extra_css %}
-  .badge-admin { background: #dc3545; }
-  .badge-operator { background: #ff9800; color: #000; }
-  .badge-viewer { background: #17a2b8; }
 {% endblock %}
 
 {% block content %}
@@ -17,12 +14,12 @@
   <div class="content-card mb-3">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h2 class="mb-0"><i class="bi bi-person-lines-fill"></i> Users</h2>
-      <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+      <button class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
         <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">Add User</span>
       </button>
     </div>
     <div class="table-responsive">
-      <table id="usersTable" class="table table-sm table-striped table-hover">
+      <table id="usersTable" class="table table-sm table-hover">
         <thead>
           <tr>
             <th>ID</th>
@@ -45,7 +42,7 @@
   <div class="content-card">
     <h2><i class="bi bi-clock-history"></i> Activity Log</h2>
     <div class="table-responsive">
-      <table id="activityTable" class="table table-sm table-striped table-hover">
+      <table id="activityTable" class="table table-sm table-hover">
         <thead>
           <tr>
             <th>Time</th>
@@ -63,7 +60,7 @@
   <!-- Add User Modal -->
   <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content" style="border-radius:16px;overflow:hidden">
         <div class="modal-header">
           <h5 class="modal-title" id="addUserModalLabel"><i class="bi bi-person-plus"></i> Add User</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -105,7 +102,7 @@
   <!-- Edit User Modal -->
   <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content" style="border-radius:16px;overflow:hidden">
         <div class="modal-header">
           <h5 class="modal-title" id="editUserModalLabel"><i class="bi bi-pencil"></i> Edit User</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -155,15 +152,15 @@ async function fetchUsers() {
         const r = await fetch('/api/users');
         const users = await r.json();
         users.forEach(u => {
-            const roleBadge = u.role === 'admin' ? 'badge-admin' : u.role === 'operator' ? 'badge-operator' : 'badge-viewer';
+            const roleBadge = u.role === 'admin' ? '<span class="status-badge danger">admin</span>' : u.role === 'operator' ? '<span class="status-badge info">operator</span>' : '<span class="status-badge neutral">viewer</span>';
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${u.id}</td>
                 <td>${u.username}</td>
                 <td class="d-none d-md-table-cell">${u.display_name || ''}</td>
                 <td class="d-none d-md-table-cell">${u.email || ''}</td>
-                <td><span class="badge ${roleBadge}">${u.role}</span></td>
-                <td>${u.is_active ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>'}</td>
+                <td>${roleBadge}</td>
+                <td>${u.is_active ? '<span class="status-badge success">Active</span>' : '<span class="status-badge danger">Inactive</span>'}</td>
                 <td class="d-none d-lg-table-cell">${u.last_login || 'Never'}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" onclick="openEditUser(${u.id},'${u.display_name||''}','${u.email||''}','${u.role}',${u.is_active})"><i class="bi bi-pencil"></i></button>

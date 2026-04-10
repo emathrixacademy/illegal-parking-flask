@@ -117,7 +117,7 @@
 <div class="content-card">
   <h2><i class="bi bi-clock-history"></i> Alert History</h2>
   <div class="table-responsive">
-    <table class="table table-sm table-striped table-hover">
+    <table class="table table-sm table-hover">
       <thead>
         <tr><th>Time</th><th>Type</th><th>Camera</th><th>Vehicle</th><th>Status</th></tr>
       </thead>
@@ -131,7 +131,7 @@
   <h2><i class="bi bi-cpu"></i> AI Detection Controls</h2>
 
   <!-- ON/OFF Toggle -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:8px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div>
       <div style="font-weight:600;">Detection Engine</div>
       <div class="small-muted">Pause or resume AI violation detection</div>
@@ -142,7 +142,7 @@
   </div>
 
   <!-- Confidence Slider -->
-  <div style="margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:8px;">
+  <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
         <div style="font-weight:600;">Confidence Threshold</div>
@@ -157,7 +157,7 @@
   </div>
 
   <!-- Snapshot -->
-  <div style="margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:8px;">
+  <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div style="font-weight:600;margin-bottom:8px;">Live Detection Snapshot</div>
     <div class="small-muted" style="margin-bottom:12px;">Grab a single frame showing what the AI currently sees with bounding boxes.</div>
     <button class="btn btn-outline-primary btn-sm" id="snapshotBtn"><i class="bi bi-camera"></i> Capture Snapshot</button>
@@ -169,7 +169,7 @@
   <!-- Action Buttons -->
   <div class="d-flex flex-wrap gap-2 mb-3">
     <button class="btn btn-outline-primary btn-sm" id="saveDetectionBtn"><i class="bi bi-check-lg"></i> Save Settings</button>
-    <button class="btn btn-outline-danger btn-sm" id="restartDetectionBtn"><i class="bi bi-arrow-clockwise"></i> Restart Detection</button>
+    <button class="btn btn-outline-danger btn-sm" id="restartDetectionBtn" style="border-radius:10px;"><i class="bi bi-arrow-clockwise"></i> Restart Detection</button>
   </div>
   <div id="detectionStatus" class="mt-2"></div>
 </div>
@@ -307,7 +307,7 @@
             tbody.innerHTML = '';
             (logs || []).slice(0, 20).forEach(l => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${l.timestamp||''}</td><td>${l.alert_type||''}</td><td>${l.camera||''}</td><td>${l.vehicle_type||''}</td><td>${l.success ? '<span class="text-success">Sent</span>' : '<span class="text-danger">Failed</span>'}</td>`;
+                tr.innerHTML = `<td>${l.timestamp||''}</td><td>${l.alert_type||''}</td><td>${l.camera||''}</td><td>${l.vehicle_type||''}</td><td>${l.success ? '<span class="status-badge success">Sent</span>' : '<span class="status-badge danger">Failed</span>'}</td>`;
                 tbody.appendChild(tr);
             });
         } catch(e) {}

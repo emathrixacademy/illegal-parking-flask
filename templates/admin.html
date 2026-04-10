@@ -12,7 +12,7 @@
   <h2><i class="bi bi-exclamation-octagon-fill"></i> Violations</h2>
   <p class="small-muted">List of violation records from the Database. Select rows and mark them enforced.</p>
   <div class="table-responsive">
-    <table id="violationsTable" class="table table-sm table-striped table-hover">
+    <table id="violationsTable" class="table table-sm table-hover">
       <thead>
         <tr>
           <th><input id="selectAll" type="checkbox"></th>
@@ -121,9 +121,9 @@ function renderViolations(rows) {
       <td>${row.confidence_score !== undefined && row.confidence_score !== null ? Number(row.confidence_score).toFixed(3) : ''}</td>
       <td>${row.duration_minutes !== undefined && row.duration_minutes !== null ? Number(row.duration_minutes).toFixed(1) : ''}</td>
       <td>${row.fine_amount !== undefined && row.fine_amount !== null ? Number(row.fine_amount).toFixed(2) : ''}</td>
-      <td>${row.image_path ? '<a target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
+      <td>${row.image_path ? '<a class="text-decoration-none" style="color:var(--primary);font-weight:600;" target="_blank" href="/api/image_from_db?image_path='+encodeURIComponent(row.image_path)+'">view</a>' : ''}</td>
       <td>${row.barangay || ''}</td>
-      <td>${row.enforced ? 'Yes' : 'No'}</td>
+      <td>${row.enforced ? '<span class="status-badge success">Enforced</span>' : '<span class="status-badge neutral">Pending</span>'}</td>
     `;
     tbody.appendChild(tr);
   }
