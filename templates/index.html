@@ -3,84 +3,6 @@
 {% block header_title %}<i class="bi bi-eye-fill"></i> Live Monitor{% endblock %}
 
 {% block extra_css %}
-/* ===== Notification Bell ===== */
-.notif-bell {
-  position: relative;
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-size: 1.3rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  -webkit-tap-highlight-color: transparent;
-  transition: color 0.2s;
-}
-.notif-bell.muted { color: var(--muted); }
-.notif-bell .bell-badge {
-  position: absolute;
-  top: -2px;
-  right: -6px;
-  background: #dc3545;
-  color: #fff;
-  font-size: 0.55rem;
-  font-weight: 700;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-}
-.notif-bell .bell-badge:empty { display: none; }
-@keyframes bellRing {
-  0% { transform: rotate(0); }
-  10% { transform: rotate(14deg); }
-  20% { transform: rotate(-14deg); }
-  30% { transform: rotate(10deg); }
-  40% { transform: rotate(-10deg); }
-  50% { transform: rotate(6deg); }
-  60% { transform: rotate(-4deg); }
-  70% { transform: rotate(2deg); }
-  80% { transform: rotate(-1deg); }
-  100% { transform: rotate(0); }
-}
-.notif-bell.ringing i { animation: bellRing 0.8s ease; }
-.notif-dropdown {
-  position: fixed;
-  top: 48px;
-  right: 0.5rem;
-  width: 300px;
-  max-width: calc(100vw - 1rem);
-  max-height: 60vh;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  z-index: 500;
-  overflow-y: auto;
-  display: none;
-  padding: 0;
-}
-.notif-dropdown.open { display: block; }
-.notif-dropdown .notif-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 0.85rem;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-.notif-dropdown .notif-item {
-  padding: 0.6rem 0.85rem;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
-  font-size: 0.8rem;
-}
-.notif-dropdown .notif-item:last-child { border-bottom: none; }
-.notif-dropdown .notif-item .notif-time { color: var(--muted); font-size: 0.7rem; }
-.notif-dropdown .notif-empty { padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
-
 /* ===== Dashboard mobile-first styles ===== */
 .cam-grid {
   display: grid;
@@ -303,20 +225,6 @@
   </div>
 </div>
 
-<!-- Notification Bell Dropdown -->
-<div class="notif-dropdown" id="notifDropdown">
-  <div class="notif-header">
-    <span><i class="bi bi-bell-fill text-accent"></i> Notifications</span>
-    <div class="d-flex gap-2 align-items-center">
-      <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:0.7rem;" onclick="clearNotifications()">Clear</button>
-      <button class="btn btn-sm py-0 px-1" style="font-size:0.7rem;" id="muteToggle" onclick="toggleMute()">
-        <i class="bi bi-volume-up-fill"></i>
-      </button>
-    </div>
-  </div>
-  <div id="notifList"><div class="notif-empty">No new notifications</div></div>
-</div>
-
 <!-- Tamper Alert -->
 <div id="tamperAlert" class="mx-2 mt-1" style="display:none;">
   <div class="alert alert-danger tamper-alert d-flex align-items-center mb-0 py-2" role="alert">
@@ -332,10 +240,6 @@
 <div class="status-bar">
   <span><span id="healthIndicator" style="font-size:1rem;">&#9679;</span> <span id="healthText" class="text-muted">Checking...</span></span>
   <span class="ms-auto d-flex align-items-center gap-2">
-    <button class="notif-bell" id="notifBell" onclick="toggleNotifDropdown()" title="Notifications">
-      <i class="bi bi-bell-fill"></i>
-      <span class="bell-badge" id="bellBadge"></span>
-    </button>
     <span id="clock" class="text-muted" style="font-size:0.78rem;"></span>
   </span>
 </div>
@@ -561,50 +465,6 @@ function fetchAnalyticsAjax() {
     }).catch(() => {});
 }
 
-// ===== Violator notification =====
-function setupViolatorNotification() {
-    const isFirstVisit = localStorage.getItem('lastKnownViolatorCount') === null;
-    let lastKnown = Number(localStorage.getItem('lastKnownViolatorCount') || 0);
-    let seeded = !isFirstVisit;
-    const banner = document.getElementById('newViolationBanner');
-    async function poll() {
-        try {
-            const resp = await fetch('/api/db_violations_count');
-            if (!resp.ok) return;
-            const data = await resp.json();
-            const count = Number(data.count || 0);
-            if (!seeded) {
-                // First ever visit — just seed the count, don't show banner
-                localStorage.setItem('lastKnownViolatorCount', String(count));
-                lastKnown = count;
-                seeded = true;
-                return;
-            }
-            const prev = Number(localStorage.getItem('lastKnownViolatorCount') || lastKnown);
-            if (count > prev) showBanner(count - prev, count);
-            localStorage.setItem('lastKnownViolatorCount', String(count));
-            lastKnown = count;
-        } catch (e) {}
-    }
-    function showBanner(delta, abs) {
-        if (!banner) return;
-        banner.innerHTML = `<div class="d-flex align-items-center gap-2"><i class="bi bi-exclamation-circle-fill"></i><strong>${delta} new violator${delta>1?'s':''}</strong><button id="dismissNV" class="btn btn-sm btn-light ms-auto">Dismiss</button></div>`;
-        banner.style.display = 'block';
-        playNotificationBeep();
-        document.getElementById('dismissNV')?.addEventListener('click', () => { banner.style.display='none'; localStorage.setItem('lastKnownViolatorCount',String(abs)); lastKnown=abs; }, {once:true});
-        setTimeout(() => { if(banner.style.display!=='none'){banner.style.display='none';localStorage.setItem('lastKnownViolatorCount',String(abs));lastKnown=abs;} }, 10000);
-    }
-    poll(); setInterval(poll, 5000);
-}
-
-// ===== Audio =====
-let _audioCtx = null;
-function _ensureAudioContext() { if(!_audioCtx) _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return _audioCtx; }
-document.addEventListener('click', function _once() { try{const c=_ensureAudioContext();if(c.state==='suspended')c.resume();}catch(e){} document.removeEventListener('click',_once); }, {once:true});
-function playNotificationBeep() {
-    try { const c=_ensureAudioContext(); if(c.state==='suspended')c.resume(); const o=c.createOscillator(),g=c.createGain(); o.type='sine';o.frequency.value=880;g.gain.value=0.0001;o.connect(g);g.connect(c.destination); const n=c.currentTime;g.gain.setValueAtTime(0.0001,n);g.gain.exponentialRampToValueAtTime(0.2,n+0.02);o.start(n);g.gain.exponentialRampToValueAtTime(0.0001,n+0.22);o.stop(n+0.25); } catch(e){}
-}
-
 // ===== Init =====
 function fetchRaspiBaseAndInit() {
     fetch('/api/get_pi_url').then(r=>r.json()).then(data=>{
@@ -614,7 +474,6 @@ function fetchRaspiBaseAndInit() {
 }
 window.onload = function() {
     fetchRaspiBaseAndInit();
-    setupViolatorNotification();
 };
 </script>
 <script src="/static/js/zoom.js"></script>
@@ -654,151 +513,6 @@ async function checkTamperAlerts() {
 }
 function dismissTamperAlert() { document.getElementById('tamperAlert').style.display='none'; }
 setInterval(checkTamperAlerts, 30000); setTimeout(checkTamperAlerts, 3000);
-
-// ===== Notification Bell System =====
-let notifMuted = localStorage.getItem('notifMuted') === 'true';
-let notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-let notifCount = 0;
-
-function updateMuteUI() {
-    const bell = document.getElementById('notifBell');
-    const toggle = document.getElementById('muteToggle');
-    if (notifMuted) {
-        bell.classList.add('muted');
-        toggle.innerHTML = '<i class="bi bi-volume-mute-fill text-danger"></i>';
-        toggle.title = 'Unmute';
-    } else {
-        bell.classList.remove('muted');
-        toggle.innerHTML = '<i class="bi bi-volume-up-fill"></i>';
-        toggle.title = 'Mute';
-    }
-}
-
-function toggleMute() {
-    notifMuted = !notifMuted;
-    localStorage.setItem('notifMuted', notifMuted);
-    updateMuteUI();
-}
-
-function toggleNotifDropdown() {
-    const dd = document.getElementById('notifDropdown');
-    dd.classList.toggle('open');
-    // Reset badge when opened
-    if (dd.classList.contains('open')) {
-        notifCount = 0;
-        document.getElementById('bellBadge').textContent = '';
-    }
-}
-
-// Close dropdown when clicking outside
-document.addEventListener('click', (e) => {
-    const dd = document.getElementById('notifDropdown');
-    const bell = document.getElementById('notifBell');
-    if (dd.classList.contains('open') && !dd.contains(e.target) && !bell.contains(e.target)) {
-        dd.classList.remove('open');
-    }
-});
-
-function addNotification(msg, type) {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    notifications.unshift({ msg, type, time: timeStr, ts: now.toISOString() });
-    // Keep max 50
-    if (notifications.length > 50) notifications = notifications.slice(0, 50);
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-    renderNotifications();
-    // Update badge
-    notifCount++;
-    const badge = document.getElementById('bellBadge');
-    badge.textContent = notifCount > 99 ? '99+' : notifCount;
-    // Ring animation
-    const bell = document.getElementById('notifBell');
-    bell.classList.remove('ringing');
-    void bell.offsetWidth; // force reflow
-    bell.classList.add('ringing');
-    // Play sound if not muted
-    if (!notifMuted) {
-        playNotificationBell();
-    }
-}
-
-function renderNotifications() {
-    const list = document.getElementById('notifList');
-    if (!notifications.length) {
-        list.innerHTML = '<div class="notif-empty">No new notifications</div>';
-        return;
-    }
-    list.innerHTML = notifications.slice(0, 30).map(n => `
-        <div class="notif-item">
-            <div><i class="bi bi-exclamation-circle-fill text-accent me-1"></i> ${n.msg}</div>
-            <div class="notif-time">${n.time}</div>
-        </div>
-    `).join('');
-}
-
-function clearNotifications() {
-    notifications = [];
-    notifCount = 0;
-    localStorage.setItem('notifications', '[]');
-    document.getElementById('bellBadge').textContent = '';
-    renderNotifications();
-}
-
-function playNotificationBell() {
-    try {
-        const ctx = _ensureAudioContext();
-        if (ctx.state === 'suspended') ctx.resume();
-        // Bell-like sound: two tones
-        [880, 1100].forEach((freq, i) => {
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.type = 'sine';
-            o.frequency.value = freq;
-            o.connect(g);
-            g.connect(ctx.destination);
-            const t = ctx.currentTime + i * 0.15;
-            g.gain.setValueAtTime(0.0001, t);
-            g.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-            o.start(t);
-            o.stop(t + 0.45);
-        });
-    } catch(e) {}
-}
-
-// Hook into the existing violation notification system
-const _origSetupViolatorNotification = setupViolatorNotification;
-setupViolatorNotification = function() {
-    let lastKnown = Number(localStorage.getItem('lastKnownViolatorCount') || 0);
-    const banner = document.getElementById('newViolationBanner');
-    async function poll() {
-        try {
-            const resp = await fetch('/api/db_violations_count');
-            if (!resp.ok) return;
-            const data = await resp.json();
-            const count = Number(data.count || 0);
-            const prev = Number(localStorage.getItem('lastKnownViolatorCount') || lastKnown);
-            if (count > prev) {
-                const delta = count - prev;
-                // Add to notification bell
-                addNotification(`${delta} new violation${delta > 1 ? 's' : ''} detected`, 'violation');
-                // Show banner
-                banner.innerHTML = `<div class="d-flex align-items-center gap-2"><i class="bi bi-exclamation-circle-fill"></i><strong>${delta} new violator${delta>1?'s':''}</strong><button id="dismissNV" class="btn btn-sm btn-light ms-auto">Dismiss</button></div>`;
-                banner.style.display = 'block';
-                if (!notifMuted) playNotificationBell();
-                document.getElementById('dismissNV')?.addEventListener('click', () => { banner.style.display='none'; localStorage.setItem('lastKnownViolatorCount',String(count)); lastKnown=count; }, {once:true});
-                setTimeout(() => { if(banner.style.display!=='none'){banner.style.display='none';localStorage.setItem('lastKnownViolatorCount',String(count));lastKnown=count;} }, 10000);
-            }
-            localStorage.setItem('lastKnownViolatorCount', String(count));
-            lastKnown = count;
-        } catch (e) {}
-    }
-    poll(); setInterval(poll, 5000);
-};
-
-// Init bell UI
-updateMuteUI();
-renderNotifications();
 
 // =====================================================
 // INTELLIGENT ANALYTICS DASHBOARD
