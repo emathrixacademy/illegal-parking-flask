@@ -1214,6 +1214,43 @@ def api_list_images():
         logger.error(f"Proxy list_images error: {e}")
         return jsonify([])
 
+@app.route('/api/recent_incidents')
+@login_required
+def api_recent_incidents():
+    """Return recent incidents for notification dropdown."""
+    limit = min(30, int(request.args.get('limit', 20)))
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            # Get recent incidents with plate info
+            cur.execute("""
+                SELECT v.id, v.camera, v.label, v.timestamp, v.duration_minutes,
+                       v.confidence_score, COALESCE(v.review_status, 'for_review'),
+                       p.plate_number
+                FROM violations v
+                LEFT JOIN plate_records p ON p.violation_id = v.id
+                ORDER BY v.timestamp DESC
+                LIMIT %s
+            """, (limit,))
+            rows = cur.fetchall()
+            # Pending count
+            cur.execute("SELECT COUNT(*) FROM violations WHERE COALESCE(review_status, 'for_review') = 'for_review'")
+            pending = cur.fetchone()[0]
+            cur.close()
+            incidents = [{
+                "id": r[0], "camera": r[1], "label": r[2],
+                "timestamp": r[3].isoformat() if r[3] else None,
+                "duration_minutes": r[4], "confidence_score": r[5],
+                "review_status": r[6], "plate_number": r[7]
+            } for r in rows]
+            return jsonify({"incidents": incidents, "pending_count": pending})
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"Recent incidents error: {e}")
+        return jsonify({"incidents": [], "pending_count": 0})
+
 @app.route('/api/pending_review_count')
 @login_required
 def api_pending_review_count():

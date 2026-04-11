@@ -599,53 +599,87 @@ function addNotification(msg, detail) {
   renderNotifications();
 }
 
-function markAllRead() {
-  _notifications.forEach(n => n.read = true);
-  localStorage.setItem('dcgl_notifications', JSON.stringify(_notifications));
-  _notifCount = 0;
+async function markAllRead() {
+  // Mark all as read in the UI
   document.getElementById('notifBadge').textContent = '';
-  renderNotifications();
+  document.querySelectorAll('.notif-dot').forEach(d => d.classList.add('read'));
+  // No backend change - just clears the badge visually until next poll
+  _notifCount = 0;
 }
 
-// Poll for new violations AND pending review count
-async function pollViolations() {
+// Load recent incidents into notification dropdown
+async function loadNotificationIncidents() {
+  try {
+    const resp = await fetch('/api/recent_incidents?limit=20');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const incidents = data.incidents || [];
+    const pendingCount = data.pending_count || 0;
+
+    // Update badge
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+      if (pendingCount > 0) {
+        badge.textContent = pendingCount > 99 ? '99+' : pendingCount;
+      } else {
+        badge.textContent = '';
+      }
+    }
+
+    // Render notification list
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    if (!incidents.length) {
+      list.innerHTML = '<div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:0.4rem;opacity:0.3;"></i>No incidents yet</div>';
+      return;
+    }
+
+    list.innerHTML = incidents.map(inc => {
+      const isUnread = inc.review_status === 'for_review';
+      const cam = inc.camera || 'CCTV';
+      const label = inc.label || 'Vehicle';
+      const plate = inc.plate_number ? ` - ${inc.plate_number}` : '';
+      const ts = inc.timestamp ? new Date(inc.timestamp) : null;
+      const timeStr = ts ? ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+      const dateStr = ts ? ts.toLocaleDateString() : '';
+      const ago = ts ? timeAgo(ts.toISOString()) : '';
+
+      return `<div class="notif-item" style="cursor:pointer;" onclick="window.location='/8f3c9a2d71b4e6c0f9d2a8b7c4e1'">
+        <div class="notif-dot${isUnread ? '' : ' read'}"></div>
+        <div class="notif-body">
+          <div class="notif-text"><strong>Road blocking by ${label}</strong>${plate}</div>
+          <div class="notif-time">${cam} - ${dateStr} ${timeStr}</div>
+        </div>
+        <div class="notif-ago">${ago}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error('Notif load error:', e); }
+}
+
+// Also poll for NEW violations (ring animation)
+async function pollNewViolations() {
   try {
     const resp = await fetch('/api/db_violations_count');
     if (!resp.ok) return;
     const data = await resp.json();
     const count = Number(data.count || 0);
-    if (!_notifSeeded) { _lastKnownCount = count; _notifSeeded = true; localStorage.setItem('dcgl_lastKnownCount', String(count)); }
-    else {
-      const prev = Number(localStorage.getItem('dcgl_lastKnownCount') || _lastKnownCount);
-      if (count > prev) {
-        const delta = count - prev;
-        addNotification(
-          `<strong>${delta} new incident${delta>1?'s':''}</strong> detected`,
-          `Illegal road blocking in Brgy. Kanluran`
-        );
-      }
-      localStorage.setItem('dcgl_lastKnownCount', String(count));
-      _lastKnownCount = count;
+    if (!_notifSeeded) { _lastKnownCount = count; _notifSeeded = true; localStorage.setItem('dcgl_lastKnownCount', String(count)); return; }
+    const prev = Number(localStorage.getItem('dcgl_lastKnownCount') || _lastKnownCount);
+    if (count > prev) {
+      // Ring the bell
+      const btn = document.getElementById('notifBellBtn');
+      if (btn) { btn.classList.remove('ringing'); void btn.offsetWidth; btn.classList.add('ringing'); }
+      // Reload notifications
+      loadNotificationIncidents();
     }
-  } catch(e) {}
-
-  // Also fetch pending review count for badge
-  try {
-    const resp2 = await fetch('/api/pending_review_count');
-    if (resp2.ok) {
-      const d2 = await resp2.json();
-      const pending = Number(d2.count || 0);
-      const badge = document.getElementById('notifBadge');
-      if (badge && pending > 0 && _notifCount === 0) {
-        badge.textContent = pending > 99 ? '99+' : pending;
-      }
-    }
+    localStorage.setItem('dcgl_lastKnownCount', String(count));
+    _lastKnownCount = count;
   } catch(e) {}
 }
 
-renderNotifications();
-pollViolations();
-setInterval(pollViolations, 5000);
+loadNotificationIncidents();
+pollNewViolations();
+setInterval(() => { pollNewViolations(); loadNotificationIncidents(); }, 5000);
 </script>
 {% block scripts %}{% endblock %}
 </body>
