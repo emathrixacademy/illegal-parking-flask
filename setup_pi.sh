@@ -13,7 +13,13 @@ sudo apt update && sudo apt upgrade -y
 
 # 2. Install dependencies
 echo "[2/7] Installing system dependencies..."
-sudo apt install -y git python3-pip python3-venv python3-opencv libopencv-dev cloudflared
+sudo apt install -y git python3-pip python3-venv python3-opencv libopencv-dev
+
+# Install cloudflared (not in default repos)
+echo "[2b/7] Installing cloudflared..."
+curl -L -o /tmp/cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
+sudo dpkg -i /tmp/cloudflared.deb || sudo apt-get install -f -y
+rm /tmp/cloudflared.deb
 
 # 3. Enable SSH
 echo "[3/7] Enabling SSH..."
@@ -57,9 +63,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=set-admin
-WorkingDirectory=/home/set-admin/illegal-parking
-ExecStart=/home/set-admin/illegal-parking/venv/bin/python server.py
+User=$USER
+WorkingDirectory=/home/$USER/illegal-parking-flask
+ExecStart=/home/$USER/illegal-parking-flask/venv/bin/python server.py
 Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
