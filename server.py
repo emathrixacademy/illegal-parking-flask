@@ -24,6 +24,13 @@ import sys
 
 app = Flask(__name__)
 
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-API-Key'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    return response
+
 # Vehicle classes from yolov8s (COCO IDs) — bus(5) and truck(7) removed
 CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE"}
 
