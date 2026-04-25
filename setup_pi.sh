@@ -64,8 +64,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=$USER
-WorkingDirectory=/home/$USER/illegal-parking-flask
-ExecStart=/home/$USER/illegal-parking-flask/venv/bin/python server.py
+WorkingDirectory=/home/$USER/illegal-parking
+ExecStart=/home/$USER/illegal-parking/venv/bin/python server.py
 Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
@@ -76,6 +76,33 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable parking-detect.service
+
+# 8. Setup auto-pull from GitHub (checks every 5 minutes)
+echo "[8/8] Setting up auto-pull from GitHub..."
+AUTOPULL_SCRIPT="/home/$USER/autopull.sh"
+cat > "$AUTOPULL_SCRIPT" <<'SCRIPT'
+#!/bin/bash
+cd /home/$(whoami)/illegal-parking
+git fetch origin main 2>/dev/null
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git rev-parse origin/main)
+if [ "$LOCAL" != "$REMOTE" ]; then
+    git pull origin main
+    source venv/bin/activate
+    pip install -r requirements.txt --quiet
+    sudo systemctl restart parking-detect
+    echo "$(date): Updated and restarted parking-detect" >> /home/$(whoami)/autopull.log
+fi
+SCRIPT
+chmod +x "$AUTOPULL_SCRIPT"
+
+# Add to crontab if not already there
+(crontab -l 2>/dev/null | grep -v autopull; echo "*/5 * * * * $AUTOPULL_SCRIPT") | crontab -
+
+# Allow passwordless restart of parking-detect
+sudo tee /etc/sudoers.d/parking-detect > /dev/null <<SUDOERS
+$USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart parking-detect
+SUDOERS
 
 echo ""
 echo "=== Setup Complete ==="
