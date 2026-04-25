@@ -7,3 +7,5 @@ psycopg2-binary
 reportlab
 psutil
 numpy
+ultralytics
+opencv-python-headless
