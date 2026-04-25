@@ -92,7 +92,10 @@ else:
     warnings.warn("Hailo detection unavailable, using YOLOv8 CPU fallback.")
     from ultralytics import YOLO
 
-    _model = YOLO(config.MODEL_PATH)  # Make sure MODEL_PATH points to .pt model (not .hef)
+    _model_path = config.MODEL_PATH
+    if _model_path.endswith(".hef"):
+        _model_path = "yolov8s.pt"
+    _model = YOLO(_model_path)
     _lock = threading.Lock()
 
     def detect(frames):
