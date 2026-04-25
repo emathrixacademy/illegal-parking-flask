@@ -696,7 +696,7 @@ threading.Thread(target=processing_worker, args=("Camera_2", c2), daemon=True).s
 
 def gen_single(stream, cam_name):
     FRAME_INTERVAL = 1.0 / 10  # 10 FPS for cloud streaming
-    JPEG_QUALITY = 80  # Lower quality for smoother streaming (range: 0-100)
+    JPEG_QUALITY = 92  # Higher quality for clearer streaming
     last_frame_time = 0
     while True:
         start_time = time.time()
