@@ -143,13 +143,20 @@ def update_local_config(data):
         return False
 
 def periodic_settings_sync():
-    """Periodically sync settings from Railway database"""
+    """Periodically sync settings from Railway database and re-post tunnel URL"""
     while True:
-        time.sleep(60)  # Sync every 60 seconds
+        time.sleep(60)
         try:
             fetch_settings_from_railway()
         except Exception as e:
             logger.warning(f"Periodic sync failed: {e}")
+        try:
+            public_url = app.config.get("PUBLIC_URL", "")
+            if public_url:
+                RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+                requests.post(f"{RAILWAY_API_URL}/api/set_pi_url", json={"public_url": public_url}, headers=RAILWAY_HEADERS, timeout=5)
+        except Exception:
+            pass
 
 @app.route('/api/health', methods=['GET'])
 def health():
