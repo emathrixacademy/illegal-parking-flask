@@ -313,27 +313,67 @@ This starts:
 - Tamper detection (obstruction, defocus, scene change)
 - Health monitoring (CPU, RAM, disk, cameras)
 
-### Auto-Start on Boot (systemd)
+### Automated Pi Setup (Fresh SD Card)
+For a freshly installed Raspberry Pi OS (64-bit), run:
 ```bash
-sudo nano /etc/systemd/system/parking-detection.service
+git clone https://github.com/emathrixacademy/illegal-parking-flask.git illegal-parking
+cd illegal-parking
+bash setup_pi.sh
 ```
+
+The `setup_pi.sh` script automatically:
+1. Updates the system and installs dependencies (git, python3, opencv, cloudflared)
+2. Enables SSH
+3. Creates a Python virtual environment and installs packages
+4. Installs the Hailo runtime (if .deb is present)
+5. Creates a `parking-detect` systemd service for auto-start on boot
+6. Sets up **auto-pull from GitHub** (checks every 5 minutes, pulls new code and restarts the service)
+7. Configures passwordless sudo for service restart
+
+### Auto-Start on Boot (systemd)
+The setup script creates `/etc/systemd/system/parking-detect.service`:
 ```ini
 [Unit]
-Description=Parking Detection System
-After=network.target
+Description=Illegal Parking Detection Server
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-User=pi
-WorkingDirectory=/home/pi/illegal-parking-flask
-ExecStart=/usr/bin/python3 server.py
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/illegal-parking
+ExecStart=/home/admin/illegal-parking/venv/bin/python server.py
 Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
 ```
 ```bash
-sudo systemctl enable parking-detection
-sudo systemctl start parking-detection
+sudo systemctl enable parking-detect
+sudo systemctl start parking-detect
+sudo systemctl status parking-detect
+journalctl -u parking-detect -f  # View logs
+```
+
+### Auto-Pull from GitHub
+The Pi checks GitHub for new commits every 5 minutes via cron. When changes are detected:
+1. Pulls the latest code
+2. Installs any new dependencies
+3. Restarts the `parking-detect` service
+
+This means you can push code changes from your development PC and the Pi will automatically update within 5 minutes. Updates are logged to `~/autopull.log`.
+
+### Network Configuration
+The Pi requires two network addresses:
+- **`192.168.1.x`** (DHCP) — for internet access via the site router
+- **`192.168.8.101`** (static) — for communicating with cameras on the Hikvision switch
+
+To add the second IP permanently:
+```bash
+echo -e "\n[Network]\nAddress=192.168.8.101/24" | sudo tee -a /etc/systemd/network/10-eth0.network
+sudo ip addr add 192.168.8.101/24 dev eth0  # Apply immediately
 ```
 
 ## Default Credentials
@@ -358,6 +398,7 @@ Password: admin2026
 |----------|--------|------|-------------|
 | `/` | GET | Any | Main dashboard (live feeds, analytics, notifications) |
 | `/violations` | GET | Any | Violations timeline with image zoom |
+| `/calendar` | GET | Any | Incident heatmap calendar with drill-down |
 | `/playback` | GET | Any | Video playback + plate search |
 | `/settings` | GET | Operator+ | Settings, alert config, SMTP test |
 | `/8f3c9a2d71b4e6c0f9d2a8b7c4e1` | GET | Admin | Admin panel (violations table, fines) |
@@ -433,10 +474,29 @@ Password: admin2026
 | `/api/tamper_events` | GET | List tamper events (`?unresolved=1`) |
 | `/api/tamper_events/<id>/resolve` | POST | Mark tamper event resolved (Operator+) |
 
+### Calendar & Incidents API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/calendar` | GET | Incident heatmap by date/month (`?month=YYYY-MM`) |
+| `/api/calendar/details` | GET | Incident breakdown for date (`?date=YYYY-MM-DD`) |
+| `/api/recent_incidents` | GET | Recent incidents for notification dropdown |
+| `/api/pending_review_count` | GET | Count of incidents pending review |
+| `/api/review_incident` | POST | Submit review decision for incident |
+| `/api/model_performance` | GET | YOLOv8 & OCR accuracy metrics |
+
+### Detection Control API (proxied to Pi)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/detection_control` | GET | Get detection status (enabled/disabled) |
+| `/api/detection_control` | POST | Enable/disable detection, set confidence |
+| `/api/detection_snapshot` | GET | Single annotated frame from AI detection |
+| `/api/restart_detection` | POST | Force detection pipeline restart |
+
 ### System & Settings API
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/system_health` | GET | Pi system metrics (CPU, RAM, disk) |
+| `/api/health_summary_email` | POST | Receive and email daily health report |
 | `/api/settings` | GET | Get settings (Pi-first, DB fallback) |
 | `/api/settings` | POST | Save settings to DB + sync to Pi |
 | `/api/db_settings` | GET | Database-only settings |
@@ -550,12 +610,14 @@ illegal-parking/
 ├── cloudlink.py                # Cloudflare Tunnel helper
 ├── requirements.txt            # Python dependencies
 ├── Procfile                    # Railway deployment (gunicorn)
+├── setup_pi.sh                 # Automated Pi 5 setup (deps, service, auto-pull)
 ├── templates/
 │   ├── base.html               # Master template (mobile-first, PWA, clean light theme)
 │   ├── index.html              # Dashboard (live feeds, analytics, notification bell)
 │   ├── login.html              # Login page (standalone, PWA-enabled)
 │   ├── violations.html         # Violations timeline with image zoom
 │   ├── playback.html           # Video playback + plate search
+│   ├── calendar.html           # Incident heatmap calendar with drill-down
 │   ├── settings.html           # Settings + alert config + SMTP test
 │   ├── admin.html              # Admin panel (paginated violations + fines)
 │   ├── user_management.html    # User CRUD + activity log
@@ -577,8 +639,10 @@ illegal-parking/
 │   ├── admin.html              # SMS admin panel UI (reservation decisions)
 │   └── Running on.txt          # Local server URL and API key reference
 └── models/
-    ├── yolov8s.hef             # Hailo-optimized YOLOv8s model
-    ├── cctv_ai.hef             # CCTV AI detection model
+    ├── yolov8s.hef             # Hailo-optimized YOLOv8s model (INT8 quantized)
+    ├── cctv_ai.hef             # CCTV AI garbage detection model (Hailo)
+    ├── cctv_ai.pt              # CCTV AI model (PyTorch, CPU fallback)
+    ├── cctv_ai.onnx            # CCTV AI model (ONNX format)
     └── bytetrack.yaml          # ByteTrack tracker configuration
 ```
 
@@ -645,6 +709,15 @@ python app.py
 ```
 
 ## Changelog
+
+### April 26, 2026 - Edge Deployment & Reliability Fixes
+- **Automated Pi Setup**: `setup_pi.sh` script for fresh SD card deployment (system deps, venv, Hailo runtime, systemd service, auto-pull)
+- **Auto-Pull from GitHub**: Pi checks for new commits every 5 minutes and auto-restarts the service
+- **CPU Detection Fallback**: Auto-downloads `yolov8s.pt` when Hailo `.hef` model is unavailable on CPU fallback
+- **Tunnel URL Persistence**: Pi re-posts cloudflared tunnel URL to Railway every 60 seconds to survive Railway restarts
+- **CORS Headers**: Added cross-origin headers to Pi server for cloud dashboard API calls
+- **Stream Quality**: Increased MJPEG JPEG quality from 80% to 92% for clearer cloud dashboard video
+- **Dual Network Support**: Pi configured with both `192.168.1.x` (internet) and `192.168.8.101` (camera subnet) addresses
 
 ### April 2026 - UI Redesign & Bug Fixes
 - **UI Overhaul**: Complete redesign from dark theme (orange accents) to clean light theme (deep purple accents) inspired by modern admin panel design
