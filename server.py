@@ -17,6 +17,7 @@ from cloudlink import start_cloudflared
 from db import insert_violation_event  # (You can remove this import if not used elsewhere)
 from admin_config import get_fine_map
 from ocr_module import extract_plate
+from claude_vision import analyze_violation, is_available as vision_available
 from tamper_detect import TamperDetector
 from health_monitor import HealthMonitor
 from recorder import ContinuousRecorder, get_recording_dates, get_recording_segments
@@ -545,6 +546,25 @@ class ParkingMonitor:
                             except Exception as ocr_err:
                                 logger.warning(f"OCR failed: {ocr_err}")
 
+                            # Cloud vision analysis (plate + violation classification)
+                            vision_result = None
+                            if vision_available():
+                                try:
+                                    vision_result = analyze_violation(
+                                        frame, bbox=(x1, y1, x2, y2),
+                                        camera_id=name, vehicle_label=label,
+                                        duration_seconds=dur
+                                    )
+                                    if vision_result:
+                                        if vision_result.get("plate_number") and (
+                                            not plate_number or vision_result.get("plate_confidence", 0) > plate_confidence
+                                        ):
+                                            plate_number = vision_result["plate_number"]
+                                            plate_confidence = vision_result["plate_confidence"]
+                                            logger.info(f"Vision plate override: {plate_number} (conf={plate_confidence:.2f})")
+                                except Exception as ve:
+                                    logger.warning(f"Vision analysis error: {ve}")
+
                             payload = {
                                 "camera_id": name,
                                 "tracker_id": tid,
@@ -556,6 +576,10 @@ class ParkingMonitor:
                                 "enforced": False,
                                 "meta": {}
                             }
+                            if vision_result:
+                                payload["meta"]["violation_type"] = vision_result.get("violation_type", "UNKNOWN")
+                                payload["meta"]["vision_description"] = vision_result.get("description", "")
+                                payload["meta"]["obstacles"] = vision_result.get("obstacles", [])
                             if plate_number:
                                 payload["plate_number"] = plate_number
                                 payload["plate_confidence"] = plate_confidence

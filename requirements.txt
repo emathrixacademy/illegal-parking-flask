@@ -9,3 +9,4 @@ psutil
 numpy
 ultralytics
 opencv-python-headless
+anthropic

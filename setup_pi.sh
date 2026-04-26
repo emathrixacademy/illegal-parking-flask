@@ -44,6 +44,17 @@ pip install --upgrade pip
 pip install -r requirements.txt
 pip install opencv-python-headless
 
+# 5b. Create environment file for service secrets
+echo "[5b/7] Setting up environment file..."
+ENV_FILE="/home/$USER/.dcgl_env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "DCGL_VISION_KEY=" > "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "Created $ENV_FILE — add your vision key there."
+else
+    echo "$ENV_FILE already exists, skipping."
+fi
+
 # 6. Install Hailo runtime (if .deb exists in repo)
 echo "[6/7] Installing Hailo runtime..."
 if [ -f "hailort_4.23.0_arm64.deb" ]; then
@@ -69,6 +80,7 @@ ExecStart=/home/$USER/illegal-parking/venv/bin/python server.py
 Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/$USER/.dcgl_env
 
 [Install]
 WantedBy=multi-user.target
