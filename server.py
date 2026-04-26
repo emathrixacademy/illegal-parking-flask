@@ -59,7 +59,7 @@ VIOLATION_TIME_THRESHOLD = getattr(config, "VIOLATION_TIME_THRESHOLD", 100)
 REPEAT_CAPTURE_INTERVAL = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
 PARKING_ZONES = getattr(config, "PARKING_ZONES", {})
 PORT = int(os.environ.get("PORT", 5000))
-RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
 PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
 RAILWAY_HEADERS = {"X-API-Key": PI_API_KEY}
 
@@ -189,7 +189,7 @@ def periodic_settings_sync():
         try:
             public_url = app.config.get("PUBLIC_URL", "")
             if public_url:
-                RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+                RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
                 requests.post(f"{RAILWAY_API_URL}/api/set_pi_url", json={"public_url": public_url}, headers=RAILWAY_HEADERS, timeout=5)
         except Exception:
             pass
@@ -887,7 +887,7 @@ if __name__ == '__main__':
         app.config["PUBLIC_URL"] = public_url
 
         # Notify Railway app of the public URL
-        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app")
+        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
         max_retries = 10
         for attempt in range(max_retries):
             try:

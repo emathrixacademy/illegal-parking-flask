@@ -52,7 +52,7 @@ DEFAULT_PORT = int(os.environ.get("PORT", 5000))
 DEFAULT_RASPI_IP = os.environ.get("RASPI_IP", "192.168.8.101")
 DEFAULT_RASPI_PORT = os.environ.get("RASPI_PORT", "5000")
 DEFAULT_RAILWAY_API_URL = os.environ.get(
-    "RAILWAY_API_URL", "https://illegal-parking-detection-flask.up.railway.app"
+    "RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app"
 )
 CLOUDFLARE_TUNNEL_CMD = ["cloudflared", "tunnel", "--url", f"http://localhost:{DEFAULT_PORT}"]
 STATIC_EVENTS_DIR = "static/events"
