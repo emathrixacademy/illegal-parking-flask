@@ -150,10 +150,38 @@ def update_local_config(data):
         logger.error(f"Failed to update local config: {e}")
         return False
 
+def send_heartbeat():
+    """Send heartbeat to Railway so dashboard knows the Pi is alive."""
+    try:
+        uptime_sec = None
+        cpu_temp = None
+        try:
+            with open('/proc/uptime', 'r') as f:
+                uptime_sec = int(float(f.read().split()[0]))
+        except Exception:
+            pass
+        try:
+            with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+                cpu_temp = round(int(f.read().strip()) / 1000.0, 1)
+        except Exception:
+            pass
+        payload = {}
+        if uptime_sec is not None:
+            payload["uptime"] = uptime_sec
+        if cpu_temp is not None:
+            payload["cpu_temp"] = cpu_temp
+        requests.post(f"{RAILWAY_API_URL}/api/heartbeat", json=payload, headers=RAILWAY_HEADERS, timeout=5)
+    except Exception as e:
+        logger.warning(f"Heartbeat failed: {e}")
+
 def periodic_settings_sync():
-    """Periodically sync settings from Railway database and re-post tunnel URL"""
+    """Periodically sync settings from Railway database, re-post tunnel URL, and send heartbeat"""
     while True:
-        time.sleep(60)
+        time.sleep(30)
+        try:
+            send_heartbeat()
+        except Exception:
+            pass
         try:
             fetch_settings_from_railway()
         except Exception as e:

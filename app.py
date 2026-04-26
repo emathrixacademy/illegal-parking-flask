@@ -135,6 +135,7 @@ def start_cloudflared(port=DEFAULT_PORT):
 # --------------------------------------------------
 PI_PUBLIC_URL = get_config_value("PI_PUBLIC_URL", "")
 PI_URL_NOT_SET_LOGGED = False
+PI_LAST_HEARTBEAT = None
 logger.info(f"Loaded PI_PUBLIC_URL from database: {PI_PUBLIC_URL or '(empty)'}")
 
 PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
@@ -185,6 +186,49 @@ def get_pi_url():
     resp = jsonify({"public_url": PI_PUBLIC_URL})
     resp.headers.update(cors_headers())
     return resp
+
+@app.route('/api/heartbeat', methods=['POST'])
+@pi_api_key_required
+def pi_heartbeat():
+    global PI_LAST_HEARTBEAT
+    PI_LAST_HEARTBEAT = datetime.utcnow()
+    data = request.get_json(silent=True) or {}
+    set_config_value("PI_LAST_HEARTBEAT", PI_LAST_HEARTBEAT.isoformat())
+    if data.get("uptime"):
+        set_config_value("PI_UPTIME", str(data["uptime"]))
+    if data.get("cpu_temp"):
+        set_config_value("PI_CPU_TEMP", str(data["cpu_temp"]))
+    logger.info(f"Pi heartbeat received at {PI_LAST_HEARTBEAT.isoformat()}")
+    return jsonify({"success": True, "received_at": PI_LAST_HEARTBEAT.isoformat()})
+
+@app.route('/api/pi_status')
+@login_or_api_key
+def pi_status():
+    global PI_LAST_HEARTBEAT
+    if PI_LAST_HEARTBEAT is None:
+        saved = get_config_value("PI_LAST_HEARTBEAT", "")
+        if saved:
+            try:
+                PI_LAST_HEARTBEAT = datetime.fromisoformat(saved)
+            except ValueError:
+                pass
+    if PI_LAST_HEARTBEAT is None:
+        return jsonify({"alive": False, "status": "never_seen", "last_heartbeat": None})
+    age_seconds = (datetime.utcnow() - PI_LAST_HEARTBEAT).total_seconds()
+    if age_seconds < 90:
+        status = "online"
+    elif age_seconds < 300:
+        status = "stale"
+    else:
+        status = "offline"
+    return jsonify({
+        "alive": status == "online",
+        "status": status,
+        "last_heartbeat": PI_LAST_HEARTBEAT.isoformat(),
+        "age_seconds": int(age_seconds),
+        "uptime": get_config_value("PI_UPTIME", ""),
+        "cpu_temp": get_config_value("PI_CPU_TEMP", "")
+    })
 
 # --------------------------------------------------
 # Helper Functions

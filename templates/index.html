@@ -239,6 +239,7 @@
 <!-- Health + Legend + Bell -->
 <div class="status-bar">
   <span><span id="healthIndicator" style="font-size:1rem;">&#9679;</span> <span id="healthText" class="text-muted">Checking...</span></span>
+  <span class="ms-3"><span id="piStatusIndicator" style="font-size:0.7rem;">&#9679;</span> <span id="piStatusText" class="text-muted" style="font-size:0.78rem;">Pi: Checking...</span></span>
   <span class="ms-auto d-flex align-items-center gap-2">
     <span id="clock" class="text-muted" style="font-size:0.78rem;"></span>
   </span>
@@ -501,6 +502,30 @@ async function updateHealth() {
     } catch(e) { const t=document.getElementById('healthText'); if(t)t.textContent='Health check failed'; }
 }
 setInterval(updateHealth, 30000); setTimeout(updateHealth, 2000);
+
+// Pi heartbeat status
+async function updatePiStatus() {
+    try {
+        const r = await fetch('/api/pi_status');
+        const d = await r.json();
+        const ind = document.getElementById('piStatusIndicator'), txt = document.getElementById('piStatusText');
+        if(!ind||!txt) return;
+        const colors = {online:'#2ecc71', stale:'#f39c12', offline:'#e74c3c', never_seen:'#888'};
+        ind.style.color = colors[d.status]||'#888';
+        if(d.status==='never_seen') { txt.textContent='Pi: Never connected'; return; }
+        const ago = d.age_seconds;
+        let agoStr;
+        if(ago<60) agoStr=ago+'s ago';
+        else if(ago<3600) agoStr=Math.floor(ago/60)+'m ago';
+        else if(ago<86400) agoStr=Math.floor(ago/3600)+'h '+Math.floor((ago%3600)/60)+'m ago';
+        else agoStr=Math.floor(ago/86400)+'d ago';
+        let extra = '';
+        if(d.cpu_temp) extra += ' | '+d.cpu_temp+'°C';
+        if(d.uptime) { const h=Math.floor(d.uptime/3600); const m=Math.floor((d.uptime%3600)/60); extra += ' | Up:'+h+'h'+m+'m'; }
+        txt.textContent='Pi: '+(d.status==='online'?'Online':d.status==='stale'?'Stale':'Offline')+' ('+agoStr+')'+extra;
+    } catch(e) { const t=document.getElementById('piStatusText'); if(t)t.textContent='Pi: Status unknown'; }
+}
+setInterval(updatePiStatus, 15000); setTimeout(updatePiStatus, 1500);
 
 // Tamper alerts
 async function checkTamperAlerts() {
