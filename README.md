@@ -56,13 +56,16 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 - **Zoom Controls** - On-screen +/- buttons with zoom level indicator
 - **Double-Click Reset** - Quick reset to 1x zoom
 
-### Feature 16: Health Monitoring
+### Feature 16: Health Monitoring & Remote Heartbeat
 - **CPU Temperature** - Raspberry Pi thermal monitoring
 - **Memory Usage** - RAM utilization tracking
 - **Disk Usage** - Storage capacity monitoring (system + recording HDD)
 - **Camera Heartbeat** - RTSP stream connectivity check
 - **Dashboard Widget** - Color-coded health status (green/yellow/red)
 - **Alert Triggers** - Critical alerts for high temp (>80C), low RAM (>90%), offline cameras
+- **Pi Heartbeat** - Pi sends heartbeat every 30s to Railway with uptime and CPU temp
+- **Remote Pi Status** - Dashboard shows live Pi status: Online (green), Stale (yellow), Offline (red)
+- **Last Seen Tracking** - Shows exact time since last heartbeat (e.g., "Pi: Online (12s ago) | 48.2°C | Up:3h25m")
 
 ### Feature 17: Email / SMS Alerts
 - **HTML Email Notifications** - Professional styled HTML emails via Gmail SMTP matching the PDF report design (orange header, dark summary box, detail tables, branded footer)
@@ -255,7 +258,7 @@ export SECRET_KEY="your-secret-key"
 
 **For Raspberry Pi:**
 ```bash
-export RAILWAY_API_URL="https://your-app.up.railway.app"
+export RAILWAY_API_URL="https://web-production-dbb23.up.railway.app"
 export RASPI_IP="192.168.8.101"
 export PORT=5000
 ```
@@ -503,6 +506,8 @@ Password: admin2026
 | `/api/db_settings` | POST | Save to database only |
 | `/api/set_pi_url` | POST | Store Pi's Cloudflare tunnel URL |
 | `/api/get_pi_url` | GET | Retrieve stored Pi URL |
+| `/api/heartbeat` | POST | Receive Pi heartbeat (uptime, CPU temp) |
+| `/api/pi_status` | GET | Pi online/stale/offline status with last seen |
 
 ### Report Generation
 | Endpoint | Method | Description |
@@ -607,6 +612,7 @@ illegal-parking/
 ├── tamper_detect.py            # Camera tampering detection (SSIM)
 ├── health_monitor.py           # System health monitoring (psutil)
 ├── zone_selector.py            # Interactive parking zone polygon editor
+├── claude_vision.py            # Cloud vision analysis for plate reading
 ├── cloudlink.py                # Cloudflare Tunnel helper
 ├── requirements.txt            # Python dependencies
 ├── Procfile                    # Railway deployment (gunicorn)
@@ -709,6 +715,11 @@ python app.py
 ```
 
 ## Changelog
+
+### April 27, 2026 - Remote Monitoring & Connectivity Fix
+- **Pi Heartbeat System**: Pi sends heartbeat every 30s with uptime and CPU temp to Railway
+- **Pi Status Dashboard**: Live Pi status indicator (Online/Stale/Offline) with last-seen time, CPU temp, and uptime
+- **Railway URL Fix**: Updated default `RAILWAY_API_URL` to correct production deployment (`web-production-dbb23.up.railway.app`)
 
 ### April 26, 2026 - Edge Deployment & Reliability Fixes
 - **Automated Pi Setup**: `setup_pi.sh` script for fresh SD card deployment (system deps, venv, Hailo runtime, systemd service, auto-pull)
