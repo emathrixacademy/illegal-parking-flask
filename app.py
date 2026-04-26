@@ -18,7 +18,7 @@ import psycopg2
 import urllib.parse
 import threading
 import time
-from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection
+from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection, get_config_value, set_config_value
 from analytics import analytics_bp
 from admin_config import list_violations, mark_enforced, get_fine_map, set_fine_map
 from auth import (
@@ -133,8 +133,9 @@ def start_cloudflared(port=DEFAULT_PORT):
 # --------------------------------------------------
 # Pi Public URL Storage
 # --------------------------------------------------
-PI_PUBLIC_URL = ""
+PI_PUBLIC_URL = get_config_value("PI_PUBLIC_URL", "")
 PI_URL_NOT_SET_LOGGED = False
+logger.info(f"Loaded PI_PUBLIC_URL from database: {PI_PUBLIC_URL or '(empty)'}")
 
 PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
 
@@ -174,6 +175,7 @@ def set_pi_url():
     if new_url and new_url != PI_PUBLIC_URL:
         logger.info(f"Received new Pi public URL: {new_url} (old: {PI_PUBLIC_URL})")
         PI_PUBLIC_URL = new_url
+        set_config_value("PI_PUBLIC_URL", new_url)
     PI_URL_NOT_SET_LOGGED = False
     return jsonify({"success": True, "public_url": PI_PUBLIC_URL})
 
