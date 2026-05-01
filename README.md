@@ -839,16 +839,63 @@ cat ~/illegal-parking/config.py
 ```
 Compare with the values listed above and edit with `nano ~/illegal-parking/config.py`.
 
+### Quick Fix (90% of issues — run this first)
+
+Most problems are caused by the Pi rebooting and losing the camera subnet IP. SSH into the Pi and run these 3 commands:
+
+```bash
+sudo ip addr add 192.168.8.100/24 dev eth0
+fuser -k 5000/tcp 2>/dev/null; sleep 2
+sudo systemctl restart parking-detect
+```
+
+Wait 30 seconds, then hard refresh the Railway dashboard (Ctrl+Shift+R). Cameras should be back online.
+
+### After Pi reboot (cameras OFFLINE, Cloud Link Disconnected)
+
+This is the most common issue. The Pi loses the `192.168.8.x` secondary IP on reboot because `dhcpcd` and `systemd-networkd` conflict.
+
+```bash
+# 1. SSH into Pi
+ssh admin@192.168.1.15
+# Password: project123
+
+# 2. Re-add camera subnet
+sudo ip addr add 192.168.8.100/24 dev eth0
+
+# 3. Verify cameras are reachable
+ping -c 1 192.168.8.2
+ping -c 1 192.168.8.199
+
+# 4. Restart the detection service
+sudo systemctl restart parking-detect
+
+# 5. Verify it's running
+journalctl -u parking-detect --no-pager | tail -10
+```
+
+The Cloudflare tunnel takes ~30 seconds to establish after restart. The Railway dashboard will auto-detect the new tunnel URL.
+
 ### Recovery checklist (full restart from scratch)
+
+Only needed if the quick fix above doesn't work.
 
 1. SSH into Pi: `ssh admin@192.168.1.15` (scan subnet if IP changed)
 2. Add camera subnet: `sudo ip addr add 192.168.8.100/24 dev eth0`
-3. Verify cameras: `ping -c2 192.168.8.2 && ping -c2 192.168.8.199`
-4. Verify config: `cat ~/illegal-parking/config.py`
+3. Verify cameras: `ping -c1 192.168.8.2 && ping -c1 192.168.8.199`
+4. Verify config: `cat ~/illegal-parking/config.py` (must have all 7 settings, no duplicates — see above)
 5. Kill stale processes: `fuser -k 5000/tcp`
 6. Start service: `sudo systemctl restart parking-detect`
 7. Check logs: `journalctl -u parking-detect -f`
-8. Verify on dashboard: `https://web-production-dbb23.up.railway.app`
+8. Wait 30 seconds for Cloudflare tunnel
+9. Hard refresh dashboard: `https://web-production-dbb23.up.railway.app` (Ctrl+Shift+R)
+
+### Common mistakes to avoid
+
+- **Do NOT add credentials to RTSP URLs** — these cameras (Boa server) have no authentication. Using `admin:admin123@` will cause 401 errors.
+- **Do NOT edit config.py by appending** — always overwrite or you get duplicates that cause `AttributeError`.
+- **Do NOT run `python3 server.py &` if systemd is managing it** — use `sudo systemctl restart parking-detect` instead, or you'll get "Port 5000 already in use".
+- **Do NOT assume the Pi IP is the same** — it uses DHCP. If SSH fails, scan the subnet first.
 
 ## Changelog
 
