@@ -381,12 +381,27 @@ sudo ip addr add 192.168.8.101/24 dev eth0  # Apply immediately
 
 ## Default Credentials
 
+### Web Dashboard
 After first deployment, login with:
 ```
 Username: admin
 Password: admin2026
 ```
 **Change this immediately after first login via User Management.**
+
+### Raspberry Pi SSH Access
+```
+Host:     192.168.1.15 (DHCP — may change, scan subnet if unreachable)
+Username: admin
+Password: project123
+Port:     22
+```
+
+**Troubleshooting SSH access:**
+1. Pi must be connected to the router via ethernet cable
+2. If IP changed, scan the subnet: `for i in $(seq 1 254); do ping -c1 -W1 192.168.1.$i &>/dev/null && echo "192.168.1.$i UP"; done`
+3. Try SSH on each discovered IP: `ssh admin@<ip>`
+4. If password was changed, reset via monitor+keyboard or SD card `cmdline.txt` method
 
 ## API Documentation
 
@@ -713,6 +728,127 @@ cd NOTIF
 export UNISMS_SECRET_KEY="sk_df5338f6-e788-4396-88b8-20b91b2aa26e"
 python app.py
 ```
+
+## Troubleshooting Guide
+
+### Dashboard shows "Cloud Link Disconnected"
+
+The Pi is not connected or server.py is not running.
+
+**Step 1 — Find the Pi on the network:**
+```bash
+# From any machine on the same router
+for i in $(seq 1 254); do ping -c1 -W1 192.168.1.$i &>/dev/null && echo "192.168.1.$i UP"; done
+
+# Try SSH on each discovered IP
+ssh admin@<ip>
+# Password: project123
+```
+
+**Step 2 — Check if server.py is running:**
+```bash
+ps aux | grep server.py
+sudo systemctl status parking-detect
+```
+
+**Step 3 — If not running, start it:**
+```bash
+sudo systemctl start parking-detect
+# Or manually:
+cd ~/illegal-parking
+source venv/bin/activate
+python3 server.py &
+```
+
+### Cameras show "OFFLINE" (server running but no video)
+
+**Step 1 — Check camera subnet reachability:**
+```bash
+ping -c 2 192.168.8.2
+ping -c 2 192.168.8.199
+```
+
+If unreachable, the second IP on eth0 is missing:
+```bash
+sudo ip addr add 192.168.8.100/24 dev eth0
+# Verify
+ping -c 2 192.168.8.2
+```
+
+**Step 2 — Verify RTSP streams work:**
+```bash
+ffprobe -v error -show_streams "rtsp://192.168.8.2:554/stream" 2>&1 | head -5
+```
+
+Should show `codec_name=h264`. If it shows 401 Unauthorized, the camera password changed. These cameras (Boa server) do NOT require credentials — the correct URLs are:
+```
+CAM1_URL = "rtsp://192.168.8.2:554/stream"
+CAM2_URL = "rtsp://192.168.8.199:554/stream"
+```
+
+**Step 3 — Verify config.py on the Pi:**
+```bash
+cat ~/illegal-parking/config.py
+```
+
+Must contain all of these (no duplicates):
+```python
+MODEL_PATH = "models/yolov8s.hef"
+CAM1_URL = "rtsp://192.168.8.2:554/stream"
+CAM2_URL = "rtsp://192.168.8.199:554/stream"
+DETECTION_THRESHOLD = 0.3
+VIOLATION_TIME_THRESHOLD = 100
+REPEAT_CAPTURE_INTERVAL = 60
+PARKING_ZONES = {"Camera_1": [[249, 242], [255, 404], [654, 426], [443, 261]], "Camera_2": [[46, 437], [453, 253], [664, 259], [678, 438]]}
+```
+
+If config.py is missing values, copy from the repo or add manually. Then restart:
+```bash
+sudo systemctl restart parking-detect
+```
+
+### Port 5000 already in use
+
+A previous server.py instance didn't shut down cleanly:
+```bash
+fuser -k 5000/tcp
+sleep 2
+sudo systemctl restart parking-detect
+```
+
+### SSH password rejected
+
+The Pi username is `admin` (not `set-admin`). If the password `project123` doesn't work:
+1. Connect a monitor + keyboard to the Pi
+2. Login directly and reset: `sudo passwd admin`
+3. Or pull the SD card, append `init=/bin/sh` to `cmdline.txt`, boot, run `passwd admin`, remove `init=/bin/sh`, reboot
+
+### Pi IP address changed (DHCP)
+
+The Pi gets its IP via DHCP from the router and it may change. Known IPs:
+- `192.168.1.15` (confirmed May 2026)
+- `192.168.1.6` (old, now assigned to PC)
+
+To find the current IP, scan the subnet (see Step 1 above) or check the router admin page at `http://192.168.1.1`.
+
+### config.py out of sync with repo
+
+`config.py` contains camera-specific settings that may differ between dev and Pi. If `git pull` doesn't fix it:
+```bash
+cat ~/illegal-parking/config.py
+```
+Compare with the values listed above and edit with `nano ~/illegal-parking/config.py`.
+
+### Recovery checklist (full restart from scratch)
+
+1. SSH into Pi: `ssh admin@192.168.1.15` (scan subnet if IP changed)
+2. Add camera subnet: `sudo ip addr add 192.168.8.100/24 dev eth0`
+3. Verify cameras: `ping -c2 192.168.8.2 && ping -c2 192.168.8.199`
+4. Verify config: `cat ~/illegal-parking/config.py`
+5. Kill stale processes: `fuser -k 5000/tcp`
+6. Start service: `sudo systemctl restart parking-detect`
+7. Check logs: `journalctl -u parking-detect -f`
+8. Verify on dashboard: `https://web-production-dbb23.up.railway.app`
 
 ## Changelog
 
