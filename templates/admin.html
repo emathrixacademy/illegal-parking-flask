@@ -109,7 +109,7 @@
   <div class="admin-card">
     <div class="card-topbar">
       <h2><i class="bi bi-exclamation-octagon-fill"></i> Road Blocking Incidents</h2>
-      <span class="badge-count" id="totalBadge"><i class="bi bi-collection"></i> <span id="totalInfo">0</span> incidents</span>
+      <span class="badge-count" id="totalBadge"><i class="bi bi-collection"></i> Total Incidents: <span id="totalInfo">0</span></span>
     </div>
     <div class="filter-bar">
       <input type="date" class="form-control" id="filterDate" title="Filter by date">
@@ -319,10 +319,22 @@ function updatePaginationUI() {
   document.getElementById('nextPage').disabled = currentPage >= totalPages;
 }
 
+function buildFilterParams() {
+  const params = new URLSearchParams();
+  const date = document.getElementById('filterDate').value;
+  const status = document.getElementById('filterStatus').value;
+  if (date) params.set('date', date);
+  if (status) params.set('review_status', status);
+  return params;
+}
+
 async function fetchViolations(page) {
   page = page || currentPage;
   try {
-    const r = await fetch(`/api/violations_list?page=${page}&per_page=${PER_PAGE}`);
+    const params = buildFilterParams();
+    params.set('page', page);
+    params.set('per_page', PER_PAGE);
+    const r = await fetch('/api/violations_list?' + params.toString());
     const data = await r.json();
     if (data.error) throw new Error(data.error);
     currentPage = data.page; totalPages = data.total_pages;

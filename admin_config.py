@@ -41,6 +41,8 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
       - today: if '1', only today's violations
       - camera: camera id e.g. 'Camera_1'
       - duration_sort: if '1', order by duration_minutes DESC
+      - review_status: e.g. 'approved', 'rejected', 'for_review', 'needs_investigation'
+      - date: specific date in YYYY-MM-DD format
     """
     filters = filters or {}
     conn = get_connection()
@@ -53,6 +55,16 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
         if filters.get('label'):
             where_clauses.append("UPPER(label) = UPPER(%s)")
             params.append(filters['label'])
+
+        if filters.get('review_status'):
+            where_clauses.append("COALESCE(review_status, 'for_review') = %s")
+            params.append(filters['review_status'])
+
+        if filters.get('date'):
+            where_clauses.append(
+                "(timestamp AT TIME ZONE 'Asia/Manila')::date = %s::date"
+            )
+            params.append(filters['date'])
 
         if filters.get('hour_start') is not None and filters.get('hour_end') is not None:
             where_clauses.append(

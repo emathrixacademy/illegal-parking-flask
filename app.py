@@ -1450,6 +1450,10 @@ def api_violations_list():
             filters['camera'] = request.args['camera']
         if request.args.get('duration_sort'):
             filters['duration_sort'] = request.args['duration_sort']
+        if request.args.get('review_status'):
+            filters['review_status'] = request.args['review_status']
+        if request.args.get('date'):
+            filters['date'] = request.args['date']
         result = list_violations(page=page, per_page=per_page, filters=filters)
         resp = jsonify(result)
         resp.headers.update(cors_headers())
