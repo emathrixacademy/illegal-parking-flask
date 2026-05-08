@@ -234,8 +234,9 @@ def api_analytics_daily_trend():
         cur.close()
 
         labels = [r[0].strftime('%b %d') for r in rows]
+        dates = [r[0].isoformat() for r in rows]
         counts = [int(r[1]) for r in rows]
-        return jsonify({"labels": labels, "counts": counts, "period_days": days_back})
+        return jsonify({"labels": labels, "dates": dates, "counts": counts, "period_days": days_back})
     except Exception as e:
         logger.error(f"Daily trend query failed: {e}")
         return jsonify({"labels": [], "counts": [], "error": str(e)}), 500

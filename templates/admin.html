@@ -423,13 +423,20 @@ function goToday() {
 document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) fetchViolations(currentPage - 1); });
 document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < totalPages) fetchViolations(currentPage + 1); });
 
+// Disable future dates
+document.getElementById('filterDate').max = new Date().toISOString().split('T')[0];
+
 fetchViolations(1);
 
 function toggleReportPanel() {
   const panel = document.getElementById('reportPanel');
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  if (panel.style.display !== 'none' && !document.getElementById('reportDate').value) {
-    document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+  if (panel.style.display !== 'none') {
+    const today = new Date().toISOString().split('T')[0];
+    if (!document.getElementById('reportDate').value) document.getElementById('reportDate').value = today;
+    document.getElementById('reportDate').max = today;
+    document.getElementById('reportStartDate').max = today;
+    document.getElementById('reportEndDate').max = today;
   }
 }
 

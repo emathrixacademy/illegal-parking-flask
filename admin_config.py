@@ -43,6 +43,8 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
       - duration_sort: if '1', order by duration_minutes DESC
       - review_status: e.g. 'approved', 'rejected', 'for_review', 'needs_investigation'
       - date: specific date in YYYY-MM-DD format
+      - date_start: start date for range filter (YYYY-MM-DD)
+      - date_end: end date for range filter (YYYY-MM-DD)
     """
     filters = filters or {}
     conn = get_connection()
@@ -60,7 +62,23 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
             where_clauses.append("COALESCE(review_status, 'for_review') = %s")
             params.append(filters['review_status'])
 
-        if filters.get('date'):
+        if filters.get('date_start') and filters.get('date_end'):
+            where_clauses.append(
+                "(timestamp AT TIME ZONE 'Asia/Manila')::date BETWEEN %s::date AND %s::date"
+            )
+            params.append(filters['date_start'])
+            params.append(filters['date_end'])
+        elif filters.get('date_start'):
+            where_clauses.append(
+                "(timestamp AT TIME ZONE 'Asia/Manila')::date >= %s::date"
+            )
+            params.append(filters['date_start'])
+        elif filters.get('date_end'):
+            where_clauses.append(
+                "(timestamp AT TIME ZONE 'Asia/Manila')::date <= %s::date"
+            )
+            params.append(filters['date_end'])
+        elif filters.get('date'):
             where_clauses.append(
                 "(timestamp AT TIME ZONE 'Asia/Manila')::date = %s::date"
             )

@@ -295,6 +295,12 @@
   <div id="databaseView">
     <!-- Filter Bar -->
     <div class="filter-bar">
+      <div class="d-flex align-items-center gap-1" style="font-size:0.78rem;color:var(--text-secondary);white-space:nowrap;">
+        <label style="font-weight:600;">From</label>
+        <input type="date" id="filterDateStart" class="form-control" style="max-width:150px;">
+        <label style="font-weight:600;">To</label>
+        <input type="date" id="filterDateEnd" class="form-control" style="max-width:150px;">
+      </div>
       <select id="filterLabel" class="form-select">
         <option value="">All Vehicles</option>
         <option value="CAR">Car</option>
@@ -433,6 +439,12 @@ let _imagesLoaded = false;
 let currentPage = 1;
 let currentFilters = {};
 
+function initDateInputs() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('filterDateStart').max = today;
+  document.getElementById('filterDateEnd').max = today;
+}
+
 function getUrlParams() {
   const p = new URLSearchParams(window.location.search);
   const f = {};
@@ -445,6 +457,9 @@ function getUrlParams() {
   if (p.get('today')) f.today = p.get('today');
   if (p.get('camera')) f.camera = p.get('camera');
   if (p.get('duration_sort')) f.duration_sort = p.get('duration_sort');
+  if (p.get('date')) f.date = p.get('date');
+  if (p.get('date_start')) f.date_start = p.get('date_start');
+  if (p.get('date_end')) f.date_end = p.get('date_end');
   if (p.get('view') === 'all') { /* no extra filters, show all */ }
   return f;
 }
@@ -458,6 +473,15 @@ function setFiltersFromUrl() {
   if (f.day_of_week) document.getElementById('filterDay').value = f.day_of_week;
   if (f.camera) document.getElementById('filterCamera').value = f.camera;
   if (f.today === '1') document.getElementById('filterToday').checked = true;
+  if (f.date) {
+    document.getElementById('filterDateStart').value = f.date;
+    document.getElementById('filterDateEnd').value = f.date;
+    f.date_start = f.date;
+    f.date_end = f.date;
+    delete f.date;
+  }
+  if (f.date_start) document.getElementById('filterDateStart').value = f.date_start;
+  if (f.date_end) document.getElementById('filterDateEnd').value = f.date_end;
   currentFilters = f;
 }
 
@@ -468,7 +492,11 @@ function applyFilters() {
   const day = document.getElementById('filterDay').value;
   const camera = document.getElementById('filterCamera').value;
   const today = document.getElementById('filterToday').checked;
+  const dateStart = document.getElementById('filterDateStart').value;
+  const dateEnd = document.getElementById('filterDateEnd').value;
 
+  if (dateStart) f.date_start = dateStart;
+  if (dateEnd) f.date_end = dateEnd;
   if (label) f.label = label;
   if (hourRange) {
     const [hs, he] = hourRange.split('-');
@@ -495,6 +523,8 @@ function clearFilters() {
   document.getElementById('filterDay').value = '';
   document.getElementById('filterCamera').value = '';
   document.getElementById('filterToday').checked = false;
+  document.getElementById('filterDateStart').value = '';
+  document.getElementById('filterDateEnd').value = '';
   currentFilters = {};
   currentPage = 1;
   history.replaceState(null, '', '/violations');
@@ -504,6 +534,9 @@ function clearFilters() {
 function renderFilterTags() {
   const container = document.getElementById('activeFilters');
   const tags = [];
+  if (currentFilters.date_start && currentFilters.date_end) tags.push({ key: 'daterange', display: `Date: ${currentFilters.date_start} to ${currentFilters.date_end}` });
+  else if (currentFilters.date_start) tags.push({ key: 'daterange', display: `From: ${currentFilters.date_start}` });
+  else if (currentFilters.date_end) tags.push({ key: 'daterange', display: `Until: ${currentFilters.date_end}` });
   if (currentFilters.label) tags.push({ key: 'label', display: `Vehicle: ${currentFilters.label}` });
   if (currentFilters.hour_start !== undefined) tags.push({ key: 'hour', display: `Hour: ${currentFilters.hour_start}:00 - ${currentFilters.hour_end}:00` });
   if (currentFilters.day_of_week) tags.push({ key: 'day', display: `Day: ${currentFilters.day_of_week}` });
@@ -524,6 +557,7 @@ function removeFilter(key) {
   if (key === 'camera') { delete currentFilters.camera; document.getElementById('filterCamera').value = ''; }
   if (key === 'today') { delete currentFilters.today; document.getElementById('filterToday').checked = false; }
   if (key === 'duration_sort') { delete currentFilters.duration_sort; }
+  if (key === 'daterange') { delete currentFilters.date_start; delete currentFilters.date_end; document.getElementById('filterDateStart').value = ''; document.getElementById('filterDateEnd').value = ''; }
 
   const clean = {};
   Object.keys(currentFilters).forEach(k => { if (currentFilters[k] !== undefined) clean[k] = currentFilters[k]; });
@@ -776,6 +810,7 @@ document.getElementById('plateSearchInput').addEventListener('keypress', (e) => 
 
 // ========== INIT ==========
 window.addEventListener('load', () => {
+  initDateInputs();
   setFiltersFromUrl();
   loadViolations();
 });

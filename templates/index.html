@@ -140,6 +140,13 @@ a.stat-card:hover, a.scard-link:hover {
 .detail-item .dl { font-size: 0.72rem; color: #8a92a6; text-transform: uppercase; font-weight: 600; }
 .detail-item .dv { font-size: 1.1rem; font-weight: 700; }
 
+/* Clickable metrics */
+a.clickable-metric {
+  text-decoration: none; color: inherit; display: block;
+  border-radius: 8px; padding: 0.4rem; transition: background 0.15s, box-shadow 0.15s; cursor: pointer;
+}
+a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px 8px rgba(45,27,105,0.1); }
+
 /* Report form */
 .report-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
 .report-grid .full-span { grid-column: 1 / -1; }
@@ -350,10 +357,10 @@ a.stat-card:hover, a.scard-link:hover {
         <span style="font-size:0.82rem;font-weight:700;">Vehicle Detection</span>
       </div>
       <div id="yoloMetrics" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Total Detections</div><div id="yolo-total" style="font-size:1.2rem;font-weight:800;">--</div></div>
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Avg Confidence</div><div id="yolo-avg-conf" style="font-size:1.2rem;font-weight:800;">--</div></div>
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">High Confidence (&gt;70%)</div><div id="yolo-high" style="font-size:1.2rem;font-weight:800;color:var(--success);">--</div></div>
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Low Confidence (&lt;50%)</div><div id="yolo-low" style="font-size:1.2rem;font-weight:800;color:var(--danger);">--</div></div>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Total Detections</div><div id="yolo-total" style="font-size:1.2rem;font-weight:800;">--</div></a>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Avg Confidence</div><div id="yolo-avg-conf" style="font-size:1.2rem;font-weight:800;">--</div></a>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">High Confidence (&gt;70%)</div><div id="yolo-high" style="font-size:1.2rem;font-weight:800;color:var(--success);">--</div></a>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Low Confidence (&lt;50%)</div><div id="yolo-low" style="font-size:1.2rem;font-weight:800;color:var(--danger);">--</div></a>
       </div>
       <div style="margin-top:0.75rem;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
         <div id="yolo-bar" style="height:100%;background:var(--success);border-radius:3px;width:0%;transition:width 0.5s;"></div>
@@ -367,10 +374,10 @@ a.stat-card:hover, a.scard-link:hover {
         <span style="font-size:0.82rem;font-weight:700;">Plate Recognition</span>
       </div>
       <div id="ocrMetrics" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Plates Read</div><div id="ocr-total" style="font-size:1.2rem;font-weight:800;">--</div></div>
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Avg OCR Confidence</div><div id="ocr-avg-conf" style="font-size:1.2rem;font-weight:800;">--</div></div>
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Read Rate</div><div id="ocr-rate" style="font-size:1.2rem;font-weight:800;color:var(--primary);">--</div></div>
-        <div><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Unique Plates</div><div id="ocr-unique" style="font-size:1.2rem;font-weight:800;">--</div></div>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Plates Read</div><div id="ocr-total" style="font-size:1.2rem;font-weight:800;">--</div></a>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Avg OCR Confidence</div><div id="ocr-avg-conf" style="font-size:1.2rem;font-weight:800;">--</div></a>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Read Rate</div><div id="ocr-rate" style="font-size:1.2rem;font-weight:800;color:var(--primary);">--</div></a>
+        <a href="/violations?view=all" class="clickable-metric"><div class="dl" style="font-size:0.68rem;color:var(--text-secondary);text-transform:uppercase;font-weight:600;">Unique Plates</div><div id="ocr-unique" style="font-size:1.2rem;font-weight:800;">--</div></a>
       </div>
       <div style="margin-top:0.75rem;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
         <div id="ocr-bar" style="height:100%;background:var(--info);border-radius:3px;width:0%;transition:width 0.5s;"></div>
@@ -384,10 +391,10 @@ a.stat-card:hover, a.scard-link:hover {
 <div class="content-card">
   <h2><i class="bi bi-clipboard-data"></i> Detailed Statistics</h2>
   <div class="detail-grid">
-    <div class="detail-item"><div class="dl">Total Violations</div><div id="stat-total-violations" class="dv">0</div></div>
-    <div class="detail-item"><div class="dl">Active Cameras</div><div id="stat-active-cameras" class="dv">0</div></div>
-    <div class="detail-item"><div class="dl">Avg Confidence</div><div id="stat-avg-confidence" class="dv">0.00</div></div>
-    <div class="detail-item"><div class="dl">Avg Duration (min)</div><div id="stat-avg-duration" class="dv">0.00</div></div>
+    <a href="/violations?view=all" class="detail-item clickable-metric"><div class="dl">Total Violations</div><div id="stat-total-violations" class="dv">0</div></a>
+    <a href="/violations?view=all" class="detail-item clickable-metric"><div class="dl">Active Cameras</div><div id="stat-active-cameras" class="dv">0</div></a>
+    <a href="/violations?view=all" class="detail-item clickable-metric"><div class="dl">Avg Confidence</div><div id="stat-avg-confidence" class="dv">0.00</div></a>
+    <a href="/violations?duration_sort=1" class="detail-item clickable-metric"><div class="dl">Avg Duration (min)</div><div id="stat-avg-duration" class="dv">0.00</div></a>
   </div>
 </div>
 
@@ -463,7 +470,7 @@ function fetchAnalyticsAjax() {
             analyticsChart = new Chart(ctx, {
                 type: 'pie',
                 data: { labels, datasets: [{ data: counts, backgroundColor: ['#352070','#6c3ec7'] }] },
-                options: { plugins: { legend: { display: false } }, maintainAspectRatio: true, responsive: true }
+                options: { plugins: { legend: { display: false } }, maintainAspectRatio: true, responsive: true, onClick(evt, elements) { if(elements.length){ const lbl=labels[elements[0].index]; window.location.href='/violations?label='+encodeURIComponent(lbl); } } }
             });
         }
         if (analyticsChart) {
@@ -589,6 +596,7 @@ async function loadHeatmap() {
   try {
     const d = await ApiCache.fetch('/api/analytics/heatmap?days=30', { ttl: 60000, cacheKey: 'analytics_heatmap' });
     const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const dayFull = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     const hm = {};
     d.data.forEach(x => { if(!hm[x.day_index]) hm[x.day_index]={}; hm[x.day_index][x.hour]=x.count; });
     let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:10px;">';
@@ -600,7 +608,8 @@ async function loadHeatmap() {
         const c = (hm[di]&&hm[di][h])||0;
         const i = d.max_count>0 ? c/d.max_count : 0;
         const a = Math.max(0.08, i);
-        html += `<div style="height:20px;border-radius:3px;background:rgba(53,32,112,${a});cursor:pointer" title="${days[di]} ${h}:00 — ${c} violations"></div>`;
+        const href = `/violations?day_of_week=${encodeURIComponent(dayFull[di])}&hour_start=${h}&hour_end=${h+1}`;
+        html += `<a href="${href}" style="height:20px;border-radius:3px;background:rgba(53,32,112,${a});cursor:pointer;display:block;transition:transform 0.1s;" title="${days[di]} ${h}:00 — ${c} violations" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></a>`;
       }
     }
     html += '</div>';
@@ -608,31 +617,37 @@ async function loadHeatmap() {
   } catch(e) { console.error('Heatmap failed:', e); }
 }
 
+let trendDates = [];
 async function loadTrendChart() {
   try {
     const d = await ApiCache.fetch('/api/analytics/daily_trend?days=30', { ttl: 60000, cacheKey: 'analytics_trend' });
+    trendDates = d.dates || [];
     new Chart(document.getElementById('trendChart'), {
-      type: 'line', data: { labels: d.labels, datasets: [{ data: d.counts, borderColor: AC, backgroundColor: ACF, fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 }] },
-      options: { ...cOpts, scales: { ...cOpts.scales, x: { ...cOpts.scales.x, ticks: { ...cOpts.scales.x.ticks, maxTicksLimit: 8 } } } }
+      type: 'line', data: { labels: d.labels, datasets: [{ data: d.counts, borderColor: AC, backgroundColor: ACF, fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 6, borderWidth: 2 }] },
+      options: { ...cOpts, onClick(evt, elements) { if(elements.length&&trendDates[elements[0].index]) window.location.href='/violations?date='+trendDates[elements[0].index]; }, scales: { ...cOpts.scales, x: { ...cOpts.scales.x, ticks: { ...cOpts.scales.x.ticks, maxTicksLimit: 8 } } } }
     });
   } catch(e) { console.error('Trend failed:', e); }
 }
 
+let hourlyHours = [];
 async function loadHourlyChart() {
   try {
     const d = await ApiCache.fetch('/api/analytics/hourly?days=30', { ttl: 60000, cacheKey: 'analytics_hourly' });
+    hourlyHours = d.hours || [];
     const mx = Math.max(...d.counts);
     new Chart(document.getElementById('hourlyChart'), {
       type: 'bar', data: { labels: d.hours.map(h=>h+':00'), datasets: [{ data: d.counts, backgroundColor: d.counts.map(v=>v>(mx*0.7)?AC:ACL), borderRadius: 3 }] },
-      options: { ...cOpts, scales: { ...cOpts.scales, x: { ...cOpts.scales.x, ticks: { ...cOpts.scales.x.ticks, maxTicksLimit: 12 } } } }
+      options: { ...cOpts, onClick(evt, elements) { if(elements.length){ const h=hourlyHours[elements[0].index]; window.location.href='/violations?hour_start='+h+'&hour_end='+(parseInt(h)+1); } }, scales: { ...cOpts.scales, x: { ...cOpts.scales.x, ticks: { ...cOpts.scales.x.ticks, maxTicksLimit: 12 } } } }
     });
   } catch(e) { console.error('Hourly failed:', e); }
 }
 
+let cameraCams = [];
 async function loadCameraChart() {
   try {
     const d = await ApiCache.fetch('/api/analytics/camera_comparison', { ttl: 60000, cacheKey: 'analytics_cameras' });
     const cams = d.cameras;
+    cameraCams = cams;
     new Chart(document.getElementById('cameraChart'), {
       type: 'bar', data: {
         labels: cams.map(c=>c.replace('_',' ')),
@@ -641,7 +656,7 @@ async function loadCameraChart() {
           { label: 'Motorcycles', data: cams.map(c=>(d.data[c]&&d.data[c]['MOTORCYCLE'])||0), backgroundColor: AC, borderRadius: 4 }
         ]
       },
-      options: { ...cOpts, plugins: { legend: { display: true, labels: { color: CT, font: { size: 10 }, boxWidth: 10 } } } }
+      options: { ...cOpts, onClick(evt, elements) { if(elements.length){ const cam=cameraCams[elements[0].index]; const label=elements[0].datasetIndex===0?'CAR':'MOTORCYCLE'; window.location.href='/violations?camera='+encodeURIComponent(cam)+'&label='+label; } }, plugins: { legend: { display: true, labels: { color: CT, font: { size: 10 }, boxWidth: 10 } } } }
     });
   } catch(e) { console.error('Camera chart failed:', e); }
 }
@@ -651,7 +666,7 @@ async function loadDurationChart() {
     const d = await ApiCache.fetch('/api/analytics/duration_distribution', { ttl: 60000, cacheKey: 'analytics_duration' });
     new Chart(document.getElementById('durationChart'), {
       type: 'bar', data: { labels: d.buckets, datasets: [{ data: d.counts, backgroundColor: ACL, borderRadius: 3 }] },
-      options: cOpts
+      options: { ...cOpts, onClick(evt, elements) { if(elements.length) window.location.href='/violations?duration_sort=1'; } }
     });
   } catch(e) { console.error('Duration failed:', e); }
 }

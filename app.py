@@ -1490,6 +1490,10 @@ def api_violations_list():
             filters['duration_sort'] = request.args['duration_sort']
         if request.args.get('review_status'):
             filters['review_status'] = request.args['review_status']
+        if request.args.get('date_start'):
+            filters['date_start'] = request.args['date_start']
+        if request.args.get('date_end'):
+            filters['date_end'] = request.args['date_end']
         if request.args.get('date'):
             filters['date'] = request.args['date']
         result = list_violations(page=page, per_page=per_page, filters=filters)
