@@ -1284,7 +1284,7 @@ def api_recent_incidents():
 
 @app.route('/api/cameras', methods=['GET', 'POST'])
 @login_required
-@role_required('operator')
+@role_required('admin')
 def api_cameras():
     if request.method == 'POST':
         data = request.get_json(force=True)
@@ -1309,14 +1309,31 @@ def api_cameras():
         cameras = []
     return jsonify(cameras)
 
-@app.route('/api/cameras/<camera_id>', methods=['DELETE'])
+@app.route('/api/cameras/<camera_id>', methods=['PUT', 'DELETE'])
 @login_required
-@role_required('operator')
-def api_delete_camera(camera_id):
+@role_required('admin')
+def api_modify_camera(camera_id):
     cameras = get_config_value("CAMERAS", [])
     if not isinstance(cameras, list):
         cameras = []
-    cameras = [c for c in cameras if c.get('id') != camera_id]
+    if request.method == 'DELETE':
+        cameras = [c for c in cameras if c.get('id') != camera_id]
+        set_config_value("CAMERAS", cameras)
+        return jsonify({"success": True})
+    data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON"}), 400
+    found = False
+    for c in cameras:
+        if c.get('id') == camera_id:
+            if data.get('name') is not None: c['name'] = data['name']
+            if data.get('location') is not None: c['location'] = data['location']
+            if data.get('url') is not None: c['url'] = data['url']
+            if data.get('status') is not None: c['status'] = data['status']
+            found = True
+            break
+    if not found:
+        return jsonify({"success": False, "error": "Camera not found"}), 404
     set_config_value("CAMERAS", cameras)
     return jsonify({"success": True})
 
