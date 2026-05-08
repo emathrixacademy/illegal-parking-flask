@@ -286,22 +286,13 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 <!-- Quick Stats (Pie + Counts) -->
 <div class="content-card">
   <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h2>
-  <div class="analytics-grid">
-    <div class="stat-card chart-wrap">
-      <canvas id="analyticsChart" width="180" height="180"></canvas>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+    <div class="stat-card chart-wrap" style="grid-row:span 2;">
+      <canvas id="analyticsChart" width="200" height="200"></canvas>
     </div>
-    <div class="stat-card">
-      <div class="vehicle-row">
-        <a href="/violations?label=CAR" class="vehicle-card stat-card" style="text-decoration:none;color:inherit;">
-          <div class="color-dot blue"></div>
-          <div class="label">Cars</div>
-          <div id="count-CAR" class="count">0</div>
-        </a>
-        <a href="/violations?label=MOTORCYCLE" class="vehicle-card stat-card" style="text-decoration:none;color:inherit;">
-          <div class="color-dot orange"></div>
-          <div class="label">Motorcycles</div>
-          <div id="count-MOTORCYCLE" class="count">0</div>
-        </a>
+    <div class="stat-card" id="typeCounts" style="grid-row:span 2;">
+      <div class="vehicle-row" id="typeCountGrid" style="grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <!-- Populated dynamically -->
       </div>
     </div>
     <a href="/violations?view=all" class="stat-card" style="text-decoration:none;color:inherit;">
@@ -456,29 +447,60 @@ function startClock() {
     u(); setInterval(u, 1000);
 }
 
+// ===== Type Color Map =====
+const TYPE_COLORS = {
+  'CAR': '#2d1b69', 'MOTORCYCLE': '#d97706', 'JEEPNEY': '#0891b2',
+  'BIKE': '#059669', 'TRICYCLE': '#7c3aed', 'TRUCK': '#dc2626',
+  'BUS': '#0d9488', 'VENDOR': '#e11d48', 'FALLEN_TREE': '#15803d',
+  'GARBAGE': '#78716c', 'ROCK': '#57534e', 'OPEN_CANAL': '#0369a1',
+  'BASKET': '#a855f7', 'BOTTLE': '#06b6d4', 'BOX': '#f59e0b',
+  'BUCKET': '#8b5cf6', 'CAN': '#64748b', 'CANAL': '#0284c7',
+  'CARDBOARD': '#ca8a04', 'CHAIR': '#9333ea', 'CONTAINER': '#475569',
+  'CRATE': '#b45309', 'LEAVES': '#22c55e', 'PLASTIC': '#0ea5e9',
+  'PLASTIC_BAG': '#38bdf8', 'SACK': '#92400e', 'TRASH': '#6b7280',
+};
+const TYPE_FALLBACK = '#5b3fbc';
+function getTypeColor(t) { return TYPE_COLORS[t] || TYPE_FALLBACK; }
+
 // ===== Analytics =====
-let analyticsChart;
+let analyticsChart, chartLabels = [];
 function fetchAnalyticsAjax() {
     ApiCache.fetch('/api/violation_counts', {ttl: 15000, cacheKey: 'violation_counts'}).then(data => {
-        const labels = ['CAR','MOTORCYCLE'];
-        const counts = labels.map(l => Number(data[l] || 0));
+        const skip = ['TOTAL_UNIQUE_TRACKERS','RECENT_VIOLATORS_TODAY','TOTAL'];
+        const types = Object.keys(data).filter(k => !skip.includes(k) && Number(data[k]) > 0).sort((a,b) => Number(data[b]) - Number(data[a]));
+        chartLabels = types;
+        const counts = types.map(l => Number(data[l]));
+        const colors = types.map(l => getTypeColor(l));
         const total = counts.reduce((a,b)=>a+b,0);
+
+        // Build type count cards
+        const grid = document.getElementById('typeCountGrid');
+        if (grid) {
+          grid.style.gridTemplateColumns = types.length > 4 ? '1fr 1fr 1fr' : '1fr 1fr';
+          grid.innerHTML = types.map(t => `
+            <a href="/violations?label=${encodeURIComponent(t)}" class="vehicle-card stat-card" style="text-decoration:none;color:inherit;">
+              <div style="width:10px;height:10px;border-radius:50%;background:${getTypeColor(t)};display:inline-block;margin-right:4px;"></div>
+              <div class="label">${t.replace(/_/g,' ')}</div>
+              <div class="count" style="color:${getTypeColor(t)};">${data[t] || 0}</div>
+            </a>
+          `).join('');
+        }
+
         const canvas = document.getElementById('analyticsChart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!analyticsChart && ctx) {
             analyticsChart = new Chart(ctx, {
                 type: 'pie',
-                data: { labels, datasets: [{ data: counts, backgroundColor: ['#352070','#6c3ec7'] }] },
-                options: { plugins: { legend: { display: false } }, maintainAspectRatio: true, responsive: true, onClick(evt, elements) { if(elements.length){ const lbl=labels[elements[0].index]; window.location.href='/violations?label='+encodeURIComponent(lbl); } } }
+                data: { labels: types, datasets: [{ data: counts, backgroundColor: colors }] },
+                options: { plugins: { legend: { display: false } }, maintainAspectRatio: true, responsive: true, onClick(evt, elements) { if(elements.length){ window.location.href='/violations?label='+encodeURIComponent(chartLabels[elements[0].index]); } } }
             });
         }
         if (analyticsChart) {
-            if (total === 0) { analyticsChart.data.labels = ['No data']; analyticsChart.data.datasets[0].data = [1]; analyticsChart.data.datasets[0].backgroundColor = ['#6c6f76']; }
-            else { analyticsChart.data.labels = labels; analyticsChart.data.datasets[0].data = counts; analyticsChart.data.datasets[0].backgroundColor = ['#352070','#6c3ec7']; }
+            if (total === 0) { analyticsChart.data.labels = ['No data']; analyticsChart.data.datasets[0].data = [1]; analyticsChart.data.datasets[0].backgroundColor = ['#e2e8f0']; }
+            else { analyticsChart.data.labels = types; analyticsChart.data.datasets[0].data = counts; analyticsChart.data.datasets[0].backgroundColor = colors; }
             analyticsChart.update();
         }
-        labels.forEach(l => { const el = document.getElementById('count-'+l); if(el) el.textContent = data[l] || 0; });
         const uniq = data.TOTAL_UNIQUE_TRACKERS || data.TOTAL || total;
         const el1 = document.getElementById('total-violators'); if(el1) el1.textContent = uniq;
         const recent = data.RECENT_VIOLATORS_TODAY || data.recent || total;
@@ -642,21 +664,22 @@ async function loadHourlyChart() {
   } catch(e) { console.error('Hourly failed:', e); }
 }
 
-let cameraCams = [];
+let cameraCams = [], cameraTypes = [];
 async function loadCameraChart() {
   try {
     const d = await ApiCache.fetch('/api/analytics/camera_comparison', { ttl: 60000, cacheKey: 'analytics_cameras' });
     const cams = d.cameras;
     cameraCams = cams;
+    const allTypes = new Set();
+    cams.forEach(c => { if(d.data[c]) Object.keys(d.data[c]).forEach(t => allTypes.add(t)); });
+    cameraTypes = Array.from(allTypes);
+    const datasets = cameraTypes.map(t => ({
+      label: t.replace(/_/g,' '), data: cams.map(c => (d.data[c]&&d.data[c][t])||0),
+      backgroundColor: getTypeColor(t), borderRadius: 4
+    }));
     new Chart(document.getElementById('cameraChart'), {
-      type: 'bar', data: {
-        labels: cams.map(c=>c.replace('_',' ')),
-        datasets: [
-          { label: 'Cars', data: cams.map(c=>(d.data[c]&&d.data[c]['CAR'])||0), backgroundColor: BL, borderRadius: 4 },
-          { label: 'Motorcycles', data: cams.map(c=>(d.data[c]&&d.data[c]['MOTORCYCLE'])||0), backgroundColor: AC, borderRadius: 4 }
-        ]
-      },
-      options: { ...cOpts, onClick(evt, elements) { if(elements.length){ const cam=cameraCams[elements[0].index]; const label=elements[0].datasetIndex===0?'CAR':'MOTORCYCLE'; window.location.href='/violations?camera='+encodeURIComponent(cam)+'&label='+label; } }, plugins: { legend: { display: true, labels: { color: CT, font: { size: 10 }, boxWidth: 10 } } } }
+      type: 'bar', data: { labels: cams.map(c=>c.replace('_',' ')), datasets },
+      options: { ...cOpts, onClick(evt, elements) { if(elements.length){ const cam=cameraCams[elements[0].index]; const label=cameraTypes[elements[0].datasetIndex]; window.location.href='/violations?camera='+encodeURIComponent(cam)+'&label='+encodeURIComponent(label); } }, plugins: { legend: { display: true, labels: { color: CT, font: { size: 10 }, boxWidth: 10 } } } }
     });
   } catch(e) { console.error('Camera chart failed:', e); }
 }

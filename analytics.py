@@ -678,17 +678,18 @@ def api_generate_report():
     try:
         c = canvas.Canvas(buf, pagesize=letter)
         width, height = letter
-        
-        # Colors
-        primary_color = HexColor('#ff9800')  # Orange accent
-        dark_bg = HexColor('#232733')
+
+        # Colors — purple theme matching website
+        primary_color = HexColor('#2d1b69')
+        primary_light = HexColor('#5b3fbc')
+        dark_bg = HexColor('#2d1b69')
         text_color = HexColor('#f8f9fa')
-        
-        # Header with accent bar
+
+        # Header with purple accent bar
         c.setFillColor(primary_color)
         c.rect(0, height - 80, width, 80, fill=True, stroke=False)
-        
-        c.setFillColor(HexColor('#000000'))
+
+        c.setFillColor(HexColor('#ffffff'))
         c.setFont("Helvetica-Bold", 24)
         c.drawString(72, height - 50, "Illegal Parking Detection Report")
         
@@ -704,11 +705,12 @@ def api_generate_report():
         else:  # day
             date_range_text = date_obj.strftime('%B %d, %Y')
         
+        c.setFillColor(HexColor('#e0d8f0'))
         c.drawString(72, height - 68, date_range_text)
-        
+
         # Current position
         y = height - 110
-        
+
         # Filters applied section
         c.setFillColor(HexColor('#000000'))
         c.setFont("Helvetica-Bold", 10)
@@ -729,7 +731,7 @@ def api_generate_report():
         c.setFillColor(dark_bg)
         c.roundRect(72, y - 120, width - 144, 120, 10, fill=True, stroke=False)
         
-        c.setFillColor(primary_color)
+        c.setFillColor(HexColor('#ffffff'))
         c.setFont("Helvetica-Bold", 14)
         c.drawString(92, y - 25, "SUMMARY")
         
@@ -763,7 +765,7 @@ def api_generate_report():
         c.setFont("Helvetica-Bold", 12)
         c.drawString(72, y, "TOTAL VIOLATORS")
         y -= 5
-        c.setStrokeColor(primary_color)
+        c.setStrokeColor(primary_light)
         c.setLineWidth(2)
         c.line(72, y, width - 72, y)
         y -= 20
@@ -790,8 +792,8 @@ def api_generate_report():
             
             table_style = TableStyle([
                 # Header row
-                ('BACKGROUND', (0, 0), (-1, 0), HexColor('#232733')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ff9800')),
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2d1b69')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 10),
                 # Data rows
@@ -806,7 +808,7 @@ def api_generate_report():
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 # Borders
                 ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#cccccc')),
-                ('LINEBELOW', (0, 0), (-1, 0), 1.5, HexColor('#ff9800')),
+                ('LINEBELOW', (0, 0), (-1, 0), 1.5, HexColor('#5b3fbc')),
                 # Padding
                 ('LEFTPADDING', (0, 0), (-1, -1), 10),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 10),
@@ -837,15 +839,23 @@ def api_generate_report():
             c.showPage()
             y = height - 72
         
+        # Color map for violation types
+        type_colors = {
+            'CAR': '#2d1b69', 'MOTORCYCLE': '#d97706', 'JEEPNEY': '#0891b2',
+            'BIKE': '#059669', 'TRICYCLE': '#7c3aed', 'TRUCK': '#dc2626',
+            'BUS': '#0d9488', 'VENDOR': '#e11d48', 'FALLEN_TREE': '#15803d',
+            'GARBAGE': '#78716c', 'ROCK': '#57534e', 'OPEN_CANAL': '#0369a1',
+        }
+
         c.setFillColor(HexColor('#000000'))
         c.setFont("Helvetica-Bold", 12)
         c.drawString(72, y, "TYPE OF VIOLATORS")
         y -= 5
-        c.setStrokeColor(primary_color)
+        c.setStrokeColor(primary_light)
         c.setLineWidth(2)
         c.line(72, y, width - 72, y)
         y -= 20
-        
+
         if not label_rows:
             c.setFont("Helvetica", 10)
             c.setFillColor(HexColor('#666666'))
@@ -854,24 +864,18 @@ def api_generate_report():
         else:
             c.setFont("Helvetica", 10)
             c.setFillColor(HexColor('#000000'))
-            
+
             for lbl, cnt in label_rows:
                 if y < 80:
                     c.showPage()
                     y = height - 72
                     c.setFont("Helvetica", 10)
                     c.setFillColor(HexColor('#000000'))
-                
-                # Draw colored dot for vehicle type
-                if lbl == 'CAR':
-                    c.setFillColor(HexColor('#e68a00'))
-                elif lbl == 'MOTORCYCLE':
-                    c.setFillColor(HexColor('#ffb74d'))
-                else:
-                    c.setFillColor(HexColor('#ff4d4d'))
-                
+
+                dot_color = type_colors.get(lbl, '#5b3fbc')
+                c.setFillColor(HexColor(dot_color))
                 c.circle(82, y + 3, 4, fill=True, stroke=False)
-                
+
                 c.setFillColor(HexColor('#000000'))
                 c.drawString(92, y, f"{lbl}: {int(cnt)}")
                 y -= 18
