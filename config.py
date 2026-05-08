@@ -16,4 +16,6 @@ VIOLATION_TIME_THRESHOLD = 100
 REPEAT_CAPTURE_INTERVAL = 60
 # Define parking zones for each camera
 
-PARKING_ZONES = {"Camera_1": [[330, 280], [300, 450], [700, 430], [620, 260]], "Camera_2": [[150, 380], [150, 440], [550, 310], [550, 250]]}
+
+#reverted to commit 881c3d6
+PARKING_ZONES = {"Camera_1": [[249, 242], [255, 404], [654, 426], [443, 261]],"Camera_2": [[46, 437], [453, 253], [664, 259], [678, 438]]}
