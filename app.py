@@ -1307,6 +1307,12 @@ def api_cameras():
     cameras = get_config_value("CAMERAS", [])
     if not isinstance(cameras, list):
         cameras = []
+    if not cameras:
+        cameras = [
+            {"id": "Camera_1", "name": "Camera 1", "location": "Brgy. Kanluran", "url": "rtsp://192.168.8.2:554/stream", "status": "active"},
+            {"id": "Camera_2", "name": "Camera 2", "location": "Brgy. Kanluran", "url": "rtsp://192.168.8.199:554/stream", "status": "active"},
+        ]
+        set_config_value("CAMERAS", cameras)
     return jsonify(cameras)
 
 @app.route('/api/cameras/<camera_id>', methods=['PUT', 'DELETE'])
