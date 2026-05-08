@@ -549,6 +549,7 @@ def api_generate_report():
       - end_date: end date for custom range
       - vehicle_type: 'all'|'CAR'|'MOTORCYCLE' (defaults to 'all')
       - camera: 'all'|'Camera_1'|'Camera_2' (defaults to 'all')
+      - review_status: 'all'|'approved'|'rejected'|'for_review'|'needs_investigation'
     """
     period = (request.args.get('period') or 'day').lower()
     date_str = request.args.get('date')
@@ -556,6 +557,7 @@ def api_generate_report():
     end_date_str = request.args.get('end_date')
     vehicle_type = request.args.get('vehicle_type', 'all')
     camera_filter = request.args.get('camera', 'all')
+    review_status = request.args.get('review_status', 'all')
     
     # Parse dates
     try:
@@ -603,6 +605,11 @@ def api_generate_report():
     if camera_filter != 'all':
         where_clauses.append("camera = %s")
         params.append(camera_filter)
+
+    # Add review status filter
+    if review_status != 'all':
+        where_clauses.append("COALESCE(review_status, 'for_review') = %s")
+        params.append(review_status)
 
     where_sql = " AND ".join(where_clauses)
 
@@ -707,6 +714,8 @@ def api_generate_report():
         filters_text = f"Filters: {vehicle_type if vehicle_type != 'all' else 'All Vehicles'}"
         if camera_filter != 'all':
             filters_text += f" | {camera_filter}"
+        if review_status != 'all':
+            filters_text += f" | Status: {review_status.replace('_', ' ').title()}"
         c.drawString(72, y, filters_text)
         y -= 8
         

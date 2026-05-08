@@ -146,6 +146,68 @@
         <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
       </div>
       <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button class="btn btn-sm btn-outline-primary" onclick="toggleReportPanel()"><i class="bi bi-file-earmark-pdf"></i> Download Report</button>
+    </div>
+
+    <!-- PDF Report Panel (collapsible) -->
+    <div id="reportPanel" style="display:none;padding:1rem 1.25rem;border-top:1px solid var(--border);background:var(--bg);">
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.35rem;">
+        <i class="bi bi-file-earmark-pdf" style="color:var(--danger);"></i> Generate PDF Report
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;">
+        <div>
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Period</label>
+          <select class="form-select" id="reportPeriod" style="font-size:0.78rem;padding:0.35rem 0.6rem;" onchange="toggleCustomDates()">
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+        <div id="reportDateWrap">
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Date</label>
+          <input type="date" class="form-control" id="reportDate" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+        </div>
+        <div id="reportStartWrap" style="display:none;">
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Start Date</label>
+          <input type="date" class="form-control" id="reportStartDate" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+        </div>
+        <div id="reportEndWrap" style="display:none;">
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">End Date</label>
+          <input type="date" class="form-control" id="reportEndDate" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Vehicle Type</label>
+          <select class="form-select" id="reportVehicle" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+            <option value="all">All Types</option>
+            <option value="CAR">Car</option>
+            <option value="MOTORCYCLE">Motorcycle</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Camera</label>
+          <select class="form-select" id="reportCamera" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+            <option value="all">All Cameras</option>
+            <option value="Camera_1">Camera 1</option>
+            <option value="Camera_2">Camera 2</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Review Status</label>
+          <select class="form-select" id="reportStatus" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+            <option value="all">All Status</option>
+            <option value="for_review">For Review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="needs_investigation">Needs Investigation</option>
+          </select>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-accent btn-sm" id="downloadReportBtn" onclick="downloadReport()"><i class="bi bi-download"></i> Download PDF</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="toggleReportPanel()">Cancel</button>
+      </div>
+      <div id="reportMsg" style="margin-top:0.5rem;"></div>
     </div>
   </div>
 
@@ -362,5 +424,73 @@ document.getElementById('prevPage').addEventListener('click', () => { if (curren
 document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < totalPages) fetchViolations(currentPage + 1); });
 
 fetchViolations(1);
+
+function toggleReportPanel() {
+  const panel = document.getElementById('reportPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display !== 'none' && !document.getElementById('reportDate').value) {
+    document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function toggleCustomDates() {
+  const isCustom = document.getElementById('reportPeriod').value === 'custom';
+  document.getElementById('reportDateWrap').style.display = isCustom ? 'none' : 'block';
+  document.getElementById('reportStartWrap').style.display = isCustom ? 'block' : 'none';
+  document.getElementById('reportEndWrap').style.display = isCustom ? 'block' : 'none';
+}
+
+function downloadReport() {
+  const btn = document.getElementById('downloadReportBtn');
+  const msg = document.getElementById('reportMsg');
+  const period = document.getElementById('reportPeriod').value;
+  const params = new URLSearchParams();
+  params.set('period', period);
+  if (period === 'custom') {
+    const s = document.getElementById('reportStartDate').value;
+    const e = document.getElementById('reportEndDate').value;
+    if (!s || !e) { msg.innerHTML = '<div class="alert alert-warning py-1">Select start and end dates.</div>'; return; }
+    params.set('start_date', s);
+    params.set('end_date', e);
+  } else {
+    const d = document.getElementById('reportDate').value;
+    if (d) params.set('date', d);
+  }
+  const vt = document.getElementById('reportVehicle').value;
+  const cam = document.getElementById('reportCamera').value;
+  const st = document.getElementById('reportStatus').value;
+  if (vt !== 'all') params.set('vehicle_type', vt);
+  if (cam !== 'all') params.set('camera', cam);
+  if (st !== 'all') params.set('review_status', st);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Generating...';
+  msg.innerHTML = '';
+
+  fetch('/api/generate_report?' + params.toString())
+    .then(r => {
+      if (!r.ok) return r.json().then(j => { throw new Error(j.error || 'Failed'); });
+      return r.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'violation_report_' + (document.getElementById('reportDate').value || 'custom') + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      msg.innerHTML = '<div class="alert alert-success py-1">Report downloaded.</div>';
+      setTimeout(() => msg.innerHTML = '', 3000);
+    })
+    .catch(e => {
+      msg.innerHTML = '<div class="alert alert-danger py-1">' + e.message + '</div>';
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-download"></i> Download PDF';
+    });
+}
 </script>
 {% endblock %}

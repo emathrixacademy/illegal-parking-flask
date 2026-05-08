@@ -143,7 +143,48 @@
   </div>
 </div>
 
-<!-- Section 4: AI Detection Controls -->
+<!-- Section 4: Camera Management -->
+<div class="content-card">
+  <h2><i class="bi bi-camera-video-fill"></i> Camera Management</h2>
+  <div id="cameraList" style="margin-bottom:1rem;"></div>
+  <div style="padding:1rem;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+    <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.75rem;">Add New Camera</div>
+    <div class="row g-2 mb-2">
+      <div class="col-sm-4">
+        <label class="form-label">Camera ID</label>
+        <input type="text" class="form-control" id="newCamId" placeholder="Camera_3">
+      </div>
+      <div class="col-sm-4">
+        <label class="form-label">Name / Label</label>
+        <input type="text" class="form-control" id="newCamName" placeholder="Front Gate Camera">
+      </div>
+      <div class="col-sm-4">
+        <label class="form-label">Location</label>
+        <input type="text" class="form-control" id="newCamLocation" placeholder="Brgy. Kanluran Main Rd.">
+      </div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-sm-6">
+        <label class="form-label">RTSP URL (optional)</label>
+        <input type="text" class="form-control" id="newCamUrl" placeholder="rtsp://192.168.8.x:554/stream">
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="newCamStatus">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
+      </div>
+      <div class="col-sm-3 d-flex align-items-end">
+        <button class="btn btn-accent w-100" onclick="addCamera()"><i class="bi bi-plus-lg"></i> Add Camera</button>
+      </div>
+    </div>
+  </div>
+  <div id="cameraStatus" class="mt-2"></div>
+</div>
+
+<!-- Section 5: AI Detection Controls -->
 <div class="content-card">
   <h2><i class="bi bi-cpu"></i> AI Detection Controls</h2>
 
@@ -361,6 +402,78 @@
         btn.innerHTML = '<i class="bi bi-send"></i> Test SMTP';
         setTimeout(() => status.innerHTML = '', 5000);
     }
+
+    // ===== Camera Management =====
+    async function loadCameras() {
+      try {
+        const r = await fetch('/api/cameras');
+        const cameras = await r.json();
+        const container = document.getElementById('cameraList');
+        if (!cameras.length) {
+          container.innerHTML = '<div class="text-muted" style="padding:1rem;text-align:center;font-size:0.85rem;"><i class="bi bi-camera-video" style="font-size:1.5rem;display:block;margin-bottom:0.3rem;opacity:0.3;"></i>No cameras configured yet.</div>';
+          return;
+        }
+        container.innerHTML = '<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>ID</th><th>Name</th><th>Location</th><th>RTSP URL</th><th>Status</th><th></th></tr></thead><tbody>' +
+          cameras.map(c => {
+            const statusCls = c.status === 'active' ? 'success' : c.status === 'maintenance' ? 'warning' : 'secondary';
+            return `<tr>
+              <td style="font-weight:600;">${c.id}</td>
+              <td>${c.name || '-'}</td>
+              <td>${c.location || '-'}</td>
+              <td style="font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.url || ''}">${c.url || '-'}</td>
+              <td><span class="badge bg-${statusCls}">${c.status || 'unknown'}</span></td>
+              <td><button class="btn btn-sm btn-outline-danger" onclick="removeCamera('${c.id}')" title="Remove"><i class="bi bi-trash"></i></button></td>
+            </tr>`;
+          }).join('') +
+          '</tbody></table></div>';
+      } catch(e) {
+        document.getElementById('cameraList').innerHTML = '<div class="alert alert-warning">Could not load cameras.</div>';
+      }
+    }
+
+    async function addCamera() {
+      const id = document.getElementById('newCamId').value.trim();
+      const name = document.getElementById('newCamName').value.trim();
+      const location = document.getElementById('newCamLocation').value.trim();
+      const url = document.getElementById('newCamUrl').value.trim();
+      const status = document.getElementById('newCamStatus').value;
+      const msg = document.getElementById('cameraStatus');
+      if (!id) { msg.innerHTML = '<div class="alert alert-warning">Camera ID is required.</div>'; return; }
+      try {
+        const r = await fetch('/api/cameras', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ id, name, location, url, status })
+        });
+        const j = await r.json();
+        if (j.success) {
+          msg.innerHTML = '<div class="alert alert-success">Camera added!</div>';
+          document.getElementById('newCamId').value = '';
+          document.getElementById('newCamName').value = '';
+          document.getElementById('newCamLocation').value = '';
+          document.getElementById('newCamUrl').value = '';
+          loadCameras();
+          setTimeout(() => msg.innerHTML = '', 2000);
+        } else {
+          msg.innerHTML = '<div class="alert alert-danger">' + (j.error || 'Failed') + '</div>';
+        }
+      } catch(e) {
+        msg.innerHTML = '<div class="alert alert-danger">Error adding camera.</div>';
+      }
+    }
+
+    async function removeCamera(camId) {
+      if (!confirm('Remove camera ' + camId + '?')) return;
+      try {
+        const r = await fetch('/api/cameras/' + encodeURIComponent(camId), { method: 'DELETE' });
+        const j = await r.json();
+        if (j.success) loadCameras();
+        else document.getElementById('cameraStatus').innerHTML = '<div class="alert alert-danger">' + (j.error || 'Failed') + '</div>';
+      } catch(e) {
+        document.getElementById('cameraStatus').innerHTML = '<div class="alert alert-danger">Error removing camera.</div>';
+      }
+    }
+
+    loadCameras();
 
     // Load alert config on page load
     loadAlertConfig();

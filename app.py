@@ -1297,6 +1297,44 @@ def api_recent_incidents():
         logger.error(f"Recent incidents error: {e}")
         return jsonify({"incidents": [], "pending_count": 0})
 
+@app.route('/api/cameras', methods=['GET', 'POST'])
+@login_required
+@role_required('operator')
+def api_cameras():
+    if request.method == 'POST':
+        data = request.get_json(force=True)
+        if not isinstance(data, dict) or not data.get('id'):
+            return jsonify({"success": False, "error": "Camera ID required"}), 400
+        cameras = get_config_value("CAMERAS", [])
+        if not isinstance(cameras, list):
+            cameras = []
+        if any(c['id'] == data['id'] for c in cameras):
+            return jsonify({"success": False, "error": "Camera ID already exists"}), 400
+        cameras.append({
+            "id": data['id'],
+            "name": data.get('name', ''),
+            "location": data.get('location', ''),
+            "url": data.get('url', ''),
+            "status": data.get('status', 'active')
+        })
+        set_config_value("CAMERAS", cameras)
+        return jsonify({"success": True})
+    cameras = get_config_value("CAMERAS", [])
+    if not isinstance(cameras, list):
+        cameras = []
+    return jsonify(cameras)
+
+@app.route('/api/cameras/<camera_id>', methods=['DELETE'])
+@login_required
+@role_required('operator')
+def api_delete_camera(camera_id):
+    cameras = get_config_value("CAMERAS", [])
+    if not isinstance(cameras, list):
+        cameras = []
+    cameras = [c for c in cameras if c.get('id') != camera_id]
+    set_config_value("CAMERAS", cameras)
+    return jsonify({"success": True})
+
 @app.route('/api/pending_review_count')
 @login_required
 def api_pending_review_count():
