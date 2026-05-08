@@ -344,31 +344,42 @@ def login_page():
             error = 'Invalid username or password'
     return render_template('login.html', error=error)
 
-@app.route('/seed-test-data-2026')
-def seed_test_data():
-    """Temporary: seed 5 sample violations and configure SMS. Remove after testing."""
+@app.route('/seed-demo-data')
+@login_required
+@role_required('admin')
+def seed_demo_data():
+    """Replace all violations with 10 diverse demo records for presentation."""
     from datetime import datetime, timedelta
-    from alerts import save_alert_config, send_violation_alert
     try:
         conn = get_connection()
         try:
             cur = conn.cursor()
+            cur.execute("DELETE FROM plate_records")
+            cur.execute("DELETE FROM violations")
+            conn.commit()
+
+            now = datetime.now()
             samples = [
-                ('Camera_1', 101, 'CAR', datetime.now() - timedelta(hours=5), 0.87, 12.3),
-                ('Camera_2', 202, 'MOTORCYCLE', datetime.now() - timedelta(hours=3), 0.72, 8.5),
-                ('Camera_1', 303, 'CAR', datetime.now() - timedelta(hours=2), 0.91, 15.1),
-                ('Camera_2', 404, 'CAR', datetime.now() - timedelta(hours=1), 0.65, 6.2),
-                ('Camera_1', 505, 'MOTORCYCLE', datetime.now() - timedelta(minutes=30), 0.78, 9.8),
+                ('Camera_1', 101, 'CAR',         now - timedelta(days=7, hours=3),  0.92, 14.5, 'approved'),
+                ('Camera_2', 202, 'MOTORCYCLE',   now - timedelta(days=6, hours=8),  0.85, 8.2,  'approved'),
+                ('Camera_1', 303, 'JEEPNEY',      now - timedelta(days=5, hours=2),  0.78, 22.1, 'for_review'),
+                ('Camera_2', 404, 'VENDOR',       now - timedelta(days=4, hours=5),  0.88, 45.0, 'approved'),
+                ('Camera_1', 505, 'TRICYCLE',      now - timedelta(days=3, hours=10), 0.81, 11.3, 'rejected'),
+                ('Camera_2', 606, 'FALLEN_TREE',  now - timedelta(days=3, hours=1),  0.95, 120.0,'needs_investigation'),
+                ('Camera_1', 707, 'CAR',          now - timedelta(days=2, hours=6),  0.89, 9.7,  'for_review'),
+                ('Camera_2', 808, 'BIKE',         now - timedelta(days=1, hours=4),  0.73, 5.8,  'for_review'),
+                ('Camera_1', 909, 'GARBAGE',      now - timedelta(hours=12),         0.91, 60.0, 'approved'),
+                ('Camera_2', 1010,'MOTORCYCLE',   now - timedelta(hours=2),          0.86, 7.4,  'for_review'),
             ]
-            plates = ['ABC-1234', 'XYZ-5678', 'DEF-9012', None, 'GHI-3456']
+            plates = ['ABC-1234', 'XYZ-5678', None, None, 'TRC-9012', None, 'DEF-3456', None, None, 'GHI-7890']
             ids = []
-            for i, (cam, tid, label, ts, conf, dur) in enumerate(samples):
+            for i, (cam, tid, label, ts, conf, dur, status) in enumerate(samples):
                 cur.execute("""
                     INSERT INTO violations (camera, tracker_id, label, timestamp, confidence_score,
                         duration_minutes, barangay, review_status)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'Brgy. Kanluran', 'for_review')
+                    VALUES (%s, %s, %s, %s, %s, %s, 'Brgy. Kanluran', %s)
                     RETURNING id
-                """, (cam, tid, label, ts, conf, dur))
+                """, (cam, tid, label, ts, conf, dur, status))
                 vid = cur.fetchone()[0]
                 ids.append(vid)
                 if plates[i]:
@@ -381,36 +392,10 @@ def seed_test_data():
         finally:
             conn.close()
 
-        # Configure SMS with UniSMS
-        sms_config = {
-            "email_enabled": False,
-            "sms_enabled": True,
-            "sms_provider": "unisms",
-            "unisms_api_key": "sk_df5338f6-e788-4396-88b8-20b91b2aa26e",
-            "sms_recipients": ["+639271830747"],
-            "cooldown_seconds": 10,
-            "smtp_server": "smtp.gmail.com", "smtp_port": 587,
-            "smtp_email": "", "smtp_password": "",
-            "textbee_api_key": "", "textbee_device_id": "",
-            "email_recipients": [],
-        }
-        save_alert_config(sms_config)
-
-        # Send SMS for the latest violation
-        send_violation_alert({
-            "camera": "Camera_1",
-            "label": "MOTORCYCLE",
-            "duration_minutes": 9.8,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "plate_number": "GHI-3456",
-        })
-
-        return f"""<h2>Test data seeded successfully</h2>
-        <p>5 sample violations created (IDs: {ids})</p>
-        <p>SMS configured for +639271830747 via UniSMS</p>
-        <p>SMS alert sent for latest violation. Check your phone!</p>
-        <p><a href='/'>Go to Dashboard</a> | <a href='/8f3c9a2d71b4e6c0f9d2a8b7c4e1'>Go to Admin</a></p>
-        <p style='color:red;font-weight:bold;'>DELETE this route from app.py after testing!</p>"""
+        return f"""<h2>Demo data seeded successfully</h2>
+        <p>All previous violations cleared. 10 demo records created (IDs: {ids})</p>
+        <p>Types: CAR, MOTORCYCLE, JEEPNEY, VENDOR, TRICYCLE, FALLEN_TREE, BIKE, GARBAGE</p>
+        <p><a href='/'>Go to Dashboard</a> | <a href='/8f3c9a2d71b4e6c0f9d2a8b7c4e1'>Go to Admin</a></p>"""
     except Exception as e:
         import traceback
         return f"<h2>Error: {e}</h2><pre>{traceback.format_exc()}</pre>"
