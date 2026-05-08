@@ -1436,7 +1436,21 @@ def api_violations_list():
     try:
         page = max(1, int(request.args.get('page', 1)))
         per_page = min(100, max(1, int(request.args.get('per_page', 30))))
-        result = list_violations(page=page, per_page=per_page)
+        filters = {}
+        if request.args.get('label'):
+            filters['label'] = request.args['label']
+        if request.args.get('hour_start') is not None and request.args.get('hour_end') is not None:
+            filters['hour_start'] = request.args['hour_start']
+            filters['hour_end'] = request.args['hour_end']
+        if request.args.get('day_of_week'):
+            filters['day_of_week'] = request.args['day_of_week']
+        if request.args.get('today'):
+            filters['today'] = request.args['today']
+        if request.args.get('camera'):
+            filters['camera'] = request.args['camera']
+        if request.args.get('duration_sort'):
+            filters['duration_sort'] = request.args['duration_sort']
+        result = list_violations(page=page, per_page=per_page, filters=filters)
         resp = jsonify(result)
         resp.headers.update(cors_headers())
         resp.headers['Cache-Control'] = 'private, max-age=15'

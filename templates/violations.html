@@ -5,7 +5,160 @@
 {% block header_title %}<i class="bi bi-exclamation-triangle-fill"></i> Violations{% endblock %}
 
 {% block extra_css %}
-/* ========== VIOLATION TIMELINE ========== */
+/* ========== FILTER BAR ========== */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.filter-bar .form-select, .filter-bar .form-control {
+  max-width: 180px;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+}
+.filter-bar .btn {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+}
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--primary-lighter);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+}
+.filter-tag .remove-filter {
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.filter-tag .remove-filter:hover { opacity: 1; }
+.results-summary {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+/* ========== VIEW TABS ========== */
+.view-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--border);
+}
+.view-tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ========== VIOLATION TABLE ========== */
+.violation-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.violation-table { width: 100%; border-collapse: collapse; }
+.violation-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  background: var(--bg);
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.violation-table td {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+.violation-table tbody tr { cursor: pointer; transition: background 0.1s; }
+.violation-table tbody tr:hover { background: var(--primary-soft); }
+.violation-table tbody tr:last-child td { border-bottom: none; }
+.vt-label-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.vt-label-badge.car { background: #ede9fe; color: #352070; }
+.vt-label-badge.motorcycle { background: #fef3c7; color: #92400e; }
+.vt-label-badge.other { background: var(--bg); color: var(--text-secondary); }
+.vt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.vt-status.enforced { color: var(--success); }
+.vt-status.pending { color: var(--warning); }
+
+/* ========== PAGINATION ========== */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.pagination-bar .page-btns {
+  display: flex;
+  gap: 0.3rem;
+}
+.pagination-bar .page-btn {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.pagination-bar .page-btn:hover { border-color: var(--primary-light); }
+.pagination-bar .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.pagination-bar .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ========== VIOLATION TIMELINE (Images tab) ========== */
 .violation-timeline {
   border-left: 3px solid var(--accent);
   margin-left: 0.5rem;
@@ -23,9 +176,7 @@
   cursor: pointer;
   transition: border-color 0.2s;
 }
-.violation-card:hover {
-  border-color: var(--accent);
-}
+.violation-card:hover { border-color: var(--accent); }
 .violation-card img {
   width: 100%;
   height: 110px;
@@ -34,10 +185,7 @@
   border-bottom: 2px solid var(--border-light);
   background: var(--bg);
 }
-.violation-card-body {
-  padding: 0.7rem 0.85rem;
-  flex: 1;
-}
+.violation-card-body { padding: 0.7rem 0.85rem; flex: 1; }
 .violation-card-title {
   color: var(--accent);
   font-size: 0.95rem;
@@ -48,15 +196,6 @@
   color: var(--muted);
   font-size: 0.82rem;
   margin-bottom: 0.4rem;
-}
-.violation-card pre {
-  background: var(--card);
-  color: var(--muted);
-  font-size: 0.82em;
-  border: none;
-  margin: 0;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
 }
 
 /* Date buttons */
@@ -86,7 +225,26 @@
   margin-bottom: 0.5rem;
 }
 
-/* ========== TABLET (768px+) ========== */
+/* ========== DETAIL MODAL ========== */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.detail-grid .detail-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.detail-grid .detail-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ========== RESPONSIVE ========== */
 @media (min-width: 768px) {
   .violation-timeline {
     display: grid;
@@ -96,45 +254,23 @@
     margin-left: 0;
     padding-left: 0;
   }
-  .violation-card {
-    margin-bottom: 0;
-  }
-  .violation-card img {
-    height: 150px;
-  }
-  .search-section {
-    padding: 1rem;
-  }
+  .violation-card { margin-bottom: 0; }
+  .violation-card img { height: 150px; }
+  .search-section { padding: 1rem; }
 }
-
-/* ========== DESKTOP (1024px+) ========== */
 @media (min-width: 1024px) {
   .violation-timeline {
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: 1.25rem;
   }
-  .violation-card img {
-    height: 170px;
-  }
+  .violation-card img { height: 170px; }
 }
-
-/* ========== WIDE (1400px+) ========== */
 @media (min-width: 1400px) {
   .violation-timeline {
     grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
     gap: 1.5rem;
   }
-  .violation-card img {
-    height: 180px;
-  }
-}
-
-/* ========== ULTRA-WIDE (1800px+) ========== */
-@media (min-width: 1800px) {
-  .violation-timeline {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 2rem;
-  }
+  .violation-card img { height: 180px; }
 }
 
 /* Zoom modal image */
@@ -149,23 +285,120 @@
 <div class="content-card">
   <h2><i class="bi bi-exclamation-triangle-fill"></i> Parking Violations</h2>
 
-  <!-- Plate Number Search -->
-  <div class="search-section">
-    <h6><i class="bi bi-search"></i> Search by Plate Number</h6>
-    <div class="input-group">
-      <input type="text" id="plateSearchInput" class="form-control" placeholder="Enter plate number (e.g. ABC-1234)">
-      <button class="btn btn-accent" onclick="searchPlates()"><i class="bi bi-search"></i> Search</button>
-    </div>
-    <div id="plateSearchResults" class="mt-2"></div>
+  <!-- View Tabs -->
+  <div class="view-tabs">
+    <button class="view-tab active" id="tabDatabase" onclick="switchTab('database')"><i class="bi bi-table me-1"></i> Database Records</button>
+    <button class="view-tab" id="tabImages" onclick="switchTab('images')"><i class="bi bi-images me-1"></i> Capture Images</button>
   </div>
 
-  <!-- Date list -->
-  <div id="dateList" class="mb-3"></div>
+  <!-- ========== DATABASE TAB ========== -->
+  <div id="databaseView">
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <select id="filterLabel" class="form-select">
+        <option value="">All Vehicles</option>
+        <option value="CAR">Car</option>
+        <option value="MOTORCYCLE">Motorcycle</option>
+      </select>
+      <select id="filterHour" class="form-select">
+        <option value="">All Hours</option>
+        <option value="0-6">12 AM - 6 AM</option>
+        <option value="6-12">6 AM - 12 PM</option>
+        <option value="12-18">12 PM - 6 PM</option>
+        <option value="18-24">6 PM - 12 AM</option>
+      </select>
+      <select id="filterDay" class="form-select">
+        <option value="">All Days</option>
+        <option value="Monday">Monday</option>
+        <option value="Tuesday">Tuesday</option>
+        <option value="Wednesday">Wednesday</option>
+        <option value="Thursday">Thursday</option>
+        <option value="Friday">Friday</option>
+        <option value="Saturday">Saturday</option>
+        <option value="Sunday">Sunday</option>
+      </select>
+      <select id="filterCamera" class="form-select">
+        <option value="">All Cameras</option>
+        <option value="Camera_1">Camera 1</option>
+        <option value="Camera_2">Camera 2</option>
+      </select>
+      <label class="d-flex align-items-center gap-1" style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">
+        <input type="checkbox" id="filterToday" class="form-check-input" style="margin:0;">
+        Today Only
+      </label>
+      <button class="btn btn-accent" onclick="applyFilters()"><i class="bi bi-funnel"></i> Filter</button>
+      <button class="btn btn-outline-secondary" onclick="clearFilters()"><i class="bi bi-x-lg"></i> Clear</button>
+    </div>
 
-  <!-- Violation timeline -->
-  <div id="violationEvents" class="violation-timeline"></div>
+    <!-- Active filter tags -->
+    <div id="activeFilters" class="active-filters"></div>
+
+    <!-- Results summary -->
+    <div id="resultsSummary" class="results-summary"></div>
+
+    <!-- Violations Table -->
+    <div class="violation-table-wrap">
+      <table class="violation-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Camera</th>
+            <th>Vehicle</th>
+            <th>Tracker ID</th>
+            <th>Duration</th>
+            <th>Confidence</th>
+            <th>Timestamp</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="violationsBody">
+          <tr><td colspan="8" class="text-center text-muted py-4">Loading violations...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-bar">
+      <span id="paginationInfo">—</span>
+      <div class="page-btns" id="paginationBtns"></div>
+    </div>
+  </div>
+
+  <!-- ========== IMAGES TAB ========== -->
+  <div id="imagesView" style="display:none;">
+    <!-- Plate Number Search -->
+    <div class="search-section">
+      <h6><i class="bi bi-search"></i> Search by Plate Number</h6>
+      <div class="input-group">
+        <input type="text" id="plateSearchInput" class="form-control" placeholder="Enter plate number (e.g. ABC-1234)">
+        <button class="btn btn-accent" onclick="searchPlates()"><i class="bi bi-search"></i> Search</button>
+      </div>
+      <div id="plateSearchResults" class="mt-2"></div>
+    </div>
+
+    <!-- Date list -->
+    <div id="dateList" class="mb-3"></div>
+
+    <!-- Violation timeline -->
+    <div id="violationEvents" class="violation-timeline"></div>
+  </div>
 
   <a href="/" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left"></i> Back to Home</a>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="font-size:0.95rem;font-weight:700;color:var(--primary);">
+          <i class="bi bi-info-circle-fill me-1"></i> Violation Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="detailModalBody"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Image Zoom Modal -->
@@ -186,220 +419,365 @@
 
 {% block scripts %}
 <script>
-// ========== UTILITY FUNCTIONS ==========
-function groupBy(arr, keyFn) {
-    return arr.reduce((acc, item) => {
-        const key = keyFn(item);
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(item);
-        return acc;
-    }, {});
+// ========== TAB SWITCHING ==========
+function switchTab(tab) {
+  document.getElementById('databaseView').style.display = tab === 'database' ? '' : 'none';
+  document.getElementById('imagesView').style.display = tab === 'images' ? '' : 'none';
+  document.getElementById('tabDatabase').classList.toggle('active', tab === 'database');
+  document.getElementById('tabImages').classList.toggle('active', tab === 'images');
+  if (tab === 'images' && !_imagesLoaded) { loadDateList(); _imagesLoaded = true; }
+}
+let _imagesLoaded = false;
+
+// ========== DATABASE VIEW ==========
+let currentPage = 1;
+let currentFilters = {};
+
+function getUrlParams() {
+  const p = new URLSearchParams(window.location.search);
+  const f = {};
+  if (p.get('label')) f.label = p.get('label');
+  if (p.get('hour_start') !== null && p.get('hour_end') !== null && p.get('hour_start') !== '' && p.get('hour_end') !== '') {
+    f.hour_start = p.get('hour_start');
+    f.hour_end = p.get('hour_end');
+  }
+  if (p.get('day_of_week')) f.day_of_week = p.get('day_of_week');
+  if (p.get('today')) f.today = p.get('today');
+  if (p.get('camera')) f.camera = p.get('camera');
+  if (p.get('duration_sort')) f.duration_sort = p.get('duration_sort');
+  if (p.get('view') === 'all') { /* no extra filters, show all */ }
+  return f;
 }
 
-function formatMonth(ts) {
-    const d = new Date(ts);
-    return d.toLocaleString('default', { month: 'long', year: 'numeric' });
-}
-function formatDate(ts) {
-    const d = new Date(ts);
-    return d.toLocaleDateString();
-}
-function formatHour(ts) {
-    const d = new Date(ts);
-    return d.toLocaleDateString() + ' ' + d.getHours() + ':00';
+function setFiltersFromUrl() {
+  const f = getUrlParams();
+  if (f.label) document.getElementById('filterLabel').value = f.label;
+  if (f.hour_start !== undefined && f.hour_end !== undefined) {
+    document.getElementById('filterHour').value = f.hour_start + '-' + f.hour_end;
+  }
+  if (f.day_of_week) document.getElementById('filterDay').value = f.day_of_week;
+  if (f.camera) document.getElementById('filterCamera').value = f.camera;
+  if (f.today === '1') document.getElementById('filterToday').checked = true;
+  currentFilters = f;
 }
 
+function applyFilters() {
+  const f = {};
+  const label = document.getElementById('filterLabel').value;
+  const hourRange = document.getElementById('filterHour').value;
+  const day = document.getElementById('filterDay').value;
+  const camera = document.getElementById('filterCamera').value;
+  const today = document.getElementById('filterToday').checked;
+
+  if (label) f.label = label;
+  if (hourRange) {
+    const [hs, he] = hourRange.split('-');
+    f.hour_start = hs;
+    f.hour_end = he;
+  }
+  if (day) f.day_of_week = day;
+  if (camera) f.camera = camera;
+  if (today) f.today = '1';
+  if (currentFilters.duration_sort) f.duration_sort = currentFilters.duration_sort;
+
+  currentFilters = f;
+  currentPage = 1;
+
+  const params = new URLSearchParams(f);
+  history.replaceState(null, '', '/violations' + (params.toString() ? '?' + params.toString() : ''));
+
+  loadViolations();
+}
+
+function clearFilters() {
+  document.getElementById('filterLabel').value = '';
+  document.getElementById('filterHour').value = '';
+  document.getElementById('filterDay').value = '';
+  document.getElementById('filterCamera').value = '';
+  document.getElementById('filterToday').checked = false;
+  currentFilters = {};
+  currentPage = 1;
+  history.replaceState(null, '', '/violations');
+  loadViolations();
+}
+
+function renderFilterTags() {
+  const container = document.getElementById('activeFilters');
+  const tags = [];
+  if (currentFilters.label) tags.push({ key: 'label', display: `Vehicle: ${currentFilters.label}` });
+  if (currentFilters.hour_start !== undefined) tags.push({ key: 'hour', display: `Hour: ${currentFilters.hour_start}:00 - ${currentFilters.hour_end}:00` });
+  if (currentFilters.day_of_week) tags.push({ key: 'day', display: `Day: ${currentFilters.day_of_week}` });
+  if (currentFilters.camera) tags.push({ key: 'camera', display: `Camera: ${currentFilters.camera.replace('_', ' ')}` });
+  if (currentFilters.today === '1') tags.push({ key: 'today', display: 'Today Only' });
+  if (currentFilters.duration_sort === '1') tags.push({ key: 'duration_sort', display: 'Sorted by Duration' });
+
+  if (!tags.length) { container.innerHTML = ''; return; }
+  container.innerHTML = tags.map(t =>
+    `<span class="filter-tag">${t.display} <span class="remove-filter" onclick="removeFilter('${t.key}')">&times;</span></span>`
+  ).join('');
+}
+
+function removeFilter(key) {
+  if (key === 'label') { currentFilters.label = undefined; document.getElementById('filterLabel').value = ''; }
+  if (key === 'hour') { delete currentFilters.hour_start; delete currentFilters.hour_end; document.getElementById('filterHour').value = ''; }
+  if (key === 'day') { delete currentFilters.day_of_week; document.getElementById('filterDay').value = ''; }
+  if (key === 'camera') { delete currentFilters.camera; document.getElementById('filterCamera').value = ''; }
+  if (key === 'today') { delete currentFilters.today; document.getElementById('filterToday').checked = false; }
+  if (key === 'duration_sort') { delete currentFilters.duration_sort; }
+
+  const clean = {};
+  Object.keys(currentFilters).forEach(k => { if (currentFilters[k] !== undefined) clean[k] = currentFilters[k]; });
+  currentFilters = clean;
+  currentPage = 1;
+  loadViolations();
+}
+
+async function loadViolations() {
+  const body = document.getElementById('violationsBody');
+  body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>Loading...</td></tr>';
+
+  const params = new URLSearchParams({ page: currentPage, per_page: 30 });
+  Object.keys(currentFilters).forEach(k => {
+    if (currentFilters[k] !== undefined && currentFilters[k] !== '') params.set(k, currentFilters[k]);
+  });
+
+  try {
+    const resp = await fetch('/api/violations_list?' + params.toString());
+    const data = await resp.json();
+
+    if (data.error) {
+      body.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${data.error}</td></tr>`;
+      return;
+    }
+
+    renderFilterTags();
+
+    document.getElementById('resultsSummary').textContent =
+      `Showing ${data.items.length} of ${data.total} violation${data.total !== 1 ? 's' : ''}` +
+      (Object.keys(currentFilters).length ? ' (filtered)' : '');
+
+    if (!data.items.length) {
+      body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No violations found matching your filters.</td></tr>';
+      renderPagination(data);
+      return;
+    }
+
+    body.innerHTML = data.items.map((v, i) => {
+      const idx = (data.page - 1) * data.per_page + i + 1;
+      const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '—';
+      const labelClass = (v.label || '').toUpperCase() === 'CAR' ? 'car' : (v.label || '').toUpperCase() === 'MOTORCYCLE' ? 'motorcycle' : 'other';
+      const dur = v.duration_minutes != null ? v.duration_minutes.toFixed(1) + ' min' : '—';
+      const conf = v.confidence_score != null ? (v.confidence_score * 100).toFixed(1) + '%' : '—';
+      const status = v.enforced
+        ? '<span class="vt-status enforced"><i class="bi bi-check-circle-fill"></i> Enforced</span>'
+        : '<span class="vt-status pending"><i class="bi bi-clock"></i> Pending</span>';
+
+      return `<tr onclick="showDetail(${JSON.stringify(v).replace(/"/g, '&quot;')})">
+        <td>${idx}</td>
+        <td>${(v.camera || '').replace('_', ' ')}</td>
+        <td><span class="vt-label-badge ${labelClass}">${v.label || '—'}</span></td>
+        <td>#${v.tracker_id != null ? v.tracker_id : '—'}</td>
+        <td>${dur}</td>
+        <td>${conf}</td>
+        <td>${ts}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+
+    renderPagination(data);
+  } catch (e) {
+    body.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Failed to load violations. Please try again.</td></tr>';
+    console.error(e);
+  }
+}
+
+function renderPagination(data) {
+  const info = document.getElementById('paginationInfo');
+  const btns = document.getElementById('paginationBtns');
+  info.textContent = `Page ${data.page} of ${data.total_pages} (${data.total} total)`;
+
+  let html = '';
+  html += `<button class="page-btn" onclick="goToPage(${data.page - 1})" ${data.page <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>`;
+
+  const maxVisible = 5;
+  let startPage = Math.max(1, data.page - Math.floor(maxVisible / 2));
+  let endPage = Math.min(data.total_pages, startPage + maxVisible - 1);
+  if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+
+  if (startPage > 1) html += `<button class="page-btn" onclick="goToPage(1)">1</button><span style="padding:0 0.3rem;color:var(--muted);">...</span>`;
+  for (let p = startPage; p <= endPage; p++) {
+    html += `<button class="page-btn ${p === data.page ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+  }
+  if (endPage < data.total_pages) html += `<span style="padding:0 0.3rem;color:var(--muted);">...</span><button class="page-btn" onclick="goToPage(${data.total_pages})">${data.total_pages}</button>`;
+
+  html += `<button class="page-btn" onclick="goToPage(${data.page + 1})" ${data.page >= data.total_pages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>`;
+  btns.innerHTML = html;
+}
+
+function goToPage(p) {
+  currentPage = p;
+  loadViolations();
+  document.querySelector('.violation-table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showDetail(v) {
+  const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '—';
+  const dur = v.duration_minutes != null ? v.duration_minutes.toFixed(1) + ' min' : '—';
+  const conf = v.confidence_score != null ? (v.confidence_score * 100).toFixed(1) + '%' : '—';
+  const status = v.enforced ? 'Enforced' : (v.review_status || 'For Review');
+  const notes = v.review_notes || '—';
+
+  document.getElementById('detailModalBody').innerHTML = `
+    <div class="detail-grid">
+      <div><div class="detail-label">Camera</div><div class="detail-value">${(v.camera || '—').replace('_', ' ')}</div></div>
+      <div><div class="detail-label">Vehicle Type</div><div class="detail-value">${v.label || '—'}</div></div>
+      <div><div class="detail-label">Tracker ID</div><div class="detail-value">#${v.tracker_id != null ? v.tracker_id : '—'}</div></div>
+      <div><div class="detail-label">Duration</div><div class="detail-value">${dur}</div></div>
+      <div><div class="detail-label">Confidence</div><div class="detail-value">${conf}</div></div>
+      <div><div class="detail-label">Barangay</div><div class="detail-value">${v.barangay || '—'}</div></div>
+      <div><div class="detail-label">Timestamp</div><div class="detail-value">${ts}</div></div>
+      <div><div class="detail-label">Status</div><div class="detail-value">${status}</div></div>
+      <div style="grid-column:1/-1;"><div class="detail-label">Fine Amount</div><div class="detail-value">${v.fine_amount != null ? '₱' + Number(v.fine_amount).toFixed(2) : '—'}</div></div>
+      ${notes !== '—' ? `<div style="grid-column:1/-1;"><div class="detail-label">Review Notes</div><div class="detail-value" style="font-weight:400;">${notes}</div></div>` : ''}
+    </div>
+  `;
+  new bootstrap.Modal(document.getElementById('detailModal')).show();
+}
+
+// ========== IMAGES TAB ==========
 const FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22400%22%20height=%22250%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f0f2f7%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20fill%3D%22%23352070%22%20font-size%3D%2220%22%20font-family%3D%22Arial%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%3EImage%20unavailable%3C/text%3E%3C/svg%3E';
 
-function parseDateLabel(label) {
-    return label;
-}
-
 function parseTimeFromFilename(ev) {
-    try {
-        let path = "";
-        if (ev.proxy_image_url) {
-            let m = ev.proxy_image_url.match(/image_path=([^&]+)/);
-            if (m) path = decodeURIComponent(m[1]);
-        }
-        if (!path) return "";
-        let fname = path.split('/').pop();
-        let mt = fname.match(/-(\d{2})_(\d{2})_(\d{2})/);
-        if (mt) {
-            return `${mt[1]}:${mt[2]}`;
-        }
-    } catch (e) {}
-    return "";
+  try {
+    let path = "";
+    if (ev.proxy_image_url) {
+      let m = ev.proxy_image_url.match(/image_path=([^&]+)/);
+      if (m) path = decodeURIComponent(m[1]);
+    }
+    if (!path) return "";
+    let fname = path.split('/').pop();
+    let mt = fname.match(/-(\d{2})_(\d{2})_(\d{2})/);
+    if (mt) return `${mt[1]}:${mt[2]}`;
+  } catch (e) {}
+  return "";
 }
 
-// ========== VIOLATION CARD ==========
 function violationCard(ev) {
-    let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
-    let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
-    let camera_id = ev.camera_id || "";
-    let date_label = parseDateLabel(ev.timestamp || "");
-    let time_label = parseTimeFromFilename(ev);
-    let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
+  let label = ev.meta && ev.meta.label ? ev.meta.label : (ev.label || "");
+  let tracker_id = ev.meta && ev.meta.tracker_id ? ev.meta.tracker_id : (ev.tracker_id || "");
+  let camera_id = ev.camera_id || "";
+  let date_label = ev.timestamp || "";
+  let time_label = parseTimeFromFilename(ev);
+  let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
 
-    return `
-    <div class="violation-card" onclick="showZoomModalBySrc('${imgSrc}')">
-        <div class="violation-card-body">
-            <div class="violation-card-title">
-                <i class="bi bi-camera-video"></i> <b>${camera_id}</b>
-                ${label ? `<span class="badge bg-primary text-white ms-2">${label}</span>` : ""}
-                ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
-            </div>
-            <div class="violation-card-meta">
-                <i class="bi bi-calendar-event"></i> ${date_label}
-                ${time_label ? `<span class="ms-3"><i class="bi bi-clock"></i> ${time_label}</span>` : ""}
-            </div>
-        </div>
-    </div>
-    `;
+  return `
+  <div class="violation-card" onclick="showZoomModalBySrc('${imgSrc}')">
+      <div class="violation-card-body">
+          <div class="violation-card-title">
+              <i class="bi bi-camera-video"></i> <b>${camera_id}</b>
+              ${label ? `<span class="badge bg-primary text-white ms-2">${label}</span>` : ""}
+              ${tracker_id !== "" ? `<span class="badge bg-info text-dark ms-2">#${tracker_id}</span>` : ""}
+          </div>
+          <div class="violation-card-meta">
+              <i class="bi bi-calendar-event"></i> ${date_label}
+              ${time_label ? `<span class="ms-3"><i class="bi bi-clock"></i> ${time_label}</span>` : ""}
+          </div>
+      </div>
+  </div>
+  `;
 }
 
-// ========== IMAGE ZOOM MODAL ==========
 let zoomModalRetryInterval = null;
 
 function showZoomModalBySrc(imgSrc) {
-    const zoomedImage = document.getElementById('zoomedImage');
-    zoomedImage.src = "";
-
-    function clearRetry() {
-        if (zoomModalRetryInterval) {
-            clearInterval(zoomModalRetryInterval);
-            zoomModalRetryInterval = null;
-        }
-    }
-
-    const modalEl = document.getElementById('zoomModal');
-    const modal = new bootstrap.Modal(modalEl);
-
-    function onModalHidden() {
-        clearRetry();
-        if (zoomedImage.src.startsWith('blob:')) {
-            URL.revokeObjectURL(zoomedImage.src);
-        }
-        modalEl.removeEventListener('hidden.bs.modal', onModalHidden);
-    }
-    modalEl.addEventListener('hidden.bs.modal', onModalHidden);
-
-    function tryFetchImage() {
-        if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
-            fetch(imgSrc)
-                .then(resp => {
-                    if (!resp.ok) throw new Error("Image unavailable");
-                    return resp.blob();
-                })
-                .then(blob => {
-                    clearRetry();
-                    const url = URL.createObjectURL(blob);
-                    zoomedImage.src = url;
-                })
-                .catch(() => {
-                    zoomedImage.src = FALLBACK_SVG;
-                });
-        } else {
-            clearRetry();
-            zoomedImage.src = imgSrc || FALLBACK_SVG;
-        }
-    }
-
-    clearRetry();
-    tryFetchImage();
+  const zoomedImage = document.getElementById('zoomedImage');
+  zoomedImage.src = "";
+  function clearRetry() { if (zoomModalRetryInterval) { clearInterval(zoomModalRetryInterval); zoomModalRetryInterval = null; } }
+  const modalEl = document.getElementById('zoomModal');
+  const modal = new bootstrap.Modal(modalEl);
+  function onModalHidden() { clearRetry(); if (zoomedImage.src.startsWith('blob:')) URL.revokeObjectURL(zoomedImage.src); modalEl.removeEventListener('hidden.bs.modal', onModalHidden); }
+  modalEl.addEventListener('hidden.bs.modal', onModalHidden);
+  function tryFetchImage() {
     if (imgSrc && imgSrc.startsWith("/api/proxy_image")) {
-        zoomModalRetryInterval = setInterval(tryFetchImage, 1000);
-    }
-
-    modal.show();
+      fetch(imgSrc).then(resp => { if (!resp.ok) throw new Error(); return resp.blob(); })
+        .then(blob => { clearRetry(); zoomedImage.src = URL.createObjectURL(blob); })
+        .catch(() => { zoomedImage.src = FALLBACK_SVG; });
+    } else { clearRetry(); zoomedImage.src = imgSrc || FALLBACK_SVG; }
+  }
+  clearRetry(); tryFetchImage();
+  if (imgSrc && imgSrc.startsWith("/api/proxy_image")) zoomModalRetryInterval = setInterval(tryFetchImage, 1000);
+  modal.show();
 }
 
-function showZoomModal(imgElem) {
-    const zoomedImage = document.getElementById('zoomedImage');
-    zoomedImage.src = imgElem.getAttribute('data-img') || imgElem.src;
-    const modal = new bootstrap.Modal(document.getElementById('zoomModal'));
-    modal.show();
-}
-
-// ========== DATE LIST & EVENTS ==========
 let pollingHandle = null;
 
 async function loadDateList() {
-    const dl = document.getElementById('dateList');
-    dl.innerHTML = "<div class='text-muted'>Loading dates...</div>";
-    try {
-        const res = await fetch('/api/events?dates_only=1');
-        const dates = await res.json();
-        if (!dates.length) {
-            dl.innerHTML = "<div class='alert alert-info'>No violation dates available.</div>";
-            return;
-        }
-        dl.innerHTML = dates.map(d => `<button class="btn btn-outline-warning date-btn me-2 mb-2" data-date="${d}">${d}</button>`).join('');
-        document.querySelectorAll('.date-btn').forEach(b => {
-            b.addEventListener('click', () => {
-                document.querySelectorAll('.date-btn').forEach(x => x.classList.remove('active'));
-                b.classList.add('active');
-                loadEventsForDate(b.getAttribute('data-date'));
-            });
-        });
-    } catch (err) {
-        dl.innerHTML = "<div class='alert alert-danger'>Failed to load dates.</div>";
-        console.error(err);
-    }
+  const dl = document.getElementById('dateList');
+  dl.innerHTML = "<div class='text-muted'>Loading dates...</div>";
+  try {
+    const res = await fetch('/api/events?dates_only=1');
+    const dates = await res.json();
+    if (!dates.length) { dl.innerHTML = "<div class='alert alert-info'>No violation dates available.</div>"; return; }
+    dl.innerHTML = dates.map(d => `<button class="btn btn-outline-warning date-btn me-2 mb-2" data-date="${d}">${d}</button>`).join('');
+    document.querySelectorAll('.date-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.date-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        loadEventsForDate(b.getAttribute('data-date'));
+      });
+    });
+  } catch (err) {
+    dl.innerHTML = "<div class='alert alert-danger'>Failed to load dates.</div>";
+    console.error(err);
+  }
 }
 
 async function loadEventsForDate(dateLabel) {
-    const container = document.getElementById('violationEvents');
-    container.innerHTML = "<div class='text-muted'>Loading events for selected date...</div>";
-    try {
-        const res = await fetch(`/api/events?date=${encodeURIComponent(dateLabel)}`);
-        const events = await res.json();
-        if (!events || !events.length) {
-            container.innerHTML = "<div class='alert alert-info'>No images for this date.</div>";
-            return;
-        }
-        // Preload images
-        await Promise.all(events.map(ev => new Promise(resolve => {
-            const src = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
-            if (!src) return resolve();
-            const img = new Image();
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-            img.src = src;
-        })));
-        container.innerHTML = events.map(ev => violationCard(ev)).join('');
-    } catch (err) {
-        container.innerHTML = "<div class='alert alert-danger'>Failed to load events for date.</div>";
-        console.error(err);
-    }
+  const container = document.getElementById('violationEvents');
+  container.innerHTML = "<div class='text-muted'>Loading events for selected date...</div>";
+  try {
+    const res = await fetch(`/api/events?date=${encodeURIComponent(dateLabel)}`);
+    const events = await res.json();
+    if (!events || !events.length) { container.innerHTML = "<div class='alert alert-info'>No images for this date.</div>"; return; }
+    await Promise.all(events.map(ev => new Promise(resolve => {
+      const src = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
+      if (!src) return resolve();
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = src;
+    })));
+    container.innerHTML = events.map(ev => violationCard(ev)).join('');
+  } catch (err) {
+    container.innerHTML = "<div class='alert alert-danger'>Failed to load events for date.</div>";
+    console.error(err);
+  }
 }
 
-// ========== PLATE SEARCH ==========
 async function searchPlates() {
-    const q = document.getElementById('plateSearchInput').value.trim();
-    const container = document.getElementById('plateSearchResults');
-    if (!q) { container.innerHTML = ''; return; }
-    try {
-        const resp = await fetch(`/api/plates/search?q=${encodeURIComponent(q)}`);
-        const data = await resp.json();
-        if (data.error) { container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; return; }
-        if (!data.length) { container.innerHTML = '<div class="alert alert-info py-1">No records found.</div>'; return; }
-        let html = '<div class="table-responsive"><table class="table table-sm table-striped table-hover mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Time</th></tr></thead><tbody>';
-        data.forEach(r => {
-            html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td><td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td><td>${r.timestamp||''}</td></tr>`;
-        });
-        html += '</tbody></table></div>';
-        container.innerHTML = html;
-    } catch(e) { container.innerHTML = '<div class="alert alert-danger py-1">Search failed.</div>'; }
+  const q = document.getElementById('plateSearchInput').value.trim();
+  const container = document.getElementById('plateSearchResults');
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const resp = await fetch(`/api/plates/search?q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    if (data.error) { container.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; return; }
+    if (!data.length) { container.innerHTML = '<div class="alert alert-info py-1">No records found.</div>'; return; }
+    let html = '<div class="table-responsive"><table class="table table-sm table-striped table-hover mt-2"><thead><tr><th>Plate</th><th>Camera</th><th>Vehicle</th><th>Duration</th><th>Time</th></tr></thead><tbody>';
+    data.forEach(r => {
+      html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td><td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td><td>${r.timestamp||''}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<div class="alert alert-danger py-1">Search failed.</div>'; }
 }
 
 document.getElementById('plateSearchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchPlates(); });
 
 // ========== INIT ==========
 window.addEventListener('load', () => {
-    loadDateList();
-    if (pollingHandle) clearInterval(pollingHandle);
-    pollingHandle = setInterval(loadDateList, 10000);
+  setFiltersFromUrl();
+  loadViolations();
 });
 </script>
 {% endblock %}

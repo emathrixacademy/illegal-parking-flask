@@ -101,6 +101,25 @@
   border-radius: 10px;
   padding: 0.75rem;
 }
+a.stat-card, a.scard-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+a.stat-card:hover, a.scard-link:hover {
+  border-color: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(45,27,105,0.12);
+}
+#summary-cards .scard {
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+#summary-cards .scard:hover {
+  border-color: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(45,27,105,0.12);
+}
 .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--text); }
 .stat-value.accent { color: var(--accent); }
@@ -266,26 +285,26 @@
     </div>
     <div class="stat-card">
       <div class="vehicle-row">
-        <div class="vehicle-card">
+        <a href="/violations?label=CAR" class="vehicle-card stat-card" style="text-decoration:none;color:inherit;">
           <div class="color-dot blue"></div>
           <div class="label">Cars</div>
           <div id="count-CAR" class="count">0</div>
-        </div>
-        <div class="vehicle-card">
+        </a>
+        <a href="/violations?label=MOTORCYCLE" class="vehicle-card stat-card" style="text-decoration:none;color:inherit;">
           <div class="color-dot orange"></div>
           <div class="label">Motorcycles</div>
           <div id="count-MOTORCYCLE" class="count">0</div>
-        </div>
+        </a>
       </div>
     </div>
-    <div class="stat-card">
+    <a href="/violations?view=all" class="stat-card" style="text-decoration:none;color:inherit;">
       <div class="stat-label">Total Unique Violations</div>
       <div id="total-violators" class="stat-value accent">0</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/violations?today=1" class="stat-card" style="text-decoration:none;color:inherit;">
       <div class="stat-label">Recent (Today)</div>
       <div id="recent-violators" class="stat-value accent">0</div>
-    </div>
+    </a>
   </div>
 </div>
 
@@ -554,11 +573,14 @@ async function loadSummaryCards() {
     const d = await ApiCache.fetch('/api/analytics/summary', { ttl: 30000, cacheKey: 'analytics_summary' });
     if (d.error) return;
     const s = d.change_vs_last_month >= 0 ? '+' : '';
+    const peakMatch = d.peak_hour.match(/(\d+)/);
+    const peakHourStart = peakMatch ? parseInt(peakMatch[1]) : 0;
+    const peakHourEnd = peakHourStart + 1;
     document.getElementById('summary-cards').innerHTML = `
-      <div class="scard"><div class="sc-label">Total Violations</div><div class="sc-value" style="color:var(--accent)">${d.total_violations.toLocaleString()}</div><div class="sc-sub">${s}${d.change_vs_last_month.toLocaleString()} vs last month</div></div>
-      <div class="scard"><div class="sc-label">Avg Duration</div><div class="sc-value">${d.avg_duration} min</div><div class="sc-sub">Per violation</div></div>
-      <div class="scard"><div class="sc-label">Peak Hour</div><div class="sc-value">${d.peak_hour}</div><div class="sc-sub">${d.peak_hour_note}</div></div>
-      <div class="scard"><div class="sc-label">Worst Day</div><div class="sc-value">${d.worst_day}</div><div class="sc-sub">Avg ${d.worst_day_avg}/week</div></div>
+      <a href="/violations?view=all" class="scard scard-link"><div class="sc-label">Total Violations</div><div class="sc-value" style="color:var(--accent)">${d.total_violations.toLocaleString()}</div><div class="sc-sub">${s}${d.change_vs_last_month.toLocaleString()} vs last month</div></a>
+      <a href="/violations?duration_sort=1" class="scard scard-link"><div class="sc-label">Avg Duration</div><div class="sc-value">${d.avg_duration} min</div><div class="sc-sub">Per violation</div></a>
+      <a href="/violations?hour_start=${peakHourStart}&hour_end=${peakHourEnd}" class="scard scard-link"><div class="sc-label">Peak Hour</div><div class="sc-value">${d.peak_hour}</div><div class="sc-sub">${d.peak_hour_note}</div></a>
+      <a href="/violations?day_of_week=${encodeURIComponent(d.worst_day)}" class="scard scard-link"><div class="sc-label">Worst Day</div><div class="sc-value">${d.worst_day}</div><div class="sc-sub">Avg ${d.worst_day_avg}/week</div></a>
     `;
   } catch(e) { console.error('Summary failed:', e); }
 }
