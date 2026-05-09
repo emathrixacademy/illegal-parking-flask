@@ -44,7 +44,7 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
             self.output_vstreams_params = OutputVStreamParams.make(self.network_group)
             self.input_info = self.hef.get_input_vstream_infos()[0]
             self.height, self.width, _ = self.input_info.shape
-            self.monitored_classes = [0, 2, 3, 5, 7]
+            self.monitored_classes = [0, 1, 2, 3, 5, 7]
 
         def preprocess(self, frame):
             resized = cv2.resize(frame, (self.width, self.height))
@@ -80,11 +80,33 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
             return results
 
     _detector = None
+    _cctv_detector = None
+    CCTV_AI_MODEL = getattr(config, "CCTV_AI_MODEL_PATH", "models/cctv_ai.hef")
+    CCTV_AI_CLASS_OFFSET = 100
+
     def detect(frames):
-        global _detector
+        global _detector, _cctv_detector
         if _detector is None:
             _detector = HailoDetector(config.MODEL_PATH)
-        return _detector.run_detection(frames)
+        results = _detector.run_detection(frames)
+        if os.path.exists(CCTV_AI_MODEL):
+            try:
+                if _cctv_detector is None:
+                    _cctv_detector = HailoDetector(CCTV_AI_MODEL)
+                cctv_results = _cctv_detector.run_detection(frames)
+                for i in range(len(results)):
+                    if i < len(cctv_results):
+                        cr = cctv_results[i]
+                        if len(cr.xyxy) > 0:
+                            offset_cls = cr.cls + CCTV_AI_CLASS_OFFSET
+                            results[i] = DetectionResult(
+                                np.concatenate([results[i].xyxy, cr.xyxy]) if len(results[i].xyxy) else cr.xyxy,
+                                np.concatenate([results[i].conf, cr.conf]) if len(results[i].conf) else cr.conf,
+                                np.concatenate([results[i].cls, offset_cls]) if len(results[i].cls) else offset_cls,
+                            )
+            except Exception as e:
+                logger.warning(f"CCTV AI model failed: {e}")
+        return results
 
 else:
     # CPU fallback using YOLOv8
@@ -98,6 +120,24 @@ else:
     _model = YOLO(_model_path)
     _lock = threading.Lock()
 
+    CCTV_AI_MODEL = getattr(config, "CCTV_AI_MODEL_PATH", "models/cctv_ai.hef")
+    _cctv_model = None
+    CCTV_AI_CLASS_OFFSET = 100
+    if CCTV_AI_MODEL and not CCTV_AI_MODEL.endswith(".hef"):
+        try:
+            _cctv_model = YOLO(CCTV_AI_MODEL)
+            logger.info(f"Loaded CCTV AI model: {CCTV_AI_MODEL}")
+        except Exception as e:
+            logger.warning(f"Could not load CCTV AI model: {e}")
+    elif CCTV_AI_MODEL and CCTV_AI_MODEL.endswith(".hef"):
+        _cctv_pt = CCTV_AI_MODEL.replace(".hef", ".pt")
+        if os.path.exists(_cctv_pt):
+            try:
+                _cctv_model = YOLO(_cctv_pt)
+                logger.info(f"Loaded CCTV AI model (CPU fallback): {_cctv_pt}")
+            except Exception as e:
+                logger.warning(f"Could not load CCTV AI CPU model: {e}")
+
     def detect(frames):
         results = []
         with _lock:
@@ -110,6 +150,20 @@ else:
                         clss = res.boxes.cls.cpu().numpy().astype(int)
                     else:
                         xyxy, conf, clss = np.array([]), np.array([]), np.array([])
+
+                    if _cctv_model is not None:
+                        try:
+                            cctv_res = _cctv_model(frame)[0]
+                            if hasattr(cctv_res, 'boxes') and len(cctv_res.boxes):
+                                c_xyxy = cctv_res.boxes.xyxy.cpu().numpy()
+                                c_conf = cctv_res.boxes.conf.cpu().numpy()
+                                c_cls = cctv_res.boxes.cls.cpu().numpy().astype(int) + CCTV_AI_CLASS_OFFSET
+                                xyxy = np.concatenate([xyxy, c_xyxy]) if len(xyxy) else c_xyxy
+                                conf = np.concatenate([conf, c_conf]) if len(conf) else c_conf
+                                clss = np.concatenate([clss, c_cls]) if len(clss) else c_cls
+                        except Exception as e:
+                            logger.warning(f"CCTV AI detection failed: {e}")
+
                     results.append(DetectionResult(xyxy, conf, clss))
                 except Exception as e:
                     logger.error(f"YOLOv8 CPU detection failed: {e}")

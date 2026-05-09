@@ -32,8 +32,8 @@ def add_cors_headers(response):
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     return response
 
-# Vehicle classes from yolov8s (COCO IDs) — bus(5) and truck(7) removed
-CLASS_NAMES = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE"}
+# Vehicle classes from yolov8s (COCO IDs)
+CLASS_NAMES = {0: "PERSON", 1: "BIKE", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
 
 # CCTV AI classes (offset by +100 to avoid ID conflicts with COCO)
 CCTV_AI_CLASS_NAMES = {
@@ -504,11 +504,6 @@ class ParkingMonitor:
             center = ((x1+x2)//2, (y1+y2)//2)
             if d['cls'] == 0:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 1)
-                continue
-            # CCTV AI classes (>=100): draw on frame only, no violation tracking
-            if d['cls'] >= 100:
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
-                cv2.putText(frame, f"{label}", (x1, y1-8), 0, 0.6, (0, 165, 255), 2)
                 continue
             in_zone = cv2.pointPolygonTest(self.zones[name], center, False) >= 0
             if in_zone:
