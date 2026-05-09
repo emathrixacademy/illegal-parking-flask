@@ -27,7 +27,12 @@ except ImportError:
     vision_available = lambda: False
 from tamper_detect import TamperDetector
 from health_monitor import HealthMonitor
-from recorder import ContinuousRecorder, get_recording_dates, get_recording_segments
+try:
+    from recorder import ContinuousRecorder, get_recording_dates, get_recording_segments
+except ImportError:
+    ContinuousRecorder = None
+    get_recording_dates = lambda c=None: []
+    get_recording_segments = lambda c, d: []
 import sys
 
 app = Flask(__name__)
@@ -234,7 +239,10 @@ def api_playback():
     time_str = request.args.get('time')
     if not date or not time_str:
         return jsonify({"error": "date and time parameters required"}), 400
-    from recorder import RECORDING_DIR
+    try:
+        from recorder import RECORDING_DIR
+    except ImportError:
+        return jsonify({"error": "Recording module not available"}), 404
     filename = f"{time_str.replace(':', '-')}.mp4"
     filepath = os.path.join(RECORDING_DIR, camera, date, filename)
     if not os.path.exists(filepath):
@@ -468,14 +476,13 @@ class ByteTrackLite:
                 if iou > best_iou:
                     best_iou, best_id = iou, tid
             if best_id is not None:
-                new_tracks[best_id] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
+                new_tracks[best_id] = {'box': box, 'cls': cid, 'conf': float(score), 'last_seen': self.frame_count}
                 self.tracked_objects.pop(best_id, None)
             elif score >= config.DETECTION_THRESHOLD:
-                # Assign a globally-unique ID in a thread-safe manner
                 with ByteTrackLite._id_lock:
                     nid = ByteTrackLite.global_next_id
                     ByteTrackLite.global_next_id += 1
-                new_tracks[nid] = {'box': box, 'cls': cid, 'last_seen': self.frame_count}
+                new_tracks[nid] = {'box': box, 'cls': cid, 'conf': float(score), 'last_seen': self.frame_count}
         for tid, t in self.tracked_objects.items():
             if self.frame_count - t['last_seen'] < self.buffer:
                 new_tracks[tid] = t
@@ -483,13 +490,34 @@ class ByteTrackLite:
         return {k: v for k, v in new_tracks.items() if v['last_seen'] == self.frame_count}
 
 # --- Parking Monitor ---
+class FrameBuffer:
+    """Ring buffer that keeps the last N frames for video clip capture."""
+    def __init__(self, max_frames=75):
+        self.max_frames = max_frames
+        self.frames = []
+        self.lock = threading.Lock()
+
+    def add(self, frame):
+        with self.lock:
+            self.frames.append(frame.copy())
+            if len(self.frames) > self.max_frames:
+                self.frames.pop(0)
+
+    def get_clip(self):
+        with self.lock:
+            return list(self.frames)
+
+frame_buffers = {
+    "Camera_1": FrameBuffer(),
+    "Camera_2": FrameBuffer(),
+}
+
 class ParkingMonitor:
     def __init__(self):
         self.trackers = {"Camera_1": ByteTrackLite(), "Camera_2": ByteTrackLite()}
         self.timers = {}
         self.last_upload_time = {}
         self.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
-        # lock to protect timers/last_upload_time across threads when resetting on config changes
         import threading as _threading
         self.lock = _threading.Lock()
 
@@ -551,6 +579,24 @@ class ParkingMonitor:
                             fine_map = get_fine_map()
                             fine_amount = float(fine_map.get(label.upper(), 0))
 
+                            video_b64 = ""
+                            try:
+                                clip_frames = frame_buffers.get(name, FrameBuffer()).get_clip()
+                                if clip_frames and len(clip_frames) >= 10:
+                                    h, w = clip_frames[0].shape[:2]
+                                    tmp_path = f"/tmp/clip_{name}_{tid}.mp4"
+                                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                                    writer = cv2.VideoWriter(tmp_path, fourcc, 10, (w, h))
+                                    for cf in clip_frames:
+                                        writer.write(cf)
+                                    writer.release()
+                                    with open(tmp_path, 'rb') as vf:
+                                        video_b64 = base64.b64encode(vf.read()).decode('utf-8')
+                                    os.remove(tmp_path)
+                                    logger.info(f"Captured {len(clip_frames)}-frame video clip for violation")
+                            except Exception as ve:
+                                logger.warning(f"Video clip capture failed: {ve}")
+
                             payload = {
                                 "camera_id": name,
                                 "tracker_id": tid,
@@ -559,13 +605,16 @@ class ParkingMonitor:
                                 "image": img_b64,
                                 "bbox": [x1, y1, x2, y2],
                                 "duration_minutes": duration_minutes,
-                                "confidence_score": float(d.get('conf', 0)) if isinstance(d, dict) and 'conf' in d else 0.0,
+                                "confidence_score": float(d.get('conf', 0)),
                                 "fine_amount": fine_amount,
                                 "enforced": False,
                                 "meta": {}
                             }
+                            if video_b64:
+                                payload["video"] = video_b64
+
                             api_url = f"{RAILWAY_API_URL}/api/upload_event"
-                            resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=10)
+                            resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=30)
                             if resp.ok:
                                 logger.info(f"Uploaded violation event to Railway: {resp.status_code}")
                             else:
@@ -646,16 +695,19 @@ c1, c2 = Stream(CAM1_URL), Stream(CAM2_URL)
 latest_processed = {"Camera_1": None, "Camera_2": None}
 proc_lock = threading.Lock()
 
-# Feature 13: Start continuous recorders
+# Feature 13: Start continuous recorders (disabled — uses too much disk on Pi)
 recorders = {}
-try:
-    recorders["Camera_1"] = ContinuousRecorder("Camera_1", CAM1_URL)
-    recorders["Camera_2"] = ContinuousRecorder("Camera_2", CAM2_URL)
-    for rec in recorders.values():
-        rec.start()
-    logger.info("Continuous recorders started.")
-except Exception as e:
-    logger.warning(f"Could not start recorders: {e}")
+if ContinuousRecorder is not None:
+    try:
+        recorders["Camera_1"] = ContinuousRecorder("Camera_1", CAM1_URL)
+        recorders["Camera_2"] = ContinuousRecorder("Camera_2", CAM2_URL)
+        for rec in recorders.values():
+            rec.start()
+        logger.info("Continuous recorders started.")
+    except Exception as e:
+        logger.warning(f"Could not start recorders: {e}")
+else:
+    logger.info("ContinuousRecorder not available, skipping.")
 
 # Feature 14: Set reference frames after a short delay
 def _set_reference_frames():
@@ -676,6 +728,7 @@ def processing_worker(cam_name, stream):
         frame = stream.get_frame()
         if frame is not None and stream.is_online():
             try:
+                frame_buffers[cam_name].add(frame)
                 res = detect([frame])
                 if res:
                     frame_disp = frame.copy()

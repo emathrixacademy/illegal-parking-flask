@@ -929,6 +929,8 @@ def upload_event():
                         plate_number = plate_text
                         plate_confidence = plate_conf
                         logger.info(f"OCR plate detected on Railway: {plate_text} (conf={plate_conf:.2f})")
+            except ImportError:
+                logger.info("OCR dependencies not available on Railway, skipping plate detection")
             except Exception as ocr_err:
                 logger.warning(f"Railway OCR failed: {ocr_err}")
 
@@ -1558,7 +1560,6 @@ def api_violations_list():
         resp.headers.update(cors_headers())
         return resp, 500
 
-@app.route('/api/mark_enforced', methods=['POST'])
 @app.route('/api/review_incident', methods=['POST'])
 @login_required
 @role_required('operator')
