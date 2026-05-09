@@ -489,29 +489,73 @@ class ByteTrackLite:
         self.tracked_objects = new_tracks
         return {k: v for k, v in new_tracks.items() if v['last_seen'] == self.frame_count}
 
+# --- Violation Video Recorder ---
+VIOLATION_VIDEO_DURATION = 300  # 5 minutes in seconds
+VIOLATION_VIDEO_FPS = 5
+
+class ViolationRecorder:
+    """Records a 5-minute MP4 video per violation, writing frames to /tmp as they come."""
+    def __init__(self, camera, tid, label, frame):
+        self.camera = camera
+        self.tid = tid
+        self.label = label
+        self.start_time = time.time()
+        self.frame_count = 0
+        self.finished = False
+        h, w = frame.shape[:2]
+        self.path = f"/tmp/violation_{camera}_{tid}_{int(self.start_time)}.mp4"
+        self.writer = cv2.VideoWriter(
+            self.path, cv2.VideoWriter_fourcc(*'mp4v'),
+            VIOLATION_VIDEO_FPS, (w, h)
+        )
+        self.writer.write(frame)
+        self.frame_count += 1
+        self._last_write = time.time()
+
+    def add_frame(self, frame):
+        if self.finished:
+            return
+        now = time.time()
+        if now - self._last_write < (1.0 / VIOLATION_VIDEO_FPS):
+            return
+        self.writer.write(frame)
+        self.frame_count += 1
+        self._last_write = now
+
+    def is_done(self):
+        return (time.time() - self.start_time) >= VIOLATION_VIDEO_DURATION
+
+    def finalize(self):
+        if self.finished:
+            return None
+        self.finished = True
+        self.writer.release()
+        if self.frame_count < 5:
+            try:
+                os.remove(self.path)
+            except OSError:
+                pass
+            return None
+        return self.path
+
+    def get_video_b64(self):
+        path = self.finalize()
+        if not path or not os.path.exists(path):
+            return ""
+        try:
+            with open(path, 'rb') as f:
+                data = base64.b64encode(f.read()).decode('utf-8')
+            os.remove(path)
+            return data
+        except Exception:
+            return ""
+
+# Active violation recorders: keyed by (camera, tracker_id)
+violation_recorders = {}
+violation_recorders_lock = threading.Lock()
+
+
 # --- Parking Monitor ---
-class FrameBuffer:
-    """Ring buffer that keeps the last N frames for video clip capture."""
-    def __init__(self, max_frames=75):
-        self.max_frames = max_frames
-        self.frames = []
-        self.lock = threading.Lock()
-
-    def add(self, frame):
-        with self.lock:
-            self.frames.append(frame.copy())
-            if len(self.frames) > self.max_frames:
-                self.frames.pop(0)
-
-    def get_clip(self):
-        with self.lock:
-            return list(self.frames)
-
-frame_buffers = {
-    "Camera_1": FrameBuffer(),
-    "Camera_2": FrameBuffer(),
-}
-
 class ParkingMonitor:
     def __init__(self):
         self.trackers = {"Camera_1": ByteTrackLite(), "Camera_2": ByteTrackLite()}
@@ -521,11 +565,55 @@ class ParkingMonitor:
         import threading as _threading
         self.lock = _threading.Lock()
 
+    def _upload_violation(self, name, tid, label, frame, d, dur, now, video_b64=""):
+        """Upload violation event to Railway in a background thread."""
+        try:
+            import datetime
+            now_dt = datetime.datetime.now()
+            _, buf = cv2.imencode('.jpg', frame)
+            img_b64 = base64.b64encode(buf).decode('utf-8')
+
+            with self.lock:
+                start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
+            if start_times:
+                min_start = min(start_times)
+                duration_minutes = round((now - min_start) / 60.0, 2)
+            else:
+                duration_minutes = round(dur / 60.0, 2)
+
+            fine_map = get_fine_map()
+            fine_amount = float(fine_map.get(label.upper(), 0))
+
+            payload = {
+                "camera_id": name,
+                "tracker_id": tid,
+                "label": label,
+                "timestamp": now_dt.isoformat(),
+                "image": img_b64,
+                "bbox": list(map(int, d['box'])),
+                "duration_minutes": duration_minutes,
+                "confidence_score": float(d.get('conf', 0)),
+                "fine_amount": fine_amount,
+                "enforced": False,
+                "meta": {}
+            }
+            if video_b64:
+                payload["video"] = video_b64
+
+            api_url = f"{RAILWAY_API_URL}/api/upload_event"
+            timeout = 120 if video_b64 else 30
+            resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=timeout)
+            if resp.ok:
+                logger.info(f"Uploaded violation to Railway: camera={name} tid={tid} video={'yes' if video_b64 else 'no'}")
+            else:
+                logger.error(f"Failed upload to Railway: {resp.status_code} {resp.text}")
+        except Exception as e:
+            logger.error(f"Exception uploading event to Railway: {e}")
+
     def process(self, name, res, frame):
-        # Reload thresholds from config each time (to pick up changes)
         violation_threshold = getattr(config, "VIOLATION_TIME_THRESHOLD", 100)
         repeat_interval = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
-        
+
         if name not in self.zones:
             return
         fh, fw = frame.shape[:2]
@@ -533,6 +621,8 @@ class ParkingMonitor:
         pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
         tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
         now = time.time()
+        active_violation_keys = set()
+
         for tid, d in tracked.items():
             x1, y1, x2, y2 = map(int, d['box'])
             label = ALL_CLASS_NAMES.get(d['cls'], "OBJ")
@@ -545,89 +635,77 @@ class ParkingMonitor:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, f"{label} #{tid}", (x1, y1-8), 0, 0.6, (0, 255, 0), 2)
                 continue
-            if in_zone:
-                # set/start timer and compute duration under lock to avoid races with settings-reset
-                with self.lock:
-                    if (name, tid) not in self.timers:
-                        self.timers[(name, tid)] = now
-                    dur = int(now - self.timers[(name, tid)])
-                is_violation = dur >= violation_threshold
-                color = (0, 0, 255) if is_violation else (0, 255, 255)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, color, 2)
-                if is_violation:
-                    # check repeat/upload timing under lock where needed
-                    last_up = 0
+
+            with self.lock:
+                if (name, tid) not in self.timers:
+                    self.timers[(name, tid)] = now
+                dur = int(now - self.timers[(name, tid)])
+            is_violation = dur >= violation_threshold
+            color = (0, 0, 255) if is_violation else (0, 255, 255)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, color, 2)
+
+            if is_violation:
+                rec_key = (name, tid)
+                active_violation_keys.add(rec_key)
+
+                with violation_recorders_lock:
+                    rec = violation_recorders.get(rec_key)
+
+                # Start recording if not already
+                if rec is None:
+                    rec = ViolationRecorder(name, tid, label, frame)
+                    with violation_recorders_lock:
+                        violation_recorders[rec_key] = rec
+                    logger.info(f"Started 5-min video recording: camera={name} tid={tid} label={label}")
+
+                    # Upload image immediately on first detection
+                    self._upload_violation(name, tid, label, frame, d, dur, now)
                     with self.lock:
-                        last_up = self.last_upload_time.get((name, tid), 0)
-                    if now - last_up > repeat_interval:
-                        import datetime
-                        now_dt = datetime.datetime.now()
-                        logger.info(f"Violation detected: camera={name}, tracker_id={tid}, label={label}, time={now_dt.isoformat()}")
+                        self.last_upload_time[(name, tid)] = now
+                else:
+                    rec.add_frame(frame)
 
-                        try:
-                            _, buf = cv2.imencode('.jpg', frame)
-                            img_b64 = base64.b64encode(buf).decode('utf-8')
-                            with self.lock:
-                                start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
-                            if start_times:
-                                min_start = min(start_times)
-                                duration_minutes = round((now - min_start) / 60.0, 2)
-                            else:
-                                duration_minutes = round(dur / 60.0, 2)
+                # Check if 5-minute recording is complete
+                if rec.is_done() and not rec.finished:
+                    logger.info(f"5-min recording complete: camera={name} tid={tid}, uploading video...")
+                    video_b64 = rec.get_video_b64()
+                    with violation_recorders_lock:
+                        violation_recorders.pop(rec_key, None)
+                    if video_b64:
+                        threading.Thread(
+                            target=self._upload_violation,
+                            args=(name, tid, label, frame, d, dur, now, video_b64),
+                            daemon=True
+                        ).start()
 
-                            fine_map = get_fine_map()
-                            fine_amount = float(fine_map.get(label.upper(), 0))
-
-                            video_b64 = ""
-                            try:
-                                clip_frames = frame_buffers.get(name, FrameBuffer()).get_clip()
-                                if clip_frames and len(clip_frames) >= 10:
-                                    h, w = clip_frames[0].shape[:2]
-                                    tmp_path = f"/tmp/clip_{name}_{tid}.mp4"
-                                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                                    writer = cv2.VideoWriter(tmp_path, fourcc, 10, (w, h))
-                                    for cf in clip_frames:
-                                        writer.write(cf)
-                                    writer.release()
-                                    with open(tmp_path, 'rb') as vf:
-                                        video_b64 = base64.b64encode(vf.read()).decode('utf-8')
-                                    os.remove(tmp_path)
-                                    logger.info(f"Captured {len(clip_frames)}-frame video clip for violation")
-                            except Exception as ve:
-                                logger.warning(f"Video clip capture failed: {ve}")
-
-                            payload = {
-                                "camera_id": name,
-                                "tracker_id": tid,
-                                "label": label,
-                                "timestamp": now_dt.isoformat(),
-                                "image": img_b64,
-                                "bbox": [x1, y1, x2, y2],
-                                "duration_minutes": duration_minutes,
-                                "confidence_score": float(d.get('conf', 0)),
-                                "fine_amount": fine_amount,
-                                "enforced": False,
-                                "meta": {}
-                            }
-                            if video_b64:
-                                payload["video"] = video_b64
-
-                            api_url = f"{RAILWAY_API_URL}/api/upload_event"
-                            resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=30)
-                            if resp.ok:
-                                logger.info(f"Uploaded violation event to Railway: {resp.status_code}")
-                            else:
-                                logger.error(f"Failed to upload event to Railway: {resp.status_code} {resp.text}")
-                        except Exception as e:
-                            logger.error(f"Exception uploading event to Railway: {e}")
-
-                        with self.lock:
-                            self.last_upload_time[(name, tid)] = now
+                # Also re-upload image at repeat_interval
+                last_up = 0
+                with self.lock:
+                    last_up = self.last_upload_time.get((name, tid), 0)
+                if now - last_up > repeat_interval:
+                    self._upload_violation(name, tid, label, frame, d, dur, now)
+                    with self.lock:
+                        self.last_upload_time[(name, tid)] = now
             else:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
                 with self.lock:
                     self.timers.pop((name, tid), None)
+
+        # Finalize recorders for vehicles that left the zone
+        with violation_recorders_lock:
+            gone_keys = [k for k in violation_recorders if k[0] == name and k not in active_violation_keys]
+            for k in gone_keys:
+                rec = violation_recorders.pop(k)
+                if not rec.finished:
+                    logger.info(f"Vehicle left zone, finalizing video: camera={k[0]} tid={k[1]}")
+                    video_b64 = rec.get_video_b64()
+                    if video_b64:
+                        threading.Thread(
+                            target=self._upload_violation,
+                            args=(k[0], k[1], rec.label, frame, {'box': [0,0,0,0], 'conf': 0}, 0, now, video_b64),
+                            daemon=True
+                        ).start()
 
 
 # --- Stream handler ---
@@ -728,7 +806,6 @@ def processing_worker(cam_name, stream):
         frame = stream.get_frame()
         if frame is not None and stream.is_online():
             try:
-                frame_buffers[cam_name].add(frame)
                 res = detect([frame])
                 if res:
                     frame_disp = frame.copy()

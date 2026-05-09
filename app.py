@@ -50,6 +50,7 @@ logger = logging.getLogger("ParkingApp")
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'f7a3b9c1d4e8f2a6b0c5d9e3f1a7b4c8')
 app.permanent_session_lifetime = timedelta(minutes=30)
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB for 5-min video uploads
 
 # Register analytics blueprint
 app.register_blueprint(analytics_bp)
@@ -897,15 +898,25 @@ def upload_event():
         video_b64 = data.get("video")
         if video_b64:
             try:
-                result = cloudinary.uploader.upload(
-                    f"data:video/mp4;base64,{video_b64}",
+                import tempfile
+                video_bytes = base64.b64decode(video_b64)
+                with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+                    tmp.write(video_bytes)
+                    tmp_path = tmp.name
+                result = cloudinary.uploader.upload_large(
+                    tmp_path,
                     folder="violations/videos",
-                    public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_clip",
+                    public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_5min",
                     overwrite=True,
-                    resource_type="video"
+                    resource_type="video",
+                    chunk_size=6000000
                 )
                 video_url = result.get("secure_url", "")
-                logger.info(f"Uploaded violation video to Cloudinary: {video_url}")
+                logger.info(f"Uploaded 5-min violation video to Cloudinary: {video_url}")
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
             except Exception as e:
                 logger.error(f"Cloudinary video upload failed: {e}")
 
