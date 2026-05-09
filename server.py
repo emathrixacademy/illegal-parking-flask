@@ -16,8 +16,15 @@ import signal
 from cloudlink import start_cloudflared
 from db import insert_violation_event  # (You can remove this import if not used elsewhere)
 from admin_config import get_fine_map
-from ocr_module import extract_plate
-from claude_vision import analyze_violation, is_available as vision_available
+try:
+    from ocr_module import extract_plate
+except ImportError:
+    extract_plate = None
+try:
+    from claude_vision import analyze_violation, is_available as vision_available
+except ImportError:
+    analyze_violation = None
+    vision_available = lambda: False
 from tamper_detect import TamperDetector
 from health_monitor import HealthMonitor
 from recorder import ContinuousRecorder, get_recording_dates, get_recording_segments
@@ -528,20 +535,11 @@ class ParkingMonitor:
                     if now - last_up > repeat_interval:
                         import datetime
                         now_dt = datetime.datetime.now()
-                        date_folder = now_dt.strftime("%B %d, %Y (%A)")
-                        date_dir = os.path.join(SAVE_DIR, date_folder)
-                        os.makedirs(date_dir, exist_ok=True)
-                        img_filename = f"{name}-{now_dt.strftime('%H_%M_%S')}.jpg"
-                        img_path = os.path.join(date_dir, img_filename)
-                        cv2.imwrite(img_path, frame)
                         logger.info(f"Violation detected: camera={name}, tracker_id={tid}, label={label}, time={now_dt.isoformat()}")
-                        logger.info(f"Saved violation image to {img_path}")
 
-                        # --- Send violation event to Railway API ---
                         try:
                             _, buf = cv2.imencode('.jpg', frame)
                             img_b64 = base64.b64encode(buf).decode('utf-8')
-                            # compute duration across cameras for the same tracker id (in minutes)
                             with self.lock:
                                 start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
                             if start_times:
@@ -550,47 +548,8 @@ class ParkingMonitor:
                             else:
                                 duration_minutes = round(dur / 60.0, 2)
 
-                            # determine fine amount based on vehicle label (configurable)
                             fine_map = get_fine_map()
                             fine_amount = float(fine_map.get(label.upper(), 0))
-
-                            # Feature 13: OCR plate extraction
-                            plate_number = None
-                            plate_confidence = 0.0
-                            plate_image_path = ""
-                            try:
-                                plate_text, plate_conf = extract_plate(frame, bbox=(x1, y1, x2, y2))
-                                if plate_text:
-                                    plate_number = plate_text
-                                    plate_confidence = plate_conf
-                                    plate_crop = frame[y1:y2, x1:x2]
-                                    plate_img_name = f"{name}_{tid}_{now_dt.strftime('%H_%M_%S')}_plate.jpg"
-                                    plate_dir = os.path.join(SAVE_DIR, date_folder, "plates")
-                                    os.makedirs(plate_dir, exist_ok=True)
-                                    plate_image_path = os.path.join(plate_dir, plate_img_name)
-                                    cv2.imwrite(plate_image_path, plate_crop)
-                                    logger.info(f"Plate detected: {plate_text} (conf={plate_conf:.2f})")
-                            except Exception as ocr_err:
-                                logger.warning(f"OCR failed: {ocr_err}")
-
-                            # Cloud vision analysis (plate + violation classification)
-                            vision_result = None
-                            if vision_available():
-                                try:
-                                    vision_result = analyze_violation(
-                                        frame, bbox=(x1, y1, x2, y2),
-                                        camera_id=name, vehicle_label=label,
-                                        duration_seconds=dur
-                                    )
-                                    if vision_result:
-                                        if vision_result.get("plate_number") and (
-                                            not plate_number or vision_result.get("plate_confidence", 0) > plate_confidence
-                                        ):
-                                            plate_number = vision_result["plate_number"]
-                                            plate_confidence = vision_result["plate_confidence"]
-                                            logger.info(f"Vision plate override: {plate_number} (conf={plate_confidence:.2f})")
-                                except Exception as ve:
-                                    logger.warning(f"Vision analysis error: {ve}")
 
                             payload = {
                                 "camera_id": name,
@@ -598,19 +557,13 @@ class ParkingMonitor:
                                 "label": label,
                                 "timestamp": now_dt.isoformat(),
                                 "image": img_b64,
+                                "bbox": [x1, y1, x2, y2],
                                 "duration_minutes": duration_minutes,
+                                "confidence_score": float(d.get('conf', 0)) if isinstance(d, dict) and 'conf' in d else 0.0,
                                 "fine_amount": fine_amount,
                                 "enforced": False,
                                 "meta": {}
                             }
-                            if vision_result:
-                                payload["meta"]["violation_type"] = vision_result.get("violation_type", "UNKNOWN")
-                                payload["meta"]["vision_description"] = vision_result.get("description", "")
-                                payload["meta"]["obstacles"] = vision_result.get("obstacles", [])
-                            if plate_number:
-                                payload["plate_number"] = plate_number
-                                payload["plate_confidence"] = plate_confidence
-                                payload["plate_image_path"] = plate_image_path
                             api_url = f"{RAILWAY_API_URL}/api/upload_event"
                             resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=10)
                             if resp.ok:

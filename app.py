@@ -911,6 +911,27 @@ def upload_event():
 
         img_path = image_url or ''
 
+        # --- OCR plate extraction (Railway-side) ---
+        plate_number = data.get('plate_number')
+        plate_confidence = data.get('plate_confidence', 0.0)
+        bbox = data.get('bbox')
+        if not plate_number and image_bytes and bbox:
+            try:
+                import cv2
+                import numpy as np
+                nparr = np.frombuffer(image_bytes, np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if frame is not None:
+                    from ocr_module import extract_plate
+                    x1, y1, x2, y2 = bbox
+                    plate_text, plate_conf = extract_plate(frame, bbox=(x1, y1, x2, y2))
+                    if plate_text:
+                        plate_number = plate_text
+                        plate_confidence = plate_conf
+                        logger.info(f"OCR plate detected on Railway: {plate_text} (conf={plate_conf:.2f})")
+            except Exception as ocr_err:
+                logger.warning(f"Railway OCR failed: {ocr_err}")
+
         # Insert into PostgreSQL
         violation_id = None
         try:
@@ -929,13 +950,12 @@ def upload_event():
             violation_id = cur.fetchone()[0]
             conn.commit()
 
-            plate_number = data.get('plate_number')
             if plate_number and violation_id:
                 cur.execute("""
                     INSERT INTO plate_records (violation_id, plate_number, confidence, plate_image_path, camera, timestamp)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                """, (violation_id, plate_number, data.get('plate_confidence', 0.0),
-                      data.get('plate_image_path', ''), camera_id, timestamp))
+                """, (violation_id, plate_number, plate_confidence,
+                      '', camera_id, timestamp))
                 conn.commit()
                 logger.info(f"Saved plate record: {plate_number} for violation {violation_id}")
 

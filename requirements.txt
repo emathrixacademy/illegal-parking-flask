@@ -11,3 +11,4 @@ ultralytics
 opencv-python-headless
 anthropic
 cloudinary
+easyocr
