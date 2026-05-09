@@ -506,6 +506,10 @@ class ParkingMonitor:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 1)
                 continue
             in_zone = cv2.pointPolygonTest(self.zones[name], center, False) >= 0
+            if not in_zone:
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, f"{label} #{tid}", (x1, y1-8), 0, 0.6, (0, 255, 0), 2)
+                continue
             if in_zone:
                 # set/start timer and compute duration under lock to avoid races with settings-reset
                 with self.lock:
