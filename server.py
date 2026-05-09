@@ -760,8 +760,8 @@ threading.Thread(target=processing_worker, args=("Camera_1", c1), daemon=True).s
 threading.Thread(target=processing_worker, args=("Camera_2", c2), daemon=True).start()
 
 def gen_single(stream, cam_name):
-    FRAME_INTERVAL = 1.0 / 10  # 10 FPS for cloud streaming
-    JPEG_QUALITY = 92  # Higher quality for clearer streaming
+    FRAME_INTERVAL = 1.0 / 15  # 15 FPS for smoother streaming
+    JPEG_QUALITY = 75  # Lower quality = smaller frames = less latency
     last_frame_time = 0
     while True:
         start_time = time.time()
@@ -770,17 +770,10 @@ def gen_single(stream, cam_name):
         if frame is None:
             frame = stream.get_frame()
         if frame is not None:
-            frame = cv2.resize(frame, (1280, 720))
-            # Grid overlay for zone calibration
-            for x in range(0, 1280, 100):
-                cv2.line(frame, (x, 0), (x, 720), (100, 100, 100), 1)
-                cv2.putText(frame, str(x), (x+2, 15), 0, 0.4, (0, 255, 0), 1)
-            for y in range(0, 720, 100):
-                cv2.line(frame, (0, y), (1280, y), (100, 100, 100), 1)
-                cv2.putText(frame, str(y), (2, y+15), 0, 0.4, (0, 255, 0), 1)
+            frame = cv2.resize(frame, (960, 540))
         else:
-            frame = np.zeros((720, 1280, 3), dtype=np.uint8)
-            cv2.putText(frame, f"{cam_name} OFFLINE", (400, 360), 0, 1.5, (0,0,255), 3)
+            frame = np.zeros((540, 960, 3), dtype=np.uint8)
+            cv2.putText(frame, f"{cam_name} OFFLINE", (300, 270), 0, 1.5, (0,0,255), 3)
 
         # Use JPEG quality to reduce bandwidth and smoothen streaming
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
