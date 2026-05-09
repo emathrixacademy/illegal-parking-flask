@@ -131,7 +131,9 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
                     id, camera, tracker_id, label, timestamp, image_path,
                     confidence_score, duration_minutes, fine_amount, barangay, enforced,
                     COALESCE(review_status, 'for_review') as review_status,
-                    COALESCE(review_notes, '') as review_notes
+                    COALESCE(review_notes, '') as review_notes,
+                    COALESCE(image_url, '') as image_url,
+                    COALESCE(video_url, '') as video_url
                 FROM violations
                 {where_sql}
                 ORDER BY camera, tracker_id, timestamp DESC
@@ -142,7 +144,7 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
         rows = cur.fetchall()
         cols = ['id', 'camera', 'tracker_id', 'label', 'timestamp', 'image_path',
                 'confidence_score', 'duration_minutes', 'fine_amount', 'barangay', 'enforced',
-                'review_status', 'review_notes']
+                'review_status', 'review_notes', 'image_url', 'video_url']
         items = [dict(zip(cols, r)) for r in rows]
         cur.close()
         return {

@@ -28,6 +28,15 @@ from auth import (
 from alerts import (
     get_alert_config, save_alert_config, send_violation_alert, send_test_email
 )
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    api_key=os.environ.get("CLOUDINARY_API_KEY", ""),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET", ""),
+    secure=True
+)
 
 # --------------------------------------------------
 # Logging
@@ -866,20 +875,41 @@ def upload_event():
 
         logger.info(f"Received violation event: camera_id={camera_id}, timestamp={timestamp}, meta={meta}")
 
-        if not os.path.exists(STATIC_EVENTS_DIR):
-            os.makedirs(STATIC_EVENTS_DIR)
-        fname = EVENT_IMAGE_FORMAT.format(
-            camera_id=camera_id,
-            timestamp=EVENT_IMAGE_TIMESTAMP_REPL(timestamp)
-        )
-        img_path = os.path.join(STATIC_EVENTS_DIR, fname)
-
         image_bytes = None
+        image_url = ''
+        video_url = ''
+
         if image_b64:
             image_bytes = base64.b64decode(image_b64)
-            with open(img_path, "wb") as f:
-                f.write(image_bytes)
-            logger.info(f"Saved violation image to {img_path}")
+            try:
+                result = cloudinary.uploader.upload(
+                    f"data:image/jpeg;base64,{image_b64}",
+                    folder="violations",
+                    public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}",
+                    overwrite=True,
+                    resource_type="image"
+                )
+                image_url = result.get("secure_url", "")
+                logger.info(f"Uploaded violation image to Cloudinary: {image_url}")
+            except Exception as e:
+                logger.error(f"Cloudinary image upload failed: {e}")
+
+        video_b64 = data.get("video")
+        if video_b64:
+            try:
+                result = cloudinary.uploader.upload(
+                    f"data:video/mp4;base64,{video_b64}",
+                    folder="violations/videos",
+                    public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_clip",
+                    overwrite=True,
+                    resource_type="video"
+                )
+                video_url = result.get("secure_url", "")
+                logger.info(f"Uploaded violation video to Cloudinary: {video_url}")
+            except Exception as e:
+                logger.error(f"Cloudinary video upload failed: {e}")
+
+        img_path = image_url or ''
 
         # Insert into PostgreSQL
         violation_id = None
@@ -892,20 +922,13 @@ def upload_event():
             barangay = data.get('barangay', None)
             enforced = data.get('enforced', False)
 
-            if barangay is not None:
-                cur.execute("""
-                    INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                """, (camera_id, tracker_id, label, timestamp, img_path, confidence_score, duration_minutes, fine_amount, barangay, enforced))
-            else:
-                cur.execute("""
-                    INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, enforced)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                """, (camera_id, tracker_id, label, timestamp, img_path, confidence_score, duration_minutes, fine_amount, enforced))
+            cur.execute("""
+                INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, image_url, video_url, confidence_score, duration_minutes, fine_amount, barangay, enforced)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            """, (camera_id, tracker_id, label, timestamp, img_path, image_url, video_url, confidence_score, duration_minutes, fine_amount, barangay or 'Bgry. Kanluran', enforced))
             violation_id = cur.fetchone()[0]
             conn.commit()
 
-            # Feature 13: Save plate record if provided
             plate_number = data.get('plate_number')
             if plate_number and violation_id:
                 cur.execute("""
@@ -948,13 +971,13 @@ def api_image_from_db():
     image_path = request.args.get("image_path")
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
+    if image_path.startswith("http"):
+        return redirect(image_path)
     safe_path = os.path.normpath(image_path)
-    # Block path traversal: no "..", no absolute paths (Unix or Windows)
     if ".." in safe_path or os.path.isabs(safe_path):
         return jsonify({"success": False, "error": "Invalid image_path"}), 400
     base_dir = os.path.realpath(os.path.dirname(__file__))
     abs_path = os.path.realpath(os.path.join(base_dir, safe_path))
-    # Ensure resolved path stays within the project directory
     if not abs_path.startswith(base_dir):
         return jsonify({"success": False, "error": "Invalid image_path"}), 400
     if not os.path.exists(abs_path):

@@ -146,6 +146,18 @@ def ensure_tables():
                     logger.info("Added 'review_notes' column to violations table.")
                 except Exception as e:
                     logger.warning(f"Could not add review_notes column: {e}")
+            if not column_exists(cur, 'violations', 'image_url'):
+                try:
+                    cur.execute("ALTER TABLE violations ADD COLUMN image_url TEXT DEFAULT '';")
+                    logger.info("Added 'image_url' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add image_url column: {e}")
+            if not column_exists(cur, 'violations', 'video_url'):
+                try:
+                    cur.execute("ALTER TABLE violations ADD COLUMN video_url TEXT DEFAULT '';")
+                    logger.info("Added 'video_url' column to violations table.")
+                except Exception as e:
+                    logger.warning(f"Could not add video_url column: {e}")
 
         # --- Feature 13: plate_records table ---
         if not table_exists(cur, 'plate_records'):

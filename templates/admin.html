@@ -290,7 +290,7 @@ function selectIncident(id) {
 
   const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;
   const dur = row.duration_minutes != null ? Number(row.duration_minutes).toFixed(1) : '0.0';
-  const imgUrl = row.image_path ? '/api/image_from_db?image_path=' + encodeURIComponent(row.image_path) : '';
+  const imgUrl = row.image_url || (row.image_path && row.image_path.startsWith('http') ? row.image_path : (row.image_path ? '/api/image_from_db?image_path=' + encodeURIComponent(row.image_path) : ''));
   const status = row.review_status || 'for_review';
 
   // Progress steps
@@ -318,6 +318,13 @@ function selectIncident(id) {
         : '<div class="dp-no-image"><i class="bi bi-image"></i> No captured image for this incident</div>'
       }
     </div>
+    ${row.video_url ? `
+    <div class="dp-image-wrap" style="margin-top:0.5rem;">
+      <div class="dp-image-title">Captured Video Clip</div>
+      <video controls style="width:100%;border-radius:8px;" preload="metadata">
+        <source src="${row.video_url}" type="video/mp4">
+      </video>
+    </div>` : ''}
 
     <div class="dp-review">
       <div class="dp-review-title">Review Status</div>
