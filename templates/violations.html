@@ -505,6 +505,10 @@ function applyFilters() {
   const dateStart = document.getElementById('filterDateStart').value;
   const dateEnd = document.getElementById('filterDateEnd').value;
 
+  if (dateStart && dateEnd && dateStart > dateEnd) {
+    alert('From date cannot be after To date.');
+    return;
+  }
   if (dateStart) f.date_start = dateStart;
   if (dateEnd) f.date_end = dateEnd;
   if (label) f.label = label;

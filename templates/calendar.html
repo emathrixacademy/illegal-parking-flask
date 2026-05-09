@@ -33,6 +33,7 @@
 .cal-cell:hover { background: var(--primary-lighter); }
 .cal-cell.selected { background: var(--primary-lighter); box-shadow: inset 0 0 0 2px var(--primary); border-radius: 2px; }
 .cal-cell.today { background: #eff6ff; }
+.cal-cell.future-date { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 .cal-cell.today .cal-day { color: var(--primary); font-weight: 800; }
 .cal-cell.other-month { background: var(--bg); opacity: 0.5; }
 .cal-cell.other-month:hover { opacity: 0.7; }
@@ -180,9 +181,14 @@ function init() {
 }
 
 function changeMonth(delta) {
-  currentMonth += delta;
-  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  const now = new Date();
+  let newMonth = currentMonth + delta;
+  let newYear = currentYear;
+  if (newMonth > 11) { newMonth = 0; newYear++; }
+  if (newMonth < 0) { newMonth = 11; newYear--; }
+  if (newYear > now.getFullYear() || (newYear === now.getFullYear() && newMonth > now.getMonth())) return;
+  currentMonth = newMonth;
+  currentYear = newYear;
   loadMonth();
 }
 
@@ -238,12 +244,16 @@ function renderCalendar() {
     const isToday = dateStr === todayStr;
     const isSelected = dateStr === selectedDate;
 
+    const isFuture = dateStr > todayStr;
     let classes = 'cal-cell';
     if (isToday) classes += ' today';
     if (isSelected) classes += ' selected';
+    if (isFuture) classes += ' future-date';
 
     let countHtml = '';
-    if (count === 0) {
+    if (isFuture) {
+      countHtml = '';
+    } else if (count === 0) {
       countHtml = isPassed ? '<div class="cal-passed">No incidents</div>' : '';
     } else if (count <= 3) {
       countHtml = `<span class="cal-count mid">${count} incident${count>1?'s':''}</span>`;
@@ -251,7 +261,7 @@ function renderCalendar() {
       countHtml = `<span class="cal-count high">${count} incidents</span>`;
     }
 
-    html += `<div class="${classes}" onclick="selectDate('${dateStr}')">
+    html += `<div class="${classes}" ${isFuture ? '' : `onclick="selectDate('${dateStr}')"`}>
       <div class="cal-day">${d}${isToday ? ' <span style="font-size:0.62rem;color:var(--primary);font-weight:700;">Today</span>' : ''}</div>
       ${countHtml}
     </div>`;
