@@ -323,6 +323,10 @@ def ensure_violations_table():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cur.execute("""
+            UPDATE violations SET image_url = image_path
+            WHERE (image_url IS NULL OR image_url = '') AND image_path IS NOT NULL AND image_path != ''
+        """)
         conn.commit()
         cur.close()
         conn.close()
@@ -1637,8 +1641,9 @@ def api_calendar_details():
             cur = conn.cursor()
             cur.execute("""
                 SELECT v.id, v.camera, v.tracker_id, v.label, v.timestamp,
-                       v.image_url, v.confidence_score, v.duration_minutes,
-                       p.plate_number, v.video_url
+                       COALESCE(NULLIF(v.image_url, ''), v.image_path, '') as img,
+                       v.confidence_score, v.duration_minutes,
+                       p.plate_number, COALESCE(v.video_url, '') as vid
                 FROM violations v
                 LEFT JOIN plate_records p ON p.violation_id = v.id
                 WHERE DATE(v.timestamp) = %s
