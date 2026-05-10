@@ -692,7 +692,7 @@ def api_resolve_tamper(event_id):
 # Routes – System Health Proxy (Feature 16)
 # ==================================================
 @app.route('/api/cloudinary_test')
-@pi_api_key_required
+@login_or_api_key
 def api_cloudinary_test():
     import io
     try:
