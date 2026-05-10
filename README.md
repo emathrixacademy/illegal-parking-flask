@@ -897,7 +897,35 @@ Only needed if the quick fix above doesn't work.
 - **Do NOT run `python3 server.py &` if systemd is managing it** — use `sudo systemctl restart parking-detect` instead, or you'll get "Port 5000 already in use".
 - **Do NOT assume the Pi IP is the same** — it uses DHCP. If SSH fails, scan the subnet first.
 
+## Known Stable Commit
+
+**Commit `81cc5c4`** (May 10, 2026) — fully working and verified in production.
+
+To revert to this known-good state:
+```bash
+git reset --hard 81cc5c4
+```
+
+What works at this commit:
+- Hailo-8L hardware acceleration (shared VDevice + shared lock for both models)
+- Cloudflare tunnel auto-start and Railway URL registration
+- Tamper images uploaded to Cloudinary (no local accumulation)
+- Auto-cleanup of `/tmp` violation videos and old tamper images
+- Camera date/time sync via ONVIF
+- CPU-only PyTorch fallback (no nvidia/triton bloat)
+- Pi SSH: `admin` / `admin123`
+
 ## Changelog
+
+### May 10, 2026 - Hailo Fix, Disk Cleanup & Cloudinary Tamper Upload
+- **Hailo Acceleration Restored**: Installed `python3-hailort` + `hailort-pcie-driver`, symlinked to venv
+- **Shared VDevice**: Both parking and CCTV AI detectors share one `VDevice` with a shared lock (Hailo-8L only supports one)
+- **Disk Cleanup**: Removed nvidia/torch/triton (4.3 GB saved), reinstalled CPU-only PyTorch (148 MB)
+- **Tamper to Cloudinary**: Tamper images now sent as base64 to Railway and uploaded to Cloudinary instead of saved locally
+- **Auto-Cleanup Thread**: Background thread removes tamper images and `/tmp` violation videos older than 1 hour
+- **Config Fix**: Resolved merge conflict markers in `config.py` that crashed Railway deployment
+- **Camera Date Sync**: Updated both cameras to correct date via ONVIF
+- **Pi SSH Password**: Updated from `project123` to `admin123`
 
 ### April 27, 2026 - Remote Monitoring & Connectivity Fix
 - **Pi Heartbeat System**: Pi sends heartbeat every 30s with uptime and CPU temp to Railway
