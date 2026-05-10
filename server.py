@@ -570,7 +570,19 @@ class ParkingMonitor:
         try:
             import datetime
             now_dt = datetime.datetime.now()
-            _, buf = cv2.imencode('.jpg', frame)
+
+            # Use hi-res frame for image upload and OCR if available
+            ocr_frame = frame
+            upload_frame = frame
+            hires = hires_captures.get(name)
+            if hires:
+                hires_frame = hires.grab_frame()
+                if hires_frame is not None:
+                    upload_frame = hires_frame
+                    ocr_frame = hires_frame
+                    logger.info(f"Using hi-res frame for {name} tid={tid}: {hires_frame.shape[1]}x{hires_frame.shape[0]}")
+
+            _, buf = cv2.imencode('.jpg', upload_frame)
             img_b64 = base64.b64encode(buf).decode('utf-8')
 
             with self.lock:
@@ -588,11 +600,20 @@ class ParkingMonitor:
             plate_confidence = 0.0
             bbox = list(map(int, d['box']))
 
+            # Scale bbox to hi-res frame if using different resolution
+            ocr_bbox = bbox
+            if ocr_frame is not upload_frame or (hires and ocr_frame.shape != frame.shape):
+                det_h, det_w = frame.shape[:2]
+                hires_h, hires_w = ocr_frame.shape[:2]
+                if det_w > 0 and det_h > 0:
+                    sx, sy = hires_w / det_w, hires_h / det_h
+                    ocr_bbox = [int(bbox[0]*sx), int(bbox[1]*sy), int(bbox[2]*sx), int(bbox[3]*sy)]
+
             try:
                 from ocr_module import extract_plate
-                plate_number, plate_confidence = extract_plate(frame, bbox)
+                plate_number, plate_confidence = extract_plate(ocr_frame, ocr_bbox)
                 if plate_number:
-                    logger.info(f"EasyOCR plate: {plate_number} (conf={plate_confidence:.2f}) tid={tid}")
+                    logger.info(f"EasyOCR plate: {plate_number} (conf={plate_confidence:.2f}) tid={tid} res={ocr_frame.shape[1]}x{ocr_frame.shape[0]}")
             except Exception as ocr_err:
                 logger.warning(f"EasyOCR failed: {ocr_err}")
 
@@ -601,7 +622,7 @@ class ParkingMonitor:
                     from claude_vision import analyze_violation, is_available
                     if is_available():
                         vision_result = analyze_violation(
-                            frame, bbox=bbox, camera_id=name,
+                            ocr_frame, bbox=ocr_bbox, camera_id=name,
                             vehicle_label=label, duration_seconds=int(dur)
                         )
                         if vision_result and vision_result.get("plate_number"):
@@ -782,6 +803,36 @@ class Stream:
     def reconnect(self):
         self.reconnect_event.set()
 
+
+class HiResCapture:
+    """On-demand high-resolution frame grabber for plate OCR.
+    Only opens the main stream when a frame is needed, then caches briefly."""
+    def __init__(self, url):
+        self.url = url
+        self._lock = threading.Lock()
+        self._last_frame = None
+        self._last_time = 0
+        self._cache_ttl = 5
+
+    def grab_frame(self):
+        with self._lock:
+            if self._last_frame is not None and (time.time() - self._last_time) < self._cache_ttl:
+                return self._last_frame.copy()
+        try:
+            cap = cv2.VideoCapture(self.url)
+            if not cap.isOpened():
+                return None
+            ret, frame = cap.read()
+            cap.release()
+            if ret and frame is not None:
+                with self._lock:
+                    self._last_frame = frame
+                    self._last_time = time.time()
+                return frame
+        except Exception as e:
+            logger.warning(f"HiRes capture failed: {e}")
+        return None
+
 # --- Initialize ---
 monitor = ParkingMonitor()
 
@@ -797,6 +848,14 @@ health_mon = HealthMonitor()
 # Use config values directly, fallback to defaults if missing
 CAM1_URL = getattr(config, "CAM1_URL", None)
 CAM2_URL = getattr(config, "CAM2_URL", None)
+CAM1_HIRES_URL = getattr(config, "CAM1_HIRES_URL", None)
+CAM2_HIRES_URL = getattr(config, "CAM2_HIRES_URL", None)
+
+# Dual-stream: if main URL has credentials and /stream1, derive sub-stream for detection
+if CAM1_URL and "/stream1" in CAM1_URL:
+    CAM1_HIRES_URL = CAM1_URL
+    CAM1_URL = CAM1_URL.replace("/stream1", "/stream2")
+    logger.info(f"Dual-stream enabled for Camera_1: detect={CAM1_URL} hires={CAM1_HIRES_URL}")
 
 if not CAM1_URL or not CAM2_URL:
     logger.error("CAM1_URL and/or CAM2_URL are not set in config.py. Please set valid RTSP URLs.")
@@ -806,11 +865,20 @@ c1, c2 = Stream(CAM1_URL), Stream(CAM2_URL)
 latest_processed = {"Camera_1": None, "Camera_2": None}
 proc_lock = threading.Lock()
 
-# Feature 13: Start continuous recorders (disabled — uses too much disk on Pi)
+# Hi-res capture for plate OCR (on-demand, not continuous)
+hires_captures = {}
+if CAM1_HIRES_URL:
+    hires_captures["Camera_1"] = HiResCapture(CAM1_HIRES_URL)
+    logger.info(f"HiRes capture ready for Camera_1: {CAM1_HIRES_URL}")
+if CAM2_HIRES_URL:
+    hires_captures["Camera_2"] = HiResCapture(CAM2_HIRES_URL)
+
+# Feature 13: Start continuous recorders
 recorders = {}
 if ContinuousRecorder is not None:
     try:
-        recorders["Camera_1"] = ContinuousRecorder("Camera_1", CAM1_URL)
+        rec_cam1_url = CAM1_HIRES_URL or CAM1_URL
+        recorders["Camera_1"] = ContinuousRecorder("Camera_1", rec_cam1_url)
         recorders["Camera_2"] = ContinuousRecorder("Camera_2", CAM2_URL)
         for rec in recorders.values():
             rec.start()
