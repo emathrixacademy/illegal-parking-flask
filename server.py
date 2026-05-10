@@ -571,19 +571,10 @@ class ParkingMonitor:
             import datetime
             now_dt = datetime.datetime.now()
 
-            # Use hi-res frame for image upload and OCR if available
             ocr_frame = frame
-            upload_frame = frame
-            hires = hires_captures.get(name)
-            if hires:
-                hires_frame = hires.grab_frame()
-                if hires_frame is not None:
-                    upload_frame = hires_frame
-                    ocr_frame = hires_frame
-                    logger.info(f"Using hi-res frame for {name} tid={tid}: {hires_frame.shape[1]}x{hires_frame.shape[0]}")
-
-            _, buf = cv2.imencode('.jpg', upload_frame)
+            _, buf = cv2.imencode('.jpg', frame)
             img_b64 = base64.b64encode(buf).decode('utf-8')
+            logger.info(f"Violation frame for {name} tid={tid}: {frame.shape[1]}x{frame.shape[0]}")
 
             with self.lock:
                 start_times = [t for (cam2, tid2), t in self.timers.items() if tid2 == tid]
@@ -600,14 +591,7 @@ class ParkingMonitor:
             plate_confidence = 0.0
             bbox = list(map(int, d['box']))
 
-            # Scale bbox to hi-res frame if using different resolution
             ocr_bbox = bbox
-            if ocr_frame is not upload_frame or (hires and ocr_frame.shape != frame.shape):
-                det_h, det_w = frame.shape[:2]
-                hires_h, hires_w = ocr_frame.shape[:2]
-                if det_w > 0 and det_h > 0:
-                    sx, sy = hires_w / det_w, hires_h / det_h
-                    ocr_bbox = [int(bbox[0]*sx), int(bbox[1]*sy), int(bbox[2]*sx), int(bbox[3]*sy)]
 
             try:
                 from ocr_module import extract_plate
@@ -851,11 +835,9 @@ CAM2_URL = getattr(config, "CAM2_URL", None)
 CAM1_HIRES_URL = getattr(config, "CAM1_HIRES_URL", None)
 CAM2_HIRES_URL = getattr(config, "CAM2_HIRES_URL", None)
 
-# Dual-stream: if main URL has credentials and /stream1, derive sub-stream for detection
+# Camera 1 uses main stream (4MP) for display + OCR; Hailo resizes internally for detection
 if CAM1_URL and "/stream1" in CAM1_URL:
-    CAM1_HIRES_URL = CAM1_URL
-    CAM1_URL = CAM1_URL.replace("/stream1", "/stream2")
-    logger.info(f"Dual-stream enabled for Camera_1: detect={CAM1_URL} hires={CAM1_HIRES_URL}")
+    logger.info(f"Camera_1 using main stream for full resolution: {CAM1_URL}")
 
 if not CAM1_URL or not CAM2_URL:
     logger.error("CAM1_URL and/or CAM2_URL are not set in config.py. Please set valid RTSP URLs.")
