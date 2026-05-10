@@ -1450,8 +1450,7 @@ def api_cameras():
     return jsonify(cameras)
 
 @app.route('/api/cameras/<camera_id>', methods=['PUT', 'DELETE'])
-@login_required
-@role_required('admin')
+@login_or_api_key
 def api_modify_camera(camera_id):
     cameras = get_config_value("CAMERAS", [])
     if not isinstance(cameras, list):
