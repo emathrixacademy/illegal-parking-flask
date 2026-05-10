@@ -759,9 +759,15 @@ class ParkingMonitor:
                     with self.lock:
                         self.last_upload_time[(name, tid)] = now
             else:
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                with self.lock:
-                    self.timers.pop((name, tid), None)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
+                cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, (0, 165, 255), 2)
+
+        # Clean up timers for vehicles no longer tracked
+        active_tids = set(tracked.keys())
+        with self.lock:
+            stale = [k for k in self.timers if k[0] == name and k[1] not in active_tids]
+            for k in stale:
+                self.timers.pop(k, None)
 
         # Finalize recorders for vehicles that left the zone
         with violation_recorders_lock:
