@@ -2,11 +2,16 @@ import cv2
 import numpy as np
 import json
 import sys
-import db  # ...existing code...
+import os
+import requests
 
-# Camera RTSP URLs
-CAM1_URL = "rtsp://192.168.8.2:554/stream"
-CAM2_URL = "rtsp://192.168.8.199:554/stream"
+import config
+
+RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
+PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
+
+CAM1_URL = getattr(config, "CAM1_URL", "rtsp://192.168.8.2:554/stream")
+CAM2_URL = getattr(config, "CAM2_URL", "rtsp://192.168.8.199:554/stream")
 
 window_base = "Zone Selector"
 points = []
@@ -36,7 +41,6 @@ def run_for_camera(cam_key, cam_url, existing_points):
     cap = cv2.VideoCapture(cam_url)
     if not cap.isOpened():
         print(f"Failed to open camera {cam_key}. Using blank canvas.")
-        # create a blank frame to allow drawing if stream not available
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
         ret = False
     else:
@@ -47,11 +51,7 @@ def run_for_camera(cam_key, cam_url, existing_points):
             ok, frame = cap.read()
             if not ok:
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        else:
-            # keep blank frame
-            pass
 
-        # Draw points and polygon
         for pt in points:
             cv2.circle(frame, pt, 5, (0, 0, 255), -1)
         if len(points) > 1:
@@ -67,7 +67,6 @@ def run_for_camera(cam_key, cam_url, existing_points):
         elif key == ord('n'):
             break
         elif key == ord('q'):
-            # signal to abort entire flow
             points = None
             break
 
@@ -76,14 +75,41 @@ def run_for_camera(cam_key, cam_url, existing_points):
     cv2.destroyWindow(window_name)
     return None if points is None else [ [int(x), int(y)] for (x,y) in points ]
 
-def main():
-    # Load existing zones from DB (if present)
+def load_existing_zones():
     try:
-        existing = db.get_config_value("PARKING_ZONES", {})
-        if not isinstance(existing, dict):
-            existing = {}
-    except Exception:
-        existing = {}
+        resp = requests.get(
+            f"{RAILWAY_API_URL}/api/db_settings",
+            headers={"X-API-Key": PI_API_KEY},
+            timeout=10
+        )
+        if resp.ok:
+            settings = resp.json()
+            zones = settings.get("PARKING_ZONES", {})
+            if isinstance(zones, dict):
+                return zones
+    except Exception as e:
+        print(f"Could not load existing zones from Railway: {e}")
+    return {}
+
+def save_zones(zones):
+    try:
+        resp = requests.post(
+            f"{RAILWAY_API_URL}/api/db_settings",
+            json={"PARKING_ZONES": zones},
+            headers={"X-API-Key": PI_API_KEY, "Content-Type": "application/json"},
+            timeout=10
+        )
+        if resp.ok:
+            print("Saved PARKING_ZONES to Railway DB.")
+            return True
+        else:
+            print(f"Failed to save zones: {resp.status_code} {resp.text}")
+    except Exception as e:
+        print(f"Failed to save to Railway: {e}")
+    return False
+
+def main():
+    existing = load_existing_zones()
 
     cameras = {
         "Camera_1": CAM1_URL,
@@ -92,28 +118,22 @@ def main():
 
     zones = existing.copy()
 
-    # Iterate all cameras automatically
     for cam_key, cam_url in cameras.items():
         existing_pts = zones.get(cam_key, [])
         selected = run_for_camera(cam_key, cam_url, existing_pts)
         if selected is None:
             print("Aborted by user. Exiting without saving.")
             return
-        # If user selected nothing and there were existing points, keep them; otherwise store selected (may be empty list)
         if selected:
             zones[cam_key] = selected
         else:
-            # keep existing if exists, else set empty list
             if cam_key not in zones:
                 zones[cam_key] = []
 
-    # Save to Railway DB
-    try:
-        db.set_config_value("PARKING_ZONES", zones)
+    if not save_zones(zones):
+        print("Fallback — zones JSON (copy manually):")
         print(json.dumps(zones))
-        print("Saved PARKING_ZONES to Railway DB.")
-    except Exception as e:
-        print(f"Failed to save to DB: {e}")
+    else:
         print(json.dumps(zones))
 
 if __name__ == "__main__":
