@@ -820,19 +820,19 @@ def processing_worker(cam_name, stream):
                     if is_tampered:
                         import datetime as dt
                         now_dt = dt.datetime.now()
-                        good_frame_path = f"static/tamper/{cam_name}_{now_dt.strftime('%Y%m%d_%H%M%S')}_last_good.jpg"
-                        os.makedirs("static/tamper", exist_ok=True)
-                        if tamper_detectors[cam_name].last_good_frame is not None:
-                            cv2.imwrite(good_frame_path, tamper_detectors[cam_name].last_good_frame)
                         logger.warning(f"TAMPER DETECTED on {cam_name}: {tamper_type} - {details}")
+                        tamper_payload = {
+                            "camera": cam_name,
+                            "tamper_type": tamper_type,
+                            "details": details,
+                            "timestamp": now_dt.isoformat()
+                        }
+                        if tamper_detectors[cam_name].last_good_frame is not None:
+                            _, tbuf = cv2.imencode('.jpg', tamper_detectors[cam_name].last_good_frame)
+                            tamper_payload["image"] = base64.b64encode(tbuf).decode('utf-8')
                         try:
-                            requests.post(f"{RAILWAY_API_URL}/api/tamper_event", json={
-                                "camera": cam_name,
-                                "tamper_type": tamper_type,
-                                "details": details,
-                                "last_good_frame_path": good_frame_path,
-                                "timestamp": now_dt.isoformat()
-                            }, headers=RAILWAY_HEADERS, timeout=5)
+                            requests.post(f"{RAILWAY_API_URL}/api/tamper_event", json=tamper_payload,
+                                          headers=RAILWAY_HEADERS, timeout=15)
                         except Exception as te:
                             logger.warning(f"Failed to upload tamper event: {te}")
             except Exception as e:
@@ -841,6 +841,29 @@ def processing_worker(cam_name, stream):
 
 threading.Thread(target=processing_worker, args=("Camera_1", c1), daemon=True).start()
 threading.Thread(target=processing_worker, args=("Camera_2", c2), daemon=True).start()
+
+def cleanup_local_files():
+    """Periodically remove old local tamper images and leftover /tmp violation videos."""
+    import glob
+    while True:
+        try:
+            for f in glob.glob("static/tamper/*.jpg"):
+                try:
+                    if os.path.getmtime(f) < time.time() - 3600:
+                        os.remove(f)
+                except OSError:
+                    pass
+            for f in glob.glob("/tmp/violation_*.mp4"):
+                try:
+                    if os.path.getmtime(f) < time.time() - 3600:
+                        os.remove(f)
+                except OSError:
+                    pass
+        except Exception as e:
+            logger.warning(f"Cleanup error: {e}")
+        time.sleep(1800)
+
+threading.Thread(target=cleanup_local_files, daemon=True).start()
 
 def gen_single(stream, cam_name):
     FRAME_INTERVAL = 1.0 / 15  # 15 FPS for smoother streaming

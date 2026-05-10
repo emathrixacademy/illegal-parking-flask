@@ -393,7 +393,7 @@ Password: admin2026
 ```
 Host:     192.168.1.15 (DHCP — may change, scan subnet if unreachable)
 Username: admin
-Password: project123
+Password: admin123
 Port:     22
 ```
 
@@ -742,7 +742,7 @@ for i in $(seq 1 254); do ping -c1 -W1 192.168.1.$i &>/dev/null && echo "192.168
 
 # Try SSH on each discovered IP
 ssh admin@<ip>
-# Password: project123
+# Password: admin123
 ```
 
 **Step 2 — Check if server.py is running:**
@@ -818,7 +818,7 @@ sudo systemctl restart parking-detect
 
 ### SSH password rejected
 
-The Pi username is `admin` (not `set-admin`). If the password `project123` doesn't work:
+The Pi username is `admin` (not `set-admin`). If the password `admin123` doesn't work:
 1. Connect a monitor + keyboard to the Pi
 2. Login directly and reset: `sudo passwd admin`
 3. Or pull the SD card, append `init=/bin/sh` to `cmdline.txt`, boot, run `passwd admin`, remove `init=/bin/sh`, reboot
@@ -858,7 +858,7 @@ This is the most common issue. The Pi loses the `192.168.8.x` secondary IP on re
 ```bash
 # 1. SSH into Pi
 ssh admin@192.168.1.15
-# Password: project123
+# Password: admin123
 
 # 2. Re-add camera subnet
 sudo ip addr add 192.168.8.100/24 dev eth0

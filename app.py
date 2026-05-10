@@ -590,6 +590,24 @@ def api_tamper_event():
     data = request.get_json(force=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON"}), 400
+
+    image_url = ""
+    image_b64 = data.get("image")
+    if image_b64:
+        try:
+            ts = data.get('timestamp', datetime.utcnow().isoformat()).replace(':', '-').replace('.', '-')
+            result = cloudinary.uploader.upload(
+                f"data:image/jpeg;base64,{image_b64}",
+                folder="tamper",
+                public_id=f"{data['camera']}_{ts}_last_good",
+                overwrite=True,
+                resource_type="image"
+            )
+            image_url = result.get("secure_url", "")
+            logger.info(f"Uploaded tamper image to Cloudinary: {image_url}")
+        except Exception as e:
+            logger.error(f"Cloudinary tamper image upload failed: {e}")
+
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -597,7 +615,7 @@ def api_tamper_event():
             INSERT INTO tamper_events (camera, tamper_type, details, last_good_frame_path, timestamp)
             VALUES (%s, %s, %s::jsonb, %s, %s)
         """, (data['camera'], data['tamper_type'], json.dumps(data.get('details', {})),
-              data.get('last_good_frame_path'), data.get('timestamp', datetime.utcnow().isoformat())))
+              image_url, data.get('timestamp', datetime.utcnow().isoformat())))
         conn.commit()
         cur.close()
     finally:
