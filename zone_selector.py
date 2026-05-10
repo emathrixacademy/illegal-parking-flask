@@ -16,12 +16,15 @@ CAM2_URL = getattr(config, "CAM2_URL", "rtsp://192.168.8.199:554/stream")
 window_base = "Zone Selector"
 points = []
 current_cam_key = None
+DISPLAY_SCALE = 0.5
 
 def mouse_callback(event, x, y, flags, param):
     global points
     if event == cv2.EVENT_LBUTTONDOWN:
-        points.append((x, y))
-        print(f"Point added: ({x}, {y})")
+        full_x = int(x / DISPLAY_SCALE)
+        full_y = int(y / DISPLAY_SCALE)
+        points.append((full_x, full_y))
+        print(f"Point added: ({full_x}, {full_y})")
 
 def run_for_camera(cam_key, cam_url, existing_points):
     global points, current_cam_key
@@ -52,12 +55,16 @@ def run_for_camera(cam_key, cam_url, existing_points):
             if not ok:
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
 
-        for pt in points:
-            cv2.circle(frame, pt, 5, (0, 0, 255), -1)
-        if len(points) > 1:
-            cv2.polylines(frame, [np.array(points, np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+        display = cv2.resize(frame, (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE)
 
-        cv2.imshow(window_name, frame)
+        for pt in points:
+            dp = (int(pt[0] * DISPLAY_SCALE), int(pt[1] * DISPLAY_SCALE))
+            cv2.circle(display, dp, 4, (0, 0, 255), -1)
+        if len(points) > 1:
+            scaled_pts = [(int(p[0] * DISPLAY_SCALE), int(p[1] * DISPLAY_SCALE)) for p in points]
+            cv2.polylines(display, [np.array(scaled_pts, np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+
+        cv2.imshow(window_name, display)
         key = cv2.waitKey(1) & 0xFF
 
         if key == ord('u') and points:
