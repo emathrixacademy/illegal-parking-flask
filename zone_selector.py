@@ -131,7 +131,7 @@ def main():
                 zones[cam_key] = []
 
     if not save_zones(zones):
-        print("Fallback — zones JSON (copy manually):")
+        print("Fallback - zones JSON (copy manually):")
         print(json.dumps(zones))
     else:
         print(json.dumps(zones))
