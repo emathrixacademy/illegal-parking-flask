@@ -60,13 +60,9 @@ class ContinuousRecorder:
 
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 fps = 10
-                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                rec_w, rec_h = 960, 540
 
-                if w == 0 or h == 0:
-                    w, h = 960, 540
-
-                writer = cv2.VideoWriter(filename, fourcc, fps, (w, h))
+                writer = cv2.VideoWriter(filename, fourcc, fps, (rec_w, rec_h))
                 start_time = time.time()
                 frame_count = 0
 
