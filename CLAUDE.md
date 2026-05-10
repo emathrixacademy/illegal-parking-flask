@@ -1,9 +1,9 @@
 # CLAUDE.md - Project Context for AI Assistants
 
 ## Known Stable Commit
-**`81cc5c4`** (May 10, 2026) — last verified fully working state. Revert here if things break:
+**`e6bb9fc`** (May 10, 2026) — last verified fully working state. Includes: normalized zones, timer bug fix, Cloudinary image/video storage, recordings DB, purple email theme, plate numbers in alerts, per-violation cooldown, matched calendar/dashboard counts. Revert here if things break:
 ```bash
-git reset --hard 81cc5c4
+git reset --hard e6bb9fc
 ```
 
 ## Architecture
