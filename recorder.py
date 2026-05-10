@@ -1,8 +1,8 @@
 """
 Continuous Recording Module (Feature 13 - Playback)
 Runs on the Raspberry Pi edge device.
-Records RTSP streams to 1-hour MP4 segments on USB HDD.
-Automatically cleans up recordings older than MAX_DAYS.
+Records RTSP streams to 15-minute MP4 segments.
+Uploads each segment to Cloudinary via Railway, then deletes locally.
 """
 import cv2
 import os
@@ -10,13 +10,17 @@ import time
 import threading
 import shutil
 import logging
+import requests
+import base64
 from datetime import datetime
 
 logger = logging.getLogger("Recorder")
 
 RECORDING_DIR = os.environ.get("RECORDING_DIR", "/mnt/recording")
-SEGMENT_DURATION = 3600  # 1 hour per file
-MAX_DAYS = 7
+SEGMENT_DURATION = 900  # 15 minutes per segment
+RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
+PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
+RAILWAY_HEADERS = {"X-API-Key": PI_API_KEY}
 
 
 class ContinuousRecorder:
@@ -40,10 +44,12 @@ class ContinuousRecorder:
         while self.running:
             try:
                 now = datetime.now()
-                date_dir = os.path.join(RECORDING_DIR, self.camera_id, now.strftime("%Y-%m-%d"))
+                date_str = now.strftime("%Y-%m-%d")
+                time_str = now.strftime('%H-%M-%S')
+                date_dir = os.path.join(RECORDING_DIR, self.camera_id, date_str)
                 os.makedirs(date_dir, exist_ok=True)
 
-                filename = os.path.join(date_dir, f"{now.strftime('%H-%M-%S')}.mp4")
+                filename = os.path.join(date_dir, f"{time_str}.mp4")
                 cap = cv2.VideoCapture(self.rtsp_url)
 
                 if not cap.isOpened():
@@ -52,12 +58,12 @@ class ContinuousRecorder:
                     continue
 
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                fps = 15
+                fps = 10
                 w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
                 if w == 0 or h == 0:
-                    w, h = 1280, 720
+                    w, h = 960, 540
 
                 writer = cv2.VideoWriter(filename, fourcc, fps, (w, h))
                 start_time = time.time()
@@ -66,30 +72,53 @@ class ContinuousRecorder:
                     ret, frame = cap.read()
                     if not ret:
                         break
-                    writer.write(frame)
+                    resized = cv2.resize(frame, (960, 540))
+                    writer.write(resized)
                     time.sleep(1.0 / fps)
 
                 writer.release()
                 cap.release()
-                self._cleanup_old_recordings()
+
+                if os.path.exists(filename) and os.path.getsize(filename) > 10000:
+                    threading.Thread(
+                        target=self._upload_and_delete,
+                        args=(filename, self.camera_id, date_str, time_str),
+                        daemon=True
+                    ).start()
 
             except Exception as e:
                 logger.error(f"Recording error {self.camera_id}: {e}")
                 time.sleep(5)
 
-    def _cleanup_old_recordings(self):
-        """Delete recordings older than MAX_DAYS."""
-        base = os.path.join(RECORDING_DIR, self.camera_id)
-        if not os.path.exists(base):
-            return
-        cutoff = time.time() - (MAX_DAYS * 86400)
-        for date_folder in os.listdir(base):
-            folder_path = os.path.join(base, date_folder)
-            if os.path.isdir(folder_path):
-                folder_time = os.path.getmtime(folder_path)
-                if folder_time < cutoff:
-                    shutil.rmtree(folder_path)
-                    logger.info(f"Deleted old recording: {folder_path}")
+    def _upload_and_delete(self, filepath, camera_id, date_str, time_str):
+        try:
+            with open(filepath, 'rb') as f:
+                video_b64 = base64.b64encode(f.read()).decode('utf-8')
+
+            resp = requests.post(
+                f"{RAILWAY_API_URL}/api/upload_recording",
+                json={
+                    "camera_id": camera_id,
+                    "date": date_str,
+                    "time": time_str,
+                    "video": video_b64
+                },
+                headers=RAILWAY_HEADERS,
+                timeout=300
+            )
+            if resp.ok:
+                logger.info(f"Uploaded recording to Cloudinary: {camera_id}/{date_str}/{time_str}")
+                try:
+                    os.remove(filepath)
+                    parent = os.path.dirname(filepath)
+                    if os.path.isdir(parent) and not os.listdir(parent):
+                        os.rmdir(parent)
+                except OSError:
+                    pass
+            else:
+                logger.error(f"Recording upload failed: {resp.status_code} {resp.text}")
+        except Exception as e:
+            logger.error(f"Recording upload error: {e}")
 
 
 def get_recording_dates(camera_id=None):
