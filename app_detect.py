@@ -42,8 +42,11 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
         return _shared_vdevice
 
     # Hailo-based detection
+    VEHICLE_CLASSES = [0, 1, 2, 3, 5, 7]
+    CCTV_AI_CLASSES = list(range(28))
+
     class HailoDetector:
-        def __init__(self, hef_path):
+        def __init__(self, hef_path, monitored_classes=None, conf_threshold=None):
             self.hef = HEF(hef_path)
             self.target = _get_vdevice()
             self.lock = _shared_lock
@@ -53,7 +56,8 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
             self.output_vstreams_params = OutputVStreamParams.make(self.network_group)
             self.input_info = self.hef.get_input_vstream_infos()[0]
             self.height, self.width, _ = self.input_info.shape
-            self.monitored_classes = [0, 1, 2, 3, 5, 7]
+            self.monitored_classes = monitored_classes if monitored_classes is not None else VEHICLE_CLASSES
+            self.conf_threshold = conf_threshold if conf_threshold is not None else config.DETECTION_THRESHOLD
 
         def preprocess(self, frame):
             resized = cv2.resize(frame, (self.width, self.height))
@@ -71,7 +75,7 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
                     continue
                 for det in class_detections:
                     score = float(det[4])
-                    if score >= config.DETECTION_THRESHOLD:
+                    if score >= self.conf_threshold:
                         all_boxes.append([det[1], det[0], det[3], det[2]])
                         all_confs.append(score)
                         all_clss.append(class_id)
@@ -96,12 +100,13 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
     def detect(frames):
         global _detector, _cctv_detector
         if _detector is None:
-            _detector = HailoDetector(config.MODEL_PATH)
+            _detector = HailoDetector(config.MODEL_PATH, monitored_classes=VEHICLE_CLASSES)
         results = _detector.run_detection(frames)
         if os.path.exists(CCTV_AI_MODEL):
             try:
                 if _cctv_detector is None:
-                    _cctv_detector = HailoDetector(CCTV_AI_MODEL)
+                    _cctv_ai_threshold = getattr(config, "CCTV_AI_DETECTION_THRESHOLD", 0.2)
+                    _cctv_detector = HailoDetector(CCTV_AI_MODEL, monitored_classes=CCTV_AI_CLASSES, conf_threshold=_cctv_ai_threshold)
                 cctv_results = _cctv_detector.run_detection(frames)
                 for i in range(len(results)):
                     if i < len(cctv_results):
@@ -162,7 +167,8 @@ else:
 
                     if _cctv_model is not None:
                         try:
-                            cctv_res = _cctv_model(frame)[0]
+                            _cctv_ai_thresh = getattr(config, "CCTV_AI_DETECTION_THRESHOLD", 0.2)
+                            cctv_res = _cctv_model(frame, conf=_cctv_ai_thresh)[0]
                             if hasattr(cctv_res, 'boxes') and len(cctv_res.boxes):
                                 c_xyxy = cctv_res.boxes.xyxy.cpu().numpy()
                                 c_conf = cctv_res.boxes.conf.cpu().numpy()

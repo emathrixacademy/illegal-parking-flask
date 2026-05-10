@@ -11,7 +11,8 @@ CCTV_AI_MODEL_PATH = "models/cctv_ai.hef"
 # Directory to save violation images
 SAVE_DIR = "static/violations"
 
-DETECTION_THRESHOLD = 0.3      # Minimum confidence (0.0 to 1.0)
+DETECTION_THRESHOLD = 0.3      # Minimum confidence for vehicle detection (0.0 to 1.0)
+CCTV_AI_DETECTION_THRESHOLD = 0.2  # Lower threshold for garbage/trash detection
 VIOLATION_TIME_THRESHOLD = 100
 REPEAT_CAPTURE_INTERVAL = 60
 # Define parking zones for each camera
