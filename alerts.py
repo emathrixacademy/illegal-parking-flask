@@ -45,15 +45,15 @@ def save_alert_config(config):
     set_config_value(ALERT_CONFIG_KEY, config)
 
 
-def _can_send_alert(camera_id):
-    """Check cooldown period."""
+def _can_send_alert(alert_key):
+    """Check cooldown period per violation (camera + tracker_id)."""
     config = get_alert_config()
     cooldown = config.get("cooldown_seconds", 300)
     now = time.time()
-    last = _last_alert_time.get(camera_id, 0)
+    last = _last_alert_time.get(alert_key, 0)
     if now - last < cooldown:
         return False
-    _last_alert_time[camera_id] = now
+    _last_alert_time[alert_key] = now
     return True
 
 
@@ -67,27 +67,27 @@ def _email_base_style():
     <style>
       body { margin:0; padding:0; background:#f4f4f4; font-family:'Segoe UI','Roboto',Arial,sans-serif; }
       .email-wrapper { max-width:600px; margin:0 auto; background:#ffffff; }
-      .header { background:#ff9800; padding:24px 32px; }
-      .header h1 { margin:0; color:#000; font-size:22px; font-weight:800; }
-      .header .subtitle { margin:4px 0 0; color:#000; font-size:13px; font-weight:500; opacity:0.8; }
+      .header { background:#7c3aed; padding:24px 32px; }
+      .header h1 { margin:0; color:#ffffff; font-size:22px; font-weight:800; }
+      .header .subtitle { margin:4px 0 0; color:#ffffff; font-size:13px; font-weight:500; opacity:0.8; }
       .content { padding:24px 32px; }
       .summary-box { background:#232733; border-radius:10px; padding:20px 24px; margin:16px 0; }
-      .summary-box .label { color:#ff9800; font-size:14px; font-weight:700; margin-bottom:10px; text-transform:uppercase; }
+      .summary-box .label { color:#a78bfa; font-size:14px; font-weight:700; margin-bottom:10px; text-transform:uppercase; }
       .summary-box .row { color:#f8f9fa; font-size:13px; padding:3px 0; }
       .summary-box .row strong { color:#ffffff; }
       .detail-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:13px; }
-      .detail-table th { background:#232733; color:#ff9800; padding:10px 14px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
+      .detail-table th { background:#232733; color:#a78bfa; padding:10px 14px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; }
       .detail-table td { padding:10px 14px; border-bottom:1px solid #e8e8e8; color:#333; }
       .detail-table tr:nth-child(even) td { background:#f9f9f9; }
       .badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; }
-      .badge-violation { background:#fff3e0; color:#e65100; }
+      .badge-violation { background:#ede9fe; color:#5b21b6; }
       .badge-enforced { background:#e8f5e9; color:#2e7d32; }
       .footer { background:#232733; padding:16px 32px; text-align:center; }
       .footer p { color:#bfc7d5; font-size:11px; margin:4px 0; }
-      .footer .brand { color:#ff9800; font-weight:700; font-size:12px; }
-      .divider { height:3px; background:linear-gradient(90deg, #ff9800, #e68a00); margin:0; }
-      .section-title { color:#232733; font-size:16px; font-weight:700; margin:20px 0 8px; padding-bottom:6px; border-bottom:2px solid #ff9800; display:inline-block; }
-      .highlight { color:#ff9800; font-weight:700; }
+      .footer .brand { color:#a78bfa; font-weight:700; font-size:12px; }
+      .divider { height:3px; background:linear-gradient(90deg, #7c3aed, #5b21b6); margin:0; }
+      .section-title { color:#232733; font-size:16px; font-weight:700; margin:20px 0 8px; padding-bottom:6px; border-bottom:2px solid #7c3aed; display:inline-block; }
+      .highlight { color:#7c3aed; font-weight:700; }
       .text-muted { color:#888; font-size:12px; }
     </style>
     """
@@ -102,6 +102,7 @@ def _build_violation_email_html(violation_data, has_image=False):
     barangay = 'Brgy. Kanluran'
     confidence = violation_data.get('confidence_score', 0)
     tracker_id = violation_data.get('tracker_id', 'N/A')
+    plate = violation_data.get('plate_number', '')
 
     now = datetime.now()
 
@@ -127,6 +128,7 @@ def _build_violation_email_html(violation_data, has_image=False):
             <div class="label">Incident Summary</div>
             <div class="row"><strong>Camera:</strong> {camera}</div>
             <div class="row"><strong>Vehicle Type:</strong> <span class="highlight">{label}</span></div>
+            <div class="row"><strong>Plate Number:</strong> {plate if plate else 'Plate number not visible'}</div>
             <div class="row"><strong>Duration:</strong> {duration} minutes</div>
             <div class="row"><strong>Location:</strong> {barangay}, Santa Rosa, Laguna</div>
         </div>
@@ -149,6 +151,10 @@ def _build_violation_email_html(violation_data, has_image=False):
             <tr>
                 <td>Vehicle Type</td>
                 <td><span class="badge badge-violation">{label}</span></td>
+            </tr>
+            <tr>
+                <td>Plate Number</td>
+                <td>{plate if plate else '<em>Plate number not visible</em>'}</td>
             </tr>
             <tr>
                 <td>Detection Time</td>
@@ -316,12 +322,13 @@ def send_sms_alert(violation_data):
         return False
 
     plate = violation_data.get('plate_number', '')
+    plate_line = f"Plate: {plate}" if plate else "Plate: Not visible"
     message = (
         f"ROAD BLOCKING ALERT\n"
         f"Brgy. Kanluran - {violation_data.get('camera', 'CCTV')}\n"
         f"Vehicle: {violation_data.get('label', 'Unknown')}\n"
         f"Duration: {violation_data.get('duration_minutes', 0):.1f} min\n"
-        f"{('Plate: ' + plate + chr(10)) if plate else ''}"
+        f"{plate_line}\n"
         f"Time: {violation_data.get('timestamp', 'N/A')}"
     )
 
@@ -388,8 +395,10 @@ def _send_via_textbee(config, message):
 def send_violation_alert(violation_data, image_bytes=None):
     """Main function — called when a violation is confirmed."""
     camera_id = violation_data.get('camera', 'unknown')
-    if not _can_send_alert(camera_id):
-        logger.info(f"Alert cooldown active for {camera_id}, skipping")
+    tracker_id = violation_data.get('tracker_id', 'unknown')
+    alert_key = f"{camera_id}_{tracker_id}"
+    if not _can_send_alert(alert_key):
+        logger.info(f"Alert cooldown active for {alert_key}, skipping")
         return
 
     send_email_alert(violation_data, image_bytes)

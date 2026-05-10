@@ -313,10 +313,20 @@ def ensure_violations_table():
                 cur.execute(f"ALTER TABLE violations ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
             except Exception:
                 conn.rollback()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS recordings (
+                id SERIAL PRIMARY KEY,
+                camera_id VARCHAR(32),
+                date TEXT,
+                time TEXT,
+                video_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         conn.commit()
         cur.close()
         conn.close()
-        logger.info("Ensured 'violations' table exists in PostgreSQL.")
+        logger.info("Ensured 'violations' and 'recordings' tables exist in PostgreSQL.")
     except Exception as e:
         logger.error(f"Failed to ensure violations table: {e}")
 
@@ -695,11 +705,19 @@ def api_system_health():
 @login_required
 def playback_dates():
     try:
-        pi_base = get_pi_base()
-        resp = requests.get(f"{pi_base}/api/recording_dates", timeout=10)
-        return Response(resp.content, resp.status_code,
-                        content_type=resp.headers.get('Content-Type', 'application/json'))
-    except Exception:
+        ensure_violations_table()
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT camera_id, date FROM recordings ORDER BY date DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        dates = {}
+        for cam, d in rows:
+            dates.setdefault(cam, []).append(d)
+        return jsonify(dates)
+    except Exception as e:
+        logger.error(f"Playback dates error: {e}")
         return jsonify({})
 
 @app.route('/api/playback/segments')
@@ -708,12 +726,26 @@ def playback_segments():
     camera = request.args.get('camera', 'Camera_1')
     date = request.args.get('date')
     try:
-        pi_base = get_pi_base()
-        resp = requests.get(f"{pi_base}/api/recording_segments",
-            params={"camera": camera, "date": date}, timeout=10)
-        return Response(resp.content, resp.status_code,
-                        content_type=resp.headers.get('Content-Type', 'application/json'))
-    except Exception:
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT time, video_url FROM recordings
+            WHERE camera_id = %s AND date = %s
+            ORDER BY time
+        """, (camera, date))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        segments = []
+        for t, url in rows:
+            segments.append({
+                "filename": f"{t}.mp4",
+                "time": t.replace('-', ':'),
+                "video_url": url
+            })
+        return jsonify(segments)
+    except Exception as e:
+        logger.error(f"Playback segments error: {e}")
         return jsonify([])
 
 @app.route('/api/playback/stream')
@@ -723,13 +755,19 @@ def playback_stream():
     date = request.args.get('date')
     time_str = request.args.get('time')
     try:
-        pi_base = get_pi_base()
-        resp = requests.get(f"{pi_base}/api/playback",
-            params={"camera": camera, "date": date, "time": time_str}, stream=True, timeout=30)
-        return Response(
-            stream_with_context(resp.iter_content(chunk_size=8192)),
-            content_type=resp.headers.get('Content-Type', 'video/mp4')
-        )
+        conn = psycopg2.connect(POSTGRES_URL)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT video_url FROM recordings
+            WHERE camera_id = %s AND date = %s AND time = %s
+            LIMIT 1
+        """, (camera, date, time_str))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row and row[0]:
+            return redirect(row[0])
+        return jsonify({"error": "Recording not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 502
 
@@ -1021,10 +1059,13 @@ def upload_event():
             send_violation_alert(
                 violation_data={
                     "camera": camera_id,
+                    "tracker_id": tracker_id,
                     "label": label,
                     "duration_minutes": duration_minutes,
                     "fine_amount": fine_amount,
                     "timestamp": timestamp,
+                    "plate_number": plate_number or '',
+                    "confidence_score": confidence_score,
                 },
                 image_bytes=image_bytes
             )
@@ -1070,6 +1111,21 @@ def upload_recording():
             os.remove(tmp_path)
         except OSError:
             pass
+
+        if video_url:
+            try:
+                conn = psycopg2.connect(POSTGRES_URL)
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO recordings (camera_id, date, time, video_url)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (camera_id, date_str, time_str, video_url))
+                conn.commit()
+                cur.close()
+                conn.close()
+            except Exception as db_err:
+                logger.error(f"Failed to store recording URL in DB: {db_err}")
 
         return jsonify({"success": True, "video_url": video_url})
     except Exception as e:
@@ -1550,7 +1606,7 @@ def api_calendar():
         try:
             cur = conn.cursor()
             cur.execute("""
-                SELECT DATE(timestamp) as day, COUNT(*) as cnt
+                SELECT DATE(timestamp) as day, COUNT(DISTINCT (camera, tracker_id)) as cnt
                 FROM violations
                 WHERE TO_CHAR(timestamp, 'YYYY-MM') = %s
                 GROUP BY DATE(timestamp)
@@ -1581,8 +1637,8 @@ def api_calendar_details():
             cur = conn.cursor()
             cur.execute("""
                 SELECT v.id, v.camera, v.tracker_id, v.label, v.timestamp,
-                       v.image_path, v.confidence_score, v.duration_minutes,
-                       p.plate_number
+                       v.image_url, v.confidence_score, v.duration_minutes,
+                       p.plate_number, v.video_url
                 FROM violations v
                 LEFT JOIN plate_records p ON p.violation_id = v.id
                 WHERE DATE(v.timestamp) = %s
@@ -1592,13 +1648,12 @@ def api_calendar_details():
             cur.close()
             incidents = []
             for r in rows:
-                img_url = ''
-                if r[5]:
-                    img_url = f'/api/image_from_db?image_path={urllib.parse.quote(r[5])}'
+                img_url = r[5] or ''
                 incidents.append({
                     "id": r[0], "camera": r[1], "tracker_id": r[2],
                     "label": r[3], "timestamp": r[4].isoformat() if r[4] else None,
                     "image_url": img_url,
+                    "video_url": r[9] or '',
                     "confidence": r[6], "duration_minutes": r[7],
                     "plate_number": r[8]
                 })

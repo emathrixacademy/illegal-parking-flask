@@ -320,6 +320,7 @@ async function selectDate(dateStr) {
         </div>
         <div class="sp-incident-actions">
           ${inc.image_url ? `<a href="${inc.image_url}" target="_blank" class="btn-img"><i class="bi bi-image"></i> View Image</a>` : ''}
+          ${inc.video_url ? `<a href="${inc.video_url}" target="_blank" class="btn-img"><i class="bi bi-play-circle"></i> View Video</a>` : ''}
         </div>
       </div>`;
     });
@@ -353,17 +354,18 @@ async function loadPlaybackForDate(dateStr, cameras) {
     }
 
     section.style.display = 'block';
-    btns.innerHTML = segments.map(s =>
-      `<button class="btn btn-sm" style="background:var(--primary-lighter);color:var(--primary);font-size:0.7rem;font-weight:600;border-radius:8px;padding:0.25rem 0.5rem;" onclick="playSeg('${camera}','${dateStr}','${s.time}')"><i class="bi bi-play-fill"></i> ${s.time}</button>`
-    ).join('');
+    btns.innerHTML = segments.map(s => {
+      const url = s.video_url || `/api/playback/stream?camera=${camera}&date=${dateStr}&time=${encodeURIComponent(s.time)}`;
+      return `<button class="btn btn-sm" style="background:var(--primary-lighter);color:var(--primary);font-size:0.7rem;font-weight:600;border-radius:8px;padding:0.25rem 0.5rem;" onclick="playSeg('${camera}','${dateStr}','${s.time}','${url}')"><i class="bi bi-play-fill"></i> ${s.time}</button>`;
+    }).join('');
   } catch(e) {
     section.style.display = 'none';
   }
 }
 
-function playSeg(camera, date, time) {
+function playSeg(camera, date, time, url) {
   const player = document.getElementById('sidePlayer');
-  player.src = `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(time)}`;
+  player.src = url || `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(time)}`;
   player.style.display = 'block';
   player.load();
   player.play();

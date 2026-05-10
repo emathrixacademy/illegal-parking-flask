@@ -146,19 +146,20 @@ document.getElementById('loadSegmentsBtn').addEventListener('click', async () =>
             return;
         }
         container.innerHTML = '<div class="d-flex flex-wrap gap-1">' +
-            segments.map(s =>
-                `<button class="btn btn-sm btn-outline-accent segment-btn" onclick="playSegment('${camera}','${date}','${s.time}')">`+
-                `<i class="bi bi-play-fill"></i> ${s.time} (${s.size_mb}MB)</button>`
-            ).join('') + '</div>';
+            segments.map(s => {
+                const url = s.video_url || `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(s.time)}`;
+                return `<button class="btn btn-sm btn-outline-accent segment-btn" onclick="playSegment('${camera}','${date}','${s.time}','${url}')">`+
+                `<i class="bi bi-play-fill"></i> ${s.time}</button>`;
+            }).join('') + '</div>';
         renderTimeline(segments);
     } catch(e) {
         document.getElementById('segmentsList').innerHTML = '<div class="alert alert-danger">Failed to load segments.</div>';
     }
 });
 
-function playSegment(camera, date, timeStr) {
+function playSegment(camera, date, timeStr, url) {
     const player = document.getElementById('videoPlayer');
-    player.src = `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(timeStr)}`;
+    player.src = url || `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(timeStr)}`;
     player.load();
     player.play();
     document.getElementById('playerStatus').textContent = `Playing: ${camera} - ${date} ${timeStr}`;
