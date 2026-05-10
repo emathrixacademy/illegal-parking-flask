@@ -495,13 +495,15 @@ VIOLATION_VIDEO_FPS = 5
 
 class ViolationRecorder:
     """Records a 5-minute MP4 video per violation, writing frames to /tmp as they come."""
-    def __init__(self, camera, tid, label, frame):
+    def __init__(self, camera, tid, label, frame, detection=None):
         self.camera = camera
         self.tid = tid
         self.label = label
         self.start_time = time.time()
         self.frame_count = 0
         self.finished = False
+        self.last_detection = detection or {}
+        self.last_frame = frame.copy()
         h, w = frame.shape[:2]
         self.path = f"/tmp/violation_{camera}_{tid}_{int(self.start_time)}.mp4"
         self.writer = cv2.VideoWriter(
@@ -512,9 +514,12 @@ class ViolationRecorder:
         self.frame_count += 1
         self._last_write = time.time()
 
-    def add_frame(self, frame):
+    def add_frame(self, frame, detection=None):
         if self.finished:
             return
+        if detection:
+            self.last_detection = detection
+            self.last_frame = frame.copy()
         now = time.time()
         if now - self._last_write < (1.0 / VIOLATION_VIDEO_FPS):
             return
@@ -721,7 +726,7 @@ class ParkingMonitor:
 
                 # Start recording if not already
                 if rec is None:
-                    rec = ViolationRecorder(name, tid, label, frame)
+                    rec = ViolationRecorder(name, tid, label, frame, detection=d)
                     with violation_recorders_lock:
                         violation_recorders[rec_key] = rec
                     logger.info(f"Started 5-min video recording: camera={name} tid={tid} label={label}")
@@ -731,7 +736,7 @@ class ParkingMonitor:
                     with self.lock:
                         self.last_upload_time[(name, tid)] = now
                 else:
-                    rec.add_frame(frame)
+                    rec.add_frame(frame, detection=d)
 
                 # Check if 5-minute recording is complete
                 if rec.is_done() and not rec.finished:
@@ -776,11 +781,13 @@ class ParkingMonitor:
                 rec = violation_recorders.pop(k)
                 if not rec.finished:
                     logger.info(f"Vehicle left zone, finalizing video: camera={k[0]} tid={k[1]}")
+                    last_d = rec.last_detection or {'box': [0,0,0,0], 'conf': 0}
+                    last_frame = rec.last_frame if rec.last_frame is not None else frame
                     video_b64 = rec.get_video_b64()
                     if video_b64:
                         threading.Thread(
                             target=self._upload_violation,
-                            args=(k[0], k[1], rec.label, frame, {'box': [0,0,0,0], 'conf': 0}, 0, now, video_b64),
+                            args=(k[0], k[1], rec.label, last_frame, last_d, 0, now, video_b64),
                             daemon=True
                         ).start()
 
