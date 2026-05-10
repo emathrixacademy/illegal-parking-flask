@@ -32,11 +32,19 @@ class DetectionResult:
         self.cls = clss
 
 if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
+    _shared_vdevice = None
+
+    def _get_vdevice():
+        global _shared_vdevice
+        if _shared_vdevice is None:
+            _shared_vdevice = VDevice()
+        return _shared_vdevice
+
     # Hailo-based detection
     class HailoDetector:
         def __init__(self, hef_path):
             self.hef = HEF(hef_path)
-            self.target = VDevice()
+            self.target = _get_vdevice()
             self.lock = threading.Lock()
             params = ConfigureParams.create_from_hef(self.hef, interface=HailoStreamInterface.PCIe)
             self.network_group = self.target.configure(self.hef, params)[0]
