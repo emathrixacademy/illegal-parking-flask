@@ -128,7 +128,10 @@
   font-weight: 600;
 }
 .vt-status.enforced { color: var(--success); }
-.vt-status.pending { color: var(--warning); }
+.vt-status.approved { color: var(--success); }
+.vt-status.pending, .vt-status.for_review { color: var(--warning); }
+.vt-status.rejected { color: #dc3545; }
+.vt-status.needs_investigation { color: #fd7e14; }
 
 /* ========== PAGINATION ========== */
 .pagination-bar {
@@ -616,9 +619,16 @@ async function loadViolations() {
       const labelClass = (v.label || '').toUpperCase() === 'CAR' ? 'car' : (v.label || '').toUpperCase() === 'MOTORCYCLE' ? 'motorcycle' : 'other';
       const dur = v.duration_minutes != null ? v.duration_minutes.toFixed(1) + ' min' : '—';
       const conf = v.confidence_score != null ? (v.confidence_score * 100).toFixed(1) + '%' : '—';
-      const status = v.enforced
-        ? '<span class="vt-status enforced"><i class="bi bi-check-circle-fill"></i> Enforced</span>'
-        : '<span class="vt-status pending"><i class="bi bi-clock"></i> Pending</span>';
+      const statusMap = {
+        'approved': { icon: 'bi-check-circle-fill', label: 'Approved', cls: 'approved' },
+        'rejected': { icon: 'bi-x-circle-fill', label: 'Rejected', cls: 'rejected' },
+        'needs_investigation': { icon: 'bi-exclamation-triangle-fill', label: 'Investigate', cls: 'needs_investigation' },
+        'for_review': { icon: 'bi-clock', label: 'For Review', cls: 'for_review' }
+      };
+      let statusKey = v.enforced ? 'enforced' : (v.review_status || 'for_review');
+      let statusInfo = statusMap[statusKey] || { icon: 'bi-clock', label: statusKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), cls: 'for_review' };
+      if (v.enforced) statusInfo = { icon: 'bi-shield-fill-check', label: 'Enforced', cls: 'enforced' };
+      const status = `<span class="vt-status ${statusInfo.cls}"><i class="bi ${statusInfo.icon}"></i> ${statusInfo.label}</span>`;
 
       return `<tr onclick="showDetail(${JSON.stringify(v).replace(/"/g, '&quot;')})">
         <td>${idx}</td>
@@ -672,7 +682,11 @@ function showDetail(v) {
   const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '—';
   const dur = v.duration_minutes != null ? v.duration_minutes.toFixed(1) + ' min' : '—';
   const conf = v.confidence_score != null ? (v.confidence_score * 100).toFixed(1) + '%' : '—';
-  const status = v.enforced ? 'Enforced' : (v.review_status || 'For Review');
+  const statusLookup = {
+    'approved': 'Approved', 'rejected': 'Rejected',
+    'needs_investigation': 'Needs Investigation', 'for_review': 'For Review'
+  };
+  const status = v.enforced ? 'Enforced' : (statusLookup[v.review_status] || 'For Review');
   const notes = v.review_notes || '—';
 
   document.getElementById('detailModalBody').innerHTML = `

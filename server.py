@@ -584,19 +584,52 @@ class ParkingMonitor:
             fine_map = get_fine_map()
             fine_amount = float(fine_map.get(label.upper(), 0))
 
+            plate_number = None
+            plate_confidence = 0.0
+            bbox = list(map(int, d['box']))
+
+            try:
+                from ocr_module import extract_plate
+                plate_number, plate_confidence = extract_plate(frame, bbox)
+                if plate_number:
+                    logger.info(f"EasyOCR plate: {plate_number} (conf={plate_confidence:.2f}) tid={tid}")
+            except Exception as ocr_err:
+                logger.warning(f"EasyOCR failed: {ocr_err}")
+
+            if (not plate_number or plate_confidence < 0.6):
+                try:
+                    from claude_vision import analyze_violation, is_available
+                    if is_available():
+                        vision_result = analyze_violation(
+                            frame, bbox=bbox, camera_id=name,
+                            vehicle_label=label, duration_seconds=int(dur)
+                        )
+                        if vision_result and vision_result.get("plate_number"):
+                            vp = vision_result["plate_number"]
+                            vc = float(vision_result.get("plate_confidence", 0))
+                            if vc > plate_confidence:
+                                plate_number = vp
+                                plate_confidence = vc
+                                logger.info(f"Vision plate: {plate_number} (conf={plate_confidence:.2f}) tid={tid}")
+                except Exception as vis_err:
+                    logger.warning(f"Vision analysis failed: {vis_err}")
+
             payload = {
                 "camera_id": name,
                 "tracker_id": tid,
                 "label": label,
                 "timestamp": now_dt.isoformat(),
                 "image": img_b64,
-                "bbox": list(map(int, d['box'])),
+                "bbox": bbox,
                 "duration_minutes": duration_minutes,
                 "confidence_score": float(d.get('conf', 0)),
                 "fine_amount": fine_amount,
                 "enforced": False,
                 "meta": {}
             }
+            if plate_number and plate_confidence > 0.4:
+                payload["plate_number"] = plate_number
+                payload["plate_confidence"] = plate_confidence
             if video_b64:
                 payload["video"] = video_b64
 
@@ -604,7 +637,7 @@ class ParkingMonitor:
             timeout = 120 if video_b64 else 30
             resp = requests.post(api_url, json=payload, headers=RAILWAY_HEADERS, timeout=timeout)
             if resp.ok:
-                logger.info(f"Uploaded violation to Railway: camera={name} tid={tid} video={'yes' if video_b64 else 'no'}")
+                logger.info(f"Uploaded violation to Railway: camera={name} tid={tid} plate={plate_number} video={'yes' if video_b64 else 'no'}")
             else:
                 logger.error(f"Failed upload to Railway: {resp.status_code} {resp.text}")
         except Exception as e:

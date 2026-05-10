@@ -290,9 +290,29 @@ def ensure_violations_table():
                 timestamp TIMESTAMP,
                 image_path TEXT,
                 confidence_score REAL DEFAULT 0.0,
-                barangay TEXT DEFAULT 'Bgry. Kanluran'
+                barangay TEXT DEFAULT 'Brgy. Kanluran',
+                duration_minutes REAL,
+                fine_amount REAL DEFAULT 0.0,
+                enforced BOOLEAN DEFAULT FALSE,
+                review_status VARCHAR(32) DEFAULT 'for_review',
+                review_notes TEXT DEFAULT '',
+                image_url TEXT DEFAULT '',
+                video_url TEXT DEFAULT ''
             );
         """)
+        for col_def in [
+            ("duration_minutes", "REAL"),
+            ("fine_amount", "REAL DEFAULT 0.0"),
+            ("enforced", "BOOLEAN DEFAULT FALSE"),
+            ("review_status", "VARCHAR(32) DEFAULT 'for_review'"),
+            ("review_notes", "TEXT DEFAULT ''"),
+            ("image_url", "TEXT DEFAULT ''"),
+            ("video_url", "TEXT DEFAULT ''"),
+        ]:
+            try:
+                cur.execute(f"ALTER TABLE violations ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
+            except Exception:
+                conn.rollback()
         conn.commit()
         cur.close()
         conn.close()
