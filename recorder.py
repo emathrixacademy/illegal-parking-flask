@@ -41,6 +41,7 @@ class ContinuousRecorder:
         logger.info(f"Recorder stopped for {self.camera_id}")
 
     def _record_loop(self):
+        retry_delay = 30
         while self.running:
             try:
                 now = datetime.now()
@@ -53,8 +54,8 @@ class ContinuousRecorder:
                 cap = cv2.VideoCapture(self.rtsp_url)
 
                 if not cap.isOpened():
-                    logger.warning(f"Cannot open stream for {self.camera_id}, retrying in 5s")
-                    time.sleep(5)
+                    logger.warning(f"Cannot open stream for {self.camera_id}, retrying in {retry_delay}s")
+                    time.sleep(retry_delay)
                     continue
 
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -67,6 +68,7 @@ class ContinuousRecorder:
 
                 writer = cv2.VideoWriter(filename, fourcc, fps, (w, h))
                 start_time = time.time()
+                frame_count = 0
 
                 while self.running and (time.time() - start_time) < SEGMENT_DURATION:
                     ret, frame = cap.read()
@@ -74,21 +76,34 @@ class ContinuousRecorder:
                         break
                     resized = cv2.resize(frame, (960, 540))
                     writer.write(resized)
+                    frame_count += 1
                     time.sleep(1.0 / fps)
 
                 writer.release()
                 cap.release()
 
-                if os.path.exists(filename) and os.path.getsize(filename) > 10000:
-                    threading.Thread(
-                        target=self._upload_and_delete,
-                        args=(filename, self.camera_id, date_str, time_str),
-                        daemon=True
-                    ).start()
+                if os.path.exists(filename):
+                    fsize = os.path.getsize(filename)
+                    if fsize > 10000 and frame_count > 10:
+                        logger.info(f"Segment ready: {self.camera_id}/{date_str}/{time_str} ({frame_count} frames, {fsize//1024}KB)")
+                        threading.Thread(
+                            target=self._upload_and_delete,
+                            args=(filename, self.camera_id, date_str, time_str),
+                            daemon=True
+                        ).start()
+                        retry_delay = 30
+                    else:
+                        try:
+                            os.remove(filename)
+                        except OSError:
+                            pass
+                        logger.debug(f"Removed tiny segment {filename} ({fsize} bytes, {frame_count} frames)")
+                        retry_delay = min(retry_delay + 10, 60)
+                        time.sleep(retry_delay)
 
             except Exception as e:
                 logger.error(f"Recording error {self.camera_id}: {e}")
-                time.sleep(5)
+                time.sleep(retry_delay)
 
     def _upload_and_delete(self, filepath, camera_id, date_str, time_str):
         try:
