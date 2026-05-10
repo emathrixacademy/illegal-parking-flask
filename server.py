@@ -968,7 +968,7 @@ threading.Thread(target=cleanup_local_files, daemon=True).start()
 
 STREAM_RESOLUTION = {
     "Camera_1": (1280, 720),
-    "Camera_2": (960, 540),
+    "Camera_2": (800, 248),
 }
 
 def gen_single(stream, cam_name):
