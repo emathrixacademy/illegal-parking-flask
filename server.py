@@ -153,8 +153,8 @@ def update_local_config(data):
         importlib.reload(config)
         
         # Update monitor zones if it exists
-        if 'monitor' in globals() and hasattr(monitor, 'zones'):
-            monitor.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+        if 'monitor' in globals() and hasattr(monitor, 'raw_zones'):
+            monitor.raw_zones = getattr(config, "PARKING_ZONES", {})
         
         logger.info(f"Local config updated: VIOLATION_TIME_THRESHOLD={getattr(config, 'VIOLATION_TIME_THRESHOLD', 100)}, REPEAT_CAPTURE_INTERVAL={getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60)}")
         return True
@@ -561,9 +561,26 @@ class ParkingMonitor:
         self.trackers = {"Camera_1": ByteTrackLite(), "Camera_2": ByteTrackLite()}
         self.timers = {}
         self.last_upload_time = {}
-        self.zones = {cam: np.array(points) for cam, points in getattr(config, "PARKING_ZONES", {}).items()}
+        self.raw_zones = getattr(config, "PARKING_ZONES", {})
+        self.zones = {}
         import threading as _threading
         self.lock = _threading.Lock()
+
+    def _get_zone(self, name, fw, fh):
+        """Scale normalized (0-1) zone points to pixel coordinates for the given frame size."""
+        if name not in self.raw_zones:
+            self.raw_zones = getattr(config, "PARKING_ZONES", {})
+        if name not in self.raw_zones:
+            return None
+        pts = self.raw_zones[name]
+        if not pts:
+            return None
+        arr = np.array(pts, dtype=np.float64)
+        if arr.max() <= 1.0:
+            scaled = arr * np.array([fw, fh])
+        else:
+            scaled = arr
+        return scaled.astype(np.int32)
 
     def _upload_violation(self, name, tid, label, frame, d, dur, now, video_b64=""):
         """Upload violation event to Railway in a background thread."""
@@ -652,10 +669,11 @@ class ParkingMonitor:
         violation_threshold = getattr(config, "VIOLATION_TIME_THRESHOLD", 100)
         repeat_interval = getattr(config, "REPEAT_CAPTURE_INTERVAL", 60)
 
-        if name not in self.zones:
-            return
         fh, fw = frame.shape[:2]
-        cv2.polylines(frame, [self.zones[name]], True, (0, 0, 255), 2)
+        zone = self._get_zone(name, fw, fh)
+        if zone is None:
+            return
+        cv2.polylines(frame, [zone], True, (0, 0, 255), 2)
         pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
         tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
         now = time.time()
@@ -668,7 +686,7 @@ class ParkingMonitor:
             if d['cls'] == 0:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 1)
                 continue
-            in_zone = cv2.pointPolygonTest(self.zones[name], center, False) >= 0
+            in_zone = cv2.pointPolygonTest(zone, center, False) >= 0
             if not in_zone:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, f"{label} #{tid}", (x1, y1-8), 0, 0.6, (0, 255, 0), 2)

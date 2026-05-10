@@ -17,6 +17,8 @@ window_base = "Zone Selector"
 points = []
 current_cam_key = None
 DISPLAY_SCALE = 0.5
+frame_w = 640
+frame_h = 480
 
 def mouse_callback(event, x, y, flags, param):
     global points
@@ -24,11 +26,12 @@ def mouse_callback(event, x, y, flags, param):
         full_x = int(x / DISPLAY_SCALE)
         full_y = int(y / DISPLAY_SCALE)
         points.append((full_x, full_y))
-        print(f"Point added: ({full_x}, {full_y})")
+        norm_x = round(full_x / frame_w, 4)
+        norm_y = round(full_y / frame_h, 4)
+        print(f"Point added: ({full_x}, {full_y}) normalized: ({norm_x}, {norm_y})")
 
 def run_for_camera(cam_key, cam_url, existing_points):
-    global points, current_cam_key
-    points = [tuple(p) for p in existing_points] if existing_points else []
+    global points, current_cam_key, frame_w, frame_h
     current_cam_key = cam_key
     window_name = f"{window_base} - {cam_key}"
     cv2.namedWindow(window_name)
@@ -45,15 +48,29 @@ def run_for_camera(cam_key, cam_url, existing_points):
     if not cap.isOpened():
         print(f"Failed to open camera {cam_key}. Using blank canvas.")
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        frame_w, frame_h = 640, 480
         ret = False
     else:
         ret = True
+        ok, frame = cap.read()
+        if ok:
+            frame_h, frame_w = frame.shape[:2]
+            print(f"Camera resolution: {frame_w}x{frame_h}")
+        else:
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            frame_w, frame_h = 640, 480
+
+    # Convert existing normalized points to pixel for display
+    if existing_points:
+        points = [(int(p[0] * frame_w), int(p[1] * frame_h)) for p in existing_points]
+    else:
+        points = []
 
     while True:
         if ret:
             ok, frame = cap.read()
             if not ok:
-                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                frame = np.zeros((frame_h, frame_w, 3), dtype=np.uint8)
 
         display = cv2.resize(frame, (0, 0), fx=DISPLAY_SCALE, fy=DISPLAY_SCALE)
 
@@ -80,7 +97,10 @@ def run_for_camera(cam_key, cam_url, existing_points):
     if ret:
         cap.release()
     cv2.destroyWindow(window_name)
-    return None if points is None else [ [int(x), int(y)] for (x,y) in points ]
+    if points is None:
+        return None
+    # Return normalized (0-1) coordinates
+    return [[round(x / frame_w, 4), round(y / frame_h, 4)] for (x, y) in points]
 
 def load_existing_zones():
     try:
