@@ -679,6 +679,15 @@ class ParkingMonitor:
         now = time.time()
         active_violation_keys = set()
 
+        if int(now) % 15 == 0 and tracked:
+            in_count = 0
+            for _td in tracked.values():
+                _cx = (int(_td['box'][0]) + int(_td['box'][2])) // 2
+                _cy = (int(_td['box'][1]) + int(_td['box'][3])) // 2
+                if cv2.pointPolygonTest(zone, (_cx, _cy), False) >= 0 and _td['cls'] != 0:
+                    in_count += 1
+            logger.info(f"[DEBUG] {name}: {len(tracked)} tracked, {in_count} in zone, frame={fw}x{fh}, zone_shape={zone.shape}, threshold={violation_threshold}s, timers={len(self.timers)}")
+
         for tid, d in tracked.items():
             x1, y1, x2, y2 = map(int, d['box'])
             label = ALL_CLASS_NAMES.get(d['cls'], "OBJ")
@@ -696,6 +705,8 @@ class ParkingMonitor:
                 if (name, tid) not in self.timers:
                     self.timers[(name, tid)] = now
                 dur = int(now - self.timers[(name, tid)])
+            if int(now) % 10 == 0:
+                logger.info(f"[TIMER] {name} {label}#{tid}: {dur}s / {violation_threshold}s needed")
             is_violation = dur >= violation_threshold
             color = (0, 0, 255) if is_violation else (0, 255, 255)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
