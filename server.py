@@ -734,6 +734,10 @@ class ParkingMonitor:
                             args=(name, tid, label, frame, d, dur, now, video_b64),
                             daemon=True
                         ).start()
+                    # Vehicle still here — reset timer to create a NEW violation
+                    with self.lock:
+                        self.timers[(name, tid)] = now
+                        self.last_upload_time.pop((name, tid), None)
 
                 # Also re-upload image at repeat_interval
                 last_up = 0
