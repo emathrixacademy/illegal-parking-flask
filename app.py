@@ -694,20 +694,15 @@ def api_resolve_tamper(event_id):
 @app.route('/api/cloudinary_test')
 @login_or_api_key
 def api_cloudinary_test():
-    import io
     try:
         cn = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
         ak = os.environ.get("CLOUDINARY_API_KEY", "")
         ase = os.environ.get("CLOUDINARY_API_SECRET", "")
         if not cn or not ak or not ase:
             return jsonify({"ok": False, "error": f"Missing env vars: cloud_name={'set' if cn else 'MISSING'}, api_key={'set' if ak else 'MISSING'}, api_secret={'set' if ase else 'MISSING'}"})
-        import numpy as np
-        img = np.zeros((100, 100, 3), dtype=np.uint8)
-        img[:] = (128, 0, 128)
-        _, buf = cv2.imencode('.jpg', img)
-        b64 = base64.b64encode(buf).decode()
+        tiny_purple = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
         result = cloudinary.uploader.upload(
-            f"data:image/jpeg;base64,{b64}",
+            f"data:image/png;base64,{tiny_purple}",
             folder="test",
             public_id="cloudinary_test",
             overwrite=True,
@@ -716,7 +711,7 @@ def api_cloudinary_test():
         url = result.get("secure_url", "")
         return jsonify({"ok": True, "url": url, "cloud_name": cn})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+        return jsonify({"ok": False, "error": str(e), "type": type(e).__name__})
 
 @app.route('/api/system_health')
 @login_required
