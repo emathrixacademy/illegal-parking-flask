@@ -456,7 +456,7 @@ class ByteTrackLite:
     def __init__(self):
         self.tracked_objects = {}
         self.frame_count = 0
-        self.buffer = 30
+        self.buffer = 300
 
     def get_iou(self, b1, b2):
         xA, yA = max(b1[0], b2[0]), max(b1[1], b2[1])
@@ -470,7 +470,7 @@ class ByteTrackLite:
         self.frame_count += 1
         new_tracks = {}
         for box, score, cid in zip(boxes, scores, clss):
-            best_id, best_iou = None, 0.3
+            best_id, best_iou = None, 0.2
             for tid, t in self.tracked_objects.items():
                 iou = self.get_iou(box, t['box'])
                 if iou > best_iou:
