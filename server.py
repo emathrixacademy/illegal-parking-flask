@@ -948,10 +948,15 @@ def cleanup_local_files():
 
 threading.Thread(target=cleanup_local_files, daemon=True).start()
 
+STREAM_RESOLUTION = {
+    "Camera_1": (1920, 1080),
+    "Camera_2": (960, 540),
+}
+
 def gen_single(stream, cam_name):
-    FRAME_INTERVAL = 1.0 / 15  # 15 FPS for smoother streaming
-    JPEG_QUALITY = 75  # Lower quality = smaller frames = less latency
-    last_frame_time = 0
+    res = STREAM_RESOLUTION.get(cam_name, (960, 540))
+    FRAME_INTERVAL = 1.0 / 15
+    JPEG_QUALITY = 80
     while True:
         start_time = time.time()
         with proc_lock:
@@ -959,12 +964,11 @@ def gen_single(stream, cam_name):
         if frame is None:
             frame = stream.get_frame()
         if frame is not None:
-            frame = cv2.resize(frame, (960, 540))
+            frame = cv2.resize(frame, res)
         else:
-            frame = np.zeros((540, 960, 3), dtype=np.uint8)
-            cv2.putText(frame, f"{cam_name} OFFLINE", (300, 270), 0, 1.5, (0,0,255), 3)
+            frame = np.zeros((res[1], res[0], 3), dtype=np.uint8)
+            cv2.putText(frame, f"{cam_name} OFFLINE", (res[0]//3, res[1]//2), 0, 1.5, (0,0,255), 3)
 
-        # Use JPEG quality to reduce bandwidth and smoothen streaming
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
         _, buf = cv2.imencode('.jpg', frame, encode_param)
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buf.tobytes() + b'\r\n')
