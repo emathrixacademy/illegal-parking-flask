@@ -308,7 +308,8 @@ async function selectDate(dateStr) {
       const duration = inc.duration_minutes ? inc.duration_minutes.toFixed(1) + ' min' : '';
       const plate = inc.plate_number || '';
 
-      html += `<div class="sp-incident">
+      const incId = `inc-${inc.id}`;
+      html += `<div class="sp-incident" style="cursor:pointer;" onclick="toggleIncident('${incId}')">
         <div class="sp-incident-header">
           <span class="sp-incident-camera"><i class="bi bi-camera-video"></i> ${inc.camera || 'Unknown'}</span>
           <span class="sp-incident-time"><i class="bi bi-clock"></i> ${timeStr}</span>
@@ -318,9 +319,14 @@ async function selectDate(dateStr) {
           ${duration ? `<span><i class="bi bi-hourglass-split"></i> ${duration}</span>` : ''}
           ${plate ? `<span><i class="bi bi-card-text"></i> ${plate}</span>` : ''}
         </div>
-        <div class="sp-incident-actions">
-          ${inc.image_url ? `<a href="${inc.image_url}" target="_blank" class="btn-img"><i class="bi bi-image"></i> View Image</a>` : ''}
-          ${inc.video_url ? `<a href="${inc.video_url}" target="_blank" class="btn-img"><i class="bi bi-play-circle"></i> View Video</a>` : ''}
+        <div id="${incId}" class="sp-incident-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #eee;font-size:0.75rem;">
+          <div style="color:#666;margin-bottom:4px;"><strong>Tracker ID:</strong> ${inc.tracker_id || 'N/A'}</div>
+          <div style="color:#666;margin-bottom:4px;"><strong>Confidence:</strong> ${inc.confidence ? (inc.confidence * 100).toFixed(1) + '%' : 'N/A'}</div>
+          <div style="color:#666;margin-bottom:4px;"><strong>Plate:</strong> ${plate || 'Not visible'}</div>
+          <div style="color:#666;margin-bottom:4px;"><strong>Full Time:</strong> ${inc.timestamp || 'N/A'}</div>
+          ${inc.image_url ? `<div style="margin-top:6px;"><a href="${inc.image_url}" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none;"><i class="bi bi-image"></i> View Image</a></div>` : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>'}
+          ${inc.video_url ? `<div style="margin-top:4px;"><a href="${inc.video_url}" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none;"><i class="bi bi-play-circle"></i> View Video</a></div>` : ''}
+          ${inc.image_url ? `<div style="margin-top:6px;"><img src="${inc.image_url}" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display='none'"></div>` : ''}
         </div>
       </div>`;
     });
@@ -331,6 +337,11 @@ async function selectDate(dateStr) {
     document.getElementById('spCount').textContent = 'Error';
     document.getElementById('spCameras').textContent = '--';
   }
+}
+
+function toggleIncident(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 // ===== Playback integration =====

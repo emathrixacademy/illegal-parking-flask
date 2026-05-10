@@ -963,17 +963,35 @@ def upload_event():
         if image_b64:
             image_bytes = base64.b64decode(image_b64)
             try:
-                result = cloudinary.uploader.upload(
-                    f"data:image/jpeg;base64,{image_b64}",
-                    folder="violations",
-                    public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}",
-                    overwrite=True,
-                    resource_type="image"
-                )
-                image_url = result.get("secure_url", "")
-                logger.info(f"Uploaded violation image to Cloudinary: {image_url}")
+                cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
+                if cloud_name:
+                    result = cloudinary.uploader.upload(
+                        f"data:image/jpeg;base64,{image_b64}",
+                        folder="violations",
+                        public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}",
+                        overwrite=True,
+                        resource_type="image"
+                    )
+                    image_url = result.get("secure_url", "")
+                    logger.info(f"Uploaded violation image to Cloudinary: {image_url}")
+                else:
+                    logger.warning("Cloudinary not configured, saving image locally")
             except Exception as e:
                 logger.error(f"Cloudinary image upload failed: {e}")
+
+            if not image_url and image_bytes:
+                try:
+                    img_dir = os.path.join(os.path.dirname(__file__), 'static', 'violations')
+                    os.makedirs(img_dir, exist_ok=True)
+                    safe_ts = timestamp.replace(':', '-').replace('.', '-')
+                    img_filename = f"{camera_id}_{safe_ts}.jpg"
+                    img_filepath = os.path.join(img_dir, img_filename)
+                    with open(img_filepath, 'wb') as f:
+                        f.write(image_bytes)
+                    image_url = f"/static/violations/{img_filename}"
+                    logger.info(f"Saved violation image locally: {image_url}")
+                except Exception as e:
+                    logger.error(f"Local image save failed: {e}")
 
         video_b64 = data.get("video")
         if video_b64:
@@ -983,22 +1001,40 @@ def upload_event():
                 with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
                     tmp.write(video_bytes)
                     tmp_path = tmp.name
-                result = cloudinary.uploader.upload_large(
-                    tmp_path,
-                    folder="violations/videos",
-                    public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_5min",
-                    overwrite=True,
-                    resource_type="video",
-                    chunk_size=6000000
-                )
-                video_url = result.get("secure_url", "")
-                logger.info(f"Uploaded 5-min violation video to Cloudinary: {video_url}")
-                try:
-                    os.remove(tmp_path)
-                except OSError:
-                    pass
+
+                cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
+                if cloud_name:
+                    result = cloudinary.uploader.upload_large(
+                        tmp_path,
+                        folder="violations/videos",
+                        public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_5min",
+                        overwrite=True,
+                        resource_type="video",
+                        chunk_size=6000000
+                    )
+                    video_url = result.get("secure_url", "")
+                    logger.info(f"Uploaded 5-min violation video to Cloudinary: {video_url}")
+                else:
+                    logger.warning("Cloudinary not configured, saving video locally")
+
+                if not video_url:
+                    vid_dir = os.path.join(os.path.dirname(__file__), 'static', 'violations', 'videos')
+                    os.makedirs(vid_dir, exist_ok=True)
+                    safe_ts = timestamp.replace(':', '-').replace('.', '-')
+                    vid_filename = f"{camera_id}_{safe_ts}_5min.mp4"
+                    vid_filepath = os.path.join(vid_dir, vid_filename)
+                    os.rename(tmp_path, vid_filepath)
+                    video_url = f"/static/violations/videos/{vid_filename}"
+                    logger.info(f"Saved violation video locally: {video_url}")
+                    tmp_path = None
+
+                if tmp_path:
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
             except Exception as e:
-                logger.error(f"Cloudinary video upload failed: {e}")
+                logger.error(f"Video upload/save failed: {e}")
 
         img_path = image_url or ''
 
