@@ -33,6 +33,7 @@ class DetectionResult:
 
 if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
     _shared_vdevice = None
+    _shared_lock = threading.Lock()
 
     def _get_vdevice():
         global _shared_vdevice
@@ -45,7 +46,7 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
         def __init__(self, hef_path):
             self.hef = HEF(hef_path)
             self.target = _get_vdevice()
-            self.lock = threading.Lock()
+            self.lock = _shared_lock
             params = ConfigureParams.create_from_hef(self.hef, interface=HailoStreamInterface.PCIe)
             self.network_group = self.target.configure(self.hef, params)[0]
             self.input_vstreams_params = InputVStreamParams.make(self.network_group)
