@@ -388,61 +388,26 @@ def login_page():
             error = 'Invalid username or password'
     return render_template('login.html', error=error)
 
-@app.route('/seed-demo-data')
+@app.route('/api/cleanup-demo-data', methods=['POST'])
 @login_required
 @role_required('admin')
-def seed_demo_data():
-    """Replace all violations with 10 diverse demo records for presentation."""
-    from datetime import datetime, timedelta
+def cleanup_demo_data():
+    """One-time cleanup: remove demo/seed records from the database."""
     try:
         conn = get_connection()
-        try:
-            cur = conn.cursor()
-            cur.execute("DELETE FROM plate_records")
-            cur.execute("DELETE FROM violations")
-            conn.commit()
-
-            now = datetime.now()
-            samples = [
-                ('Camera_1', 101, 'CAR',         now - timedelta(days=7, hours=3),  0.92, 14.5, 'approved'),
-                ('Camera_2', 202, 'MOTORCYCLE',   now - timedelta(days=6, hours=8),  0.85, 8.2,  'approved'),
-                ('Camera_1', 303, 'JEEPNEY',      now - timedelta(days=5, hours=2),  0.78, 22.1, 'for_review'),
-                ('Camera_2', 404, 'VENDOR',       now - timedelta(days=4, hours=5),  0.88, 45.0, 'approved'),
-                ('Camera_1', 505, 'TRICYCLE',      now - timedelta(days=3, hours=10), 0.81, 11.3, 'rejected'),
-                ('Camera_2', 606, 'FALLEN_TREE',  now - timedelta(days=3, hours=1),  0.95, 120.0,'needs_investigation'),
-                ('Camera_1', 707, 'CAR',          now - timedelta(days=2, hours=6),  0.89, 9.7,  'for_review'),
-                ('Camera_2', 808, 'BIKE',         now - timedelta(days=1, hours=4),  0.73, 5.8,  'for_review'),
-                ('Camera_1', 909, 'GARBAGE',      now - timedelta(hours=12),         0.91, 60.0, 'approved'),
-                ('Camera_2', 1010,'MOTORCYCLE',   now - timedelta(hours=2),          0.86, 7.4,  'for_review'),
-            ]
-            plates = ['ABC-1234', 'XYZ-5678', None, None, 'TRC-9012', None, 'DEF-3456', None, None, 'GHI-7890']
-            ids = []
-            for i, (cam, tid, label, ts, conf, dur, status) in enumerate(samples):
-                cur.execute("""
-                    INSERT INTO violations (camera, tracker_id, label, timestamp, confidence_score,
-                        duration_minutes, barangay, review_status)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'Brgy. Kanluran', %s)
-                    RETURNING id
-                """, (cam, tid, label, ts, conf, dur, status))
-                vid = cur.fetchone()[0]
-                ids.append(vid)
-                if plates[i]:
-                    cur.execute("""
-                        INSERT INTO plate_records (violation_id, plate_number, confidence, camera, timestamp)
-                        VALUES (%s, %s, %s, %s, %s)
-                    """, (vid, plates[i], conf * 0.9, cam, ts))
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
-
-        return f"""<h2>Demo data seeded successfully</h2>
-        <p>All previous violations cleared. 10 demo records created (IDs: {ids})</p>
-        <p>Types: CAR, MOTORCYCLE, JEEPNEY, VENDOR, TRICYCLE, FALLEN_TREE, BIKE, GARBAGE</p>
-        <p><a href='/'>Go to Dashboard</a> | <a href='/8f3c9a2d71b4e6c0f9d2a8b7c4e1'>Go to Admin</a></p>"""
+        cur = conn.cursor()
+        demo_plates = ('ABC-1234', 'XYZ-5678', 'TRC-9012', 'DEF-3456', 'GHI-7890')
+        demo_trackers = (101, 202, 303, 404, 505, 606, 707, 808, 909, 1010)
+        cur.execute("DELETE FROM plate_records WHERE plate_number IN %s", (demo_plates,))
+        plate_del = cur.rowcount
+        cur.execute("DELETE FROM violations WHERE tracker_id IN %s AND barangay = 'Brgy. Kanluran'", (demo_trackers,))
+        viol_del = cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify(ok=True, deleted_violations=viol_del, deleted_plates=plate_del)
     except Exception as e:
-        import traceback
-        return f"<h2>Error: {e}</h2><pre>{traceback.format_exc()}</pre>"
+        return jsonify(ok=False, error=str(e)), 500
 
 @app.route('/logout')
 def logout():
