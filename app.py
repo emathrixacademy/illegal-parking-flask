@@ -943,6 +943,22 @@ def upload_event():
 
         logger.info(f"Received violation event: camera_id={camera_id}, timestamp={timestamp}, meta={meta}")
 
+        VEHICLE_LABELS = {'CAR', 'MOTORCYCLE', 'BUS', 'TRUCK', 'BIKE'}
+        if label and label.upper() in VEHICLE_LABELS:
+            plate_number = data.get("plate_number")
+            plate_confidence = data.get("plate_confidence", 0)
+            video_b64 = data.get("video")
+            missing = []
+            if not image_b64:
+                missing.append("image")
+            if not plate_number or float(plate_confidence) < 0.4:
+                missing.append("plate_number")
+            if not video_b64:
+                missing.append("video")
+            if missing:
+                logger.warning(f"INTEGRITY REJECT: {label} violation missing {missing}")
+                return jsonify({"error": f"Vehicle violation requires: {', '.join(missing)}", "missing": missing}), 422
+
         image_bytes = None
         image_url = ''
         video_url = ''

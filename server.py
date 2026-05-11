@@ -498,11 +498,13 @@ class ByteTrackLite:
         return {k: v for k, v in new_tracks.items() if v['last_seen'] == self.frame_count}
 
 # --- Violation Video Recorder ---
-VIOLATION_VIDEO_DURATION = 300  # 5 minutes in seconds
+VIOLATION_VIDEO_DURATION = 60  # 1 minute in seconds
 VIOLATION_VIDEO_FPS = 5
 
+VEHICLE_VIOLATION_CLASSES = {2, 3, 5, 7}  # CAR, MOTORCYCLE, BUS, TRUCK — require plate + image + video
+
 class ViolationRecorder:
-    """Records a 5-minute MP4 video per violation, writing frames to /tmp as they come."""
+    """Records a 1-minute MP4 video per violation, writing frames to /tmp as they come."""
     def __init__(self, camera, tid, label, frame, detection=None):
         self.camera = camera
         self.tid = tid
@@ -646,6 +648,19 @@ class ParkingMonitor:
                 except Exception as vis_err:
                     logger.warning(f"Vision analysis failed: {vis_err}")
 
+            is_vehicle = d.get('cls', 0) in VEHICLE_VIOLATION_CLASSES
+            if is_vehicle:
+                if not plate_number or plate_confidence < 0.4:
+                    logger.warning(f"INTEGRITY SKIP: vehicle {label}#{tid} on {name} — no plate detected (plate={plate_number}, conf={plate_confidence:.2f}). Violation NOT submitted.")
+                    return
+                if not video_b64:
+                    logger.warning(f"INTEGRITY SKIP: vehicle {label}#{tid} on {name} — no video clip. Violation NOT submitted.")
+                    return
+                if not img_b64:
+                    logger.warning(f"INTEGRITY SKIP: vehicle {label}#{tid} on {name} — no image. Violation NOT submitted.")
+                    return
+                logger.info(f"INTEGRITY OK: vehicle {label}#{tid} — plate={plate_number} conf={plate_confidence:.2f}, image=yes, video=yes")
+
             payload = {
                 "camera_id": name,
                 "tracker_id": tid,
@@ -738,49 +753,53 @@ class ParkingMonitor:
             if is_violation:
                 rec_key = (name, tid)
                 active_violation_keys.add(rec_key)
+                is_vehicle = d['cls'] in VEHICLE_VIOLATION_CLASSES
 
                 with violation_recorders_lock:
                     rec = violation_recorders.get(rec_key)
 
-                # Start recording if not already
                 if rec is None:
                     rec = ViolationRecorder(name, tid, label, frame, detection=d)
                     with violation_recorders_lock:
                         violation_recorders[rec_key] = rec
-                    logger.info(f"Started 5-min video recording: camera={name} tid={tid} label={label}")
+                    logger.info(f"Started 1-min video recording: camera={name} tid={tid} label={label}")
 
-                    # Upload image immediately on first detection
-                    self._upload_violation(name, tid, label, frame, d, dur, now)
-                    with self.lock:
-                        self.last_upload_time[(name, tid)] = now
+                    if not is_vehicle:
+                        self._upload_violation(name, tid, label, frame, d, dur, now)
+                        with self.lock:
+                            self.last_upload_time[(name, tid)] = now
                 else:
                     rec.add_frame(frame, detection=d)
 
-                # Check if 5-minute recording is complete
                 if rec.is_done() and not rec.finished:
-                    logger.info(f"5-min recording complete: camera={name} tid={tid}, uploading video...")
+                    logger.info(f"1-min recording complete: camera={name} tid={tid}, uploading with video...")
                     video_b64 = rec.get_video_b64()
                     with violation_recorders_lock:
                         violation_recorders.pop(rec_key, None)
-                    if video_b64:
+                    if is_vehicle:
                         threading.Thread(
                             target=self._upload_violation,
                             args=(name, tid, label, frame, d, dur, now, video_b64),
                             daemon=True
                         ).start()
-                    # Vehicle still here — reset timer to create a NEW violation
+                    elif video_b64:
+                        threading.Thread(
+                            target=self._upload_violation,
+                            args=(name, tid, label, frame, d, dur, now, video_b64),
+                            daemon=True
+                        ).start()
                     with self.lock:
                         self.timers[(name, tid)] = now
                         self.last_upload_time.pop((name, tid), None)
 
-                # Also re-upload image at repeat_interval
-                last_up = 0
-                with self.lock:
-                    last_up = self.last_upload_time.get((name, tid), 0)
-                if now - last_up > repeat_interval:
-                    self._upload_violation(name, tid, label, frame, d, dur, now)
+                if not is_vehicle:
+                    last_up = 0
                     with self.lock:
-                        self.last_upload_time[(name, tid)] = now
+                        last_up = self.last_upload_time.get((name, tid), 0)
+                    if now - last_up > repeat_interval:
+                        self._upload_violation(name, tid, label, frame, d, dur, now)
+                        with self.lock:
+                            self.last_upload_time[(name, tid)] = now
             else:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
                 cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, (0, 165, 255), 2)
@@ -802,12 +821,11 @@ class ParkingMonitor:
                     last_d = rec.last_detection or {'box': [0,0,0,0], 'conf': 0}
                     last_frame = rec.last_frame if rec.last_frame is not None else frame
                     video_b64 = rec.get_video_b64()
-                    if video_b64:
-                        threading.Thread(
-                            target=self._upload_violation,
-                            args=(k[0], k[1], rec.label, last_frame, last_d, 0, now, video_b64),
-                            daemon=True
-                        ).start()
+                    threading.Thread(
+                        target=self._upload_violation,
+                        args=(k[0], k[1], rec.label, last_frame, last_d, 0, now, video_b64 or ""),
+                        daemon=True
+                    ).start()
 
 
 # --- Stream handler ---
