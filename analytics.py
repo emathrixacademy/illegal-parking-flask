@@ -5,6 +5,7 @@ import psycopg2
 from datetime import datetime, timedelta
 import io
 from auth import login_required
+from db import get_connection, return_connection
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -37,7 +38,7 @@ def api_violation_counts():
         for lbl in CCTV_AI_LABELS:
             CLASS_MAP[lbl] = lbl
             CLASS_MAP[lbl.lower()] = lbl
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         try:
             cur = conn.cursor()
             cur.execute("""
@@ -50,7 +51,7 @@ def api_violation_counts():
             rows = cur.fetchall()
             cur.close()
         finally:
-            conn.close()
+            return_connection(conn)
 
         counts = {"CAR": 0, "MOTORCYCLE": 0}
         for lbl in CCTV_AI_LABELS:
@@ -65,7 +66,7 @@ def api_violation_counts():
                 counts[mapped] += (d + n)
 
         try:
-            conn2 = psycopg2.connect(POSTGRES_URL)
+            conn2 = get_connection()
             try:
                 cur2 = conn2.cursor()
                 cur2.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations WHERE tracker_id IS NOT NULL;")
@@ -73,14 +74,14 @@ def api_violation_counts():
                 cur2.close()
                 total_unique = int(uniq_row[0]) if uniq_row and uniq_row[0] is not None else 0
             finally:
-                conn2.close()
+                return_connection(conn2)
         except Exception:
             total_unique = 0
 
         counts["TOTAL_UNIQUE_TRACKERS"] = total_unique
 
         try:
-            conn3 = psycopg2.connect(POSTGRES_URL)
+            conn3 = get_connection()
             try:
                 cur3 = conn3.cursor()
                 cur3.execute("""
@@ -95,7 +96,7 @@ def api_violation_counts():
                 null_today = int(today_row[1]) if today_row and today_row[1] is not None else 0
                 recent_total = unique_today + null_today
             finally:
-                conn3.close()
+                return_connection(conn3)
         except Exception:
             recent_total = 0
 
@@ -112,7 +113,7 @@ def api_violation_stats():
     """
     Return basic violation statistics from the local PostgreSQL `violations` table.
     """
-    conn = psycopg2.connect(POSTGRES_URL)
+    conn = get_connection()
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -159,7 +160,7 @@ def api_violation_stats():
             "enforced_count": 0
         })
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 # ==================================================
@@ -173,7 +174,7 @@ def api_analytics_heatmap():
     conn = None
     try:
         days_back = int(request.args.get('days', 7))
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT
@@ -205,7 +206,7 @@ def api_analytics_heatmap():
         return jsonify({"data": [], "max_count": 0, "error": str(e)}), 500
     finally:
         if conn is not None:
-            conn.close()
+            return_connection(conn)
 
 
 @analytics_bp.route('/api/analytics/daily_trend')
@@ -215,7 +216,7 @@ def api_analytics_daily_trend():
     conn = None
     try:
         days_back = int(request.args.get('days', 30))
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT
@@ -238,7 +239,7 @@ def api_analytics_daily_trend():
         return jsonify({"labels": [], "counts": [], "error": str(e)}), 500
     finally:
         if conn is not None:
-            conn.close()
+            return_connection(conn)
 
 
 @analytics_bp.route('/api/analytics/hourly')
@@ -248,7 +249,7 @@ def api_analytics_hourly():
     conn = None
     try:
         days_back = int(request.args.get('days', 30))
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT
@@ -271,14 +272,14 @@ def api_analytics_hourly():
         return jsonify({"hours": [], "counts": [], "error": str(e)}), 500
     finally:
         if conn is not None:
-            conn.close()
+            return_connection(conn)
 
 
 @analytics_bp.route('/api/analytics/camera_comparison')
 @login_required
 def api_analytics_camera_comparison():
     """Returns per-camera, per-vehicle-type violation counts."""
-    conn = psycopg2.connect(POSTGRES_URL)
+    conn = get_connection()
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -303,14 +304,14 @@ def api_analytics_camera_comparison():
         logger.error(f"Camera comparison query failed: {e}")
         return jsonify({"cameras": [], "data": {}, "error": str(e)}), 500
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 @analytics_bp.route('/api/analytics/duration_distribution')
 @login_required
 def api_analytics_duration_distribution():
     """Returns violation counts in duration buckets."""
-    conn = psycopg2.connect(POSTGRES_URL)
+    conn = get_connection()
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -349,14 +350,14 @@ def api_analytics_duration_distribution():
         logger.error(f"Duration distribution query failed: {e}")
         return jsonify({"buckets": [], "counts": [], "error": str(e)}), 500
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 @analytics_bp.route('/api/analytics/insights')
 @login_required
 def api_analytics_insights():
     """Analyzes violation data and returns AI-generated insights."""
-    conn = psycopg2.connect(POSTGRES_URL)
+    conn = get_connection()
     try:
         cur = conn.cursor()
         insights = []
@@ -462,14 +463,14 @@ def api_analytics_insights():
         logger.error(f"Insights generation failed: {e}")
         return jsonify({"insights": [], "error": str(e)}), 500
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 @analytics_bp.route('/api/analytics/summary')
 @login_required
 def api_analytics_summary():
     """Returns enhanced summary metrics for top metric cards."""
-    conn = psycopg2.connect(POSTGRES_URL)
+    conn = get_connection()
     try:
         cur = conn.cursor()
 
@@ -531,7 +532,7 @@ def api_analytics_summary():
         logger.error(f"Summary query failed: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 @analytics_bp.route('/api/generate_report', methods=['GET'])
@@ -610,7 +611,7 @@ def api_generate_report():
 
     where_sql = " AND ".join(where_clauses)
 
-    conn = psycopg2.connect(POSTGRES_URL)
+    conn = get_connection()
     try:
         cur = conn.cursor()
 
@@ -680,7 +681,7 @@ def api_generate_report():
         logging.error(f"Failed to query DB for PDF report: {e}")
         return jsonify({"error": "database query failed"}), 500
     finally:
-        conn.close()
+        return_connection(conn)
 
     # Generate PDF using reportlab
     try:

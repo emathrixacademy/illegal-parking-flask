@@ -1,4 +1,4 @@
-from db import get_connection
+from db import get_connection, return_connection
 from typing import List, Dict, Any
 
 
@@ -139,7 +139,7 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
             'total_pages': total_pages
         }
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 def mark_enforced(ids: List[int]) -> int:
@@ -157,4 +157,4 @@ def mark_enforced(ids: List[int]) -> int:
         cur.close()
         return updated
     finally:
-        conn.close()
+        return_connection(conn)

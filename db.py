@@ -1,5 +1,6 @@
 import os
 import psycopg2
+import psycopg2.pool
 import logging
 import json
 
@@ -7,11 +8,37 @@ POSTGRES_URL = os.environ.get("DATABASE_URL") or "postgresql://postgres:osBsKkhg
 
 logger = logging.getLogger("db")
 
+_pool = None
+
+def _get_pool():
+    global _pool
+    if _pool is None or _pool.closed:
+        _pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=2, maxconn=10, dsn=POSTGRES_URL
+        )
+    return _pool
+
 def get_connection():
-    """Get a PostgreSQL connection."""
+    """Get a PostgreSQL connection from the pool."""
     if not POSTGRES_URL:
         raise RuntimeError("POSTGRES_URL not set")
-    return psycopg2.connect(POSTGRES_URL)
+    try:
+        return _get_pool().getconn()
+    except Exception:
+        return psycopg2.connect(POSTGRES_URL)
+
+def return_connection(conn):
+    """Return a connection to the pool."""
+    try:
+        if _pool and not _pool.closed:
+            _pool.putconn(conn)
+        else:
+            conn.close()
+    except Exception:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def table_exists(cur, table_name):
     """Check if a table exists in the database."""
@@ -257,11 +284,11 @@ def ensure_tables():
         logger.error(f"Failed to ensure tables: {e}")
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)
 
 def insert_violation_event(camera, tracker_id, label, timestamp, image_path, confidence_score=0.0, duration_minutes=0.0, barangay='Bgry. Kanluran', enforced=False):
     if not POSTGRES_URL:
-        logging.warning("POSTGRES_URL not set, skipping DB insert.")
+        logger.warning("POSTGRES_URL not set, skipping DB insert.")
         return
     conn = None
     try:
@@ -274,10 +301,10 @@ def insert_violation_event(camera, tracker_id, label, timestamp, image_path, con
         conn.commit()
         cur.close()
     except Exception as e:
-        logging.error(f"Failed to insert violation event: {e}")
+        logger.error(f"Failed to insert violation event: {e}")
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)
 
 def get_config_value(key, default=None):
     """Get a single config value from the database."""
@@ -306,7 +333,7 @@ def get_config_value(key, default=None):
         return default
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)
 
 def set_config_value(key, value):
     """Set a single config value in the database (upsert)."""
@@ -347,7 +374,7 @@ def set_config_value(key, value):
         logger.error(f"Failed to set config '{key}': {e}")
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)
 
 def get_all_settings():
     """Get all settings from the database as a dictionary."""
@@ -389,7 +416,7 @@ def get_all_settings():
         return defaults
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)
 
 def save_settings(settings_dict):
     """Save multiple settings to the database."""
@@ -400,7 +427,7 @@ def save_settings(settings_dict):
 
         # Ensure table exists
         if not table_exists(cur, 'config'):
-            conn.close()
+            return_connection(conn)
             conn = None
             ensure_tables()
             conn = get_connection()
@@ -435,7 +462,7 @@ def save_settings(settings_dict):
         logger.error(f"Failed to save settings: {e}")
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)
 
 def init_default_settings():
     """Initialize default settings in database if they don't exist."""
@@ -454,7 +481,7 @@ def init_default_settings():
 
         # Ensure table exists first
         if not table_exists(cur, 'config'):
-            conn.close()
+            return_connection(conn)
             conn = None
             ensure_tables()
             conn = get_connection()
@@ -490,4 +517,4 @@ def init_default_settings():
         logger.error(f"Failed to init default settings: {e}")
     finally:
         if conn:
-            conn.close()
+            return_connection(conn)

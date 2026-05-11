@@ -18,7 +18,7 @@ import psycopg2
 import urllib.parse
 import threading
 import time
-from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection, get_config_value, set_config_value
+from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection, return_connection, get_config_value, set_config_value
 from analytics import analytics_bp
 from admin_config import list_violations, mark_enforced
 from auth import (
@@ -279,7 +279,7 @@ def get_pi_base():
 def ensure_violations_table():
     """Create the violations table if it does not exist."""
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             CREATE TABLE IF NOT EXISTS violations (
@@ -329,7 +329,7 @@ def ensure_violations_table():
         """)
         conn.commit()
         cur.close()
-        conn.close()
+        return_connection(conn)
         logger.info("Ensured 'violations' and 'recordings' tables exist in PostgreSQL.")
     except Exception as e:
         logger.error(f"Failed to ensure violations table: {e}")
@@ -408,7 +408,7 @@ def cleanup_demo_data():
         viol_del += cur.rowcount
         conn.commit()
         cur.close()
-        conn.close()
+        return_connection(conn)
         return jsonify(ok=True, deleted_violations=viol_del, deleted_plates=plate_del)
     except Exception as e:
         return jsonify(ok=False, error=str(e)), 500
@@ -534,7 +534,7 @@ def api_activity_log():
         cur.close()
         return jsonify([dict(zip(cols, r)) for r in rows])
     finally:
-        conn.close()
+        return_connection(conn)
 
 # ==================================================
 # Routes – Alert Config API (Feature 17)
@@ -582,7 +582,7 @@ def api_alert_log():
         cur.close()
         return jsonify([dict(zip(cols, r)) for r in rows])
     finally:
-        conn.close()
+        return_connection(conn)
 
 # ==================================================
 # Routes – Tamper Events API (Feature 14)
@@ -622,7 +622,7 @@ def api_tamper_event():
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        return_connection(conn)
     return jsonify({"success": True})
 
 @app.route('/api/tamper_events')
@@ -641,7 +641,7 @@ def api_tamper_events():
         cur.close()
         return jsonify([dict(zip(cols, r)) for r in rows])
     finally:
-        conn.close()
+        return_connection(conn)
 
 @app.route('/api/tamper_events/<int:event_id>/resolve', methods=['POST'])
 @login_required
@@ -654,7 +654,7 @@ def api_resolve_tamper(event_id):
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        return_connection(conn)
     return jsonify({"success": True})
 
 # ==================================================
@@ -701,12 +701,12 @@ def api_system_health():
 def playback_dates():
     try:
         ensure_violations_table()
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("SELECT DISTINCT camera_id, date FROM recordings ORDER BY date DESC")
         rows = cur.fetchall()
         cur.close()
-        conn.close()
+        return_connection(conn)
         dates = {}
         for cam, d in rows:
             dates.setdefault(cam, []).append(d)
@@ -721,7 +721,7 @@ def playback_segments():
     camera = request.args.get('camera', 'Camera_1')
     date = request.args.get('date')
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT time, video_url FROM recordings
@@ -730,7 +730,7 @@ def playback_segments():
         """, (camera, date))
         rows = cur.fetchall()
         cur.close()
-        conn.close()
+        return_connection(conn)
         segments = []
         for t, url in rows:
             segments.append({
@@ -750,7 +750,7 @@ def playback_stream():
     date = request.args.get('date')
     time_str = request.args.get('time')
     try:
-        conn = psycopg2.connect(POSTGRES_URL)
+        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT video_url FROM recordings
@@ -759,7 +759,7 @@ def playback_stream():
         """, (camera, date, time_str))
         row = cur.fetchone()
         cur.close()
-        conn.close()
+        return_connection(conn)
         if row and row[0]:
             url = row[0]
             if 'cloudinary' in url and '/upload/' in url and 'f_mp4' not in url:
@@ -793,7 +793,7 @@ def search_plates():
         rows = cur.fetchall()
         cols = [desc[0] for desc in cur.description]
         cur.close()
-        conn.close()
+        return_connection(conn)
         return jsonify([dict(zip(cols, r)) for r in rows])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1077,7 +1077,7 @@ def upload_event():
         # Insert into PostgreSQL
         violation_id = None
         try:
-            conn = psycopg2.connect(POSTGRES_URL)
+            conn = get_connection()
             cur = conn.cursor()
             confidence_score = data.get('confidence_score', 0.0)
             duration_minutes = data.get('duration_minutes', 0.0)
@@ -1101,7 +1101,7 @@ def upload_event():
                 logger.info(f"Saved plate record: {plate_number} for violation {violation_id}")
 
             cur.close()
-            conn.close()
+            return_connection(conn)
             logger.info("Inserted violation event into PostgreSQL.")
         except Exception as e:
             logger.error(f"Failed to insert violation event into PostgreSQL: {e}")
@@ -1169,7 +1169,7 @@ def upload_recording():
 
         if video_url:
             try:
-                conn = psycopg2.connect(POSTGRES_URL)
+                conn = get_connection()
                 cur = conn.cursor()
                 cur.execute("""
                     INSERT INTO recordings (camera_id, date, time, video_url)
@@ -1178,7 +1178,7 @@ def upload_recording():
                 """, (camera_id, date_str, time_str, video_url))
                 conn.commit()
                 cur.close()
-                conn.close()
+                return_connection(conn)
             except Exception as db_err:
                 logger.error(f"Failed to store recording URL in DB: {db_err}")
 
@@ -1426,7 +1426,7 @@ def api_db_violations_count():
         cur.execute("SELECT COUNT(DISTINCT (camera, tracker_id)) FROM violations;")
         count = cur.fetchone()[0] or 0
         cur.close()
-        conn.close()
+        return_connection(conn)
         return jsonify({"count": int(count)})
     except Exception as e:
         logger.error(f"Failed to get violations count: {e}")
@@ -1497,7 +1497,7 @@ def api_recent_incidents():
             } for r in rows]
             return jsonify({"incidents": incidents, "pending_count": pending})
         finally:
-            conn.close()
+            return_connection(conn)
     except Exception as e:
         logger.error(f"Recent incidents error: {e}")
         return jsonify({"incidents": [], "pending_count": 0})
@@ -1577,7 +1577,7 @@ def api_pending_review_count():
             cur.close()
             return jsonify({"count": count})
         finally:
-            conn.close()
+            return_connection(conn)
     except Exception as e:
         return jsonify({"count": 0})
 
@@ -1620,7 +1620,7 @@ def api_model_performance():
                 "ocr_unique_plates": ocr[2] or 0,
             })
         finally:
-            conn.close()
+            return_connection(conn)
     except Exception as e:
         logger.error(f"Model performance API error: {e}")
         return jsonify({"yolo_total": 0, "yolo_avg_confidence": 0, "yolo_high_conf": 0, "yolo_low_conf": 0, "ocr_total": 0, "ocr_avg_confidence": 0, "ocr_unique_plates": 0})
@@ -1651,7 +1651,7 @@ def api_calendar():
                 result[str(day)] = {"count": cnt}
             return jsonify(result)
         finally:
-            conn.close()
+            return_connection(conn)
     except Exception as e:
         logger.error(f"Calendar API error: {e}")
         return jsonify({})
@@ -1692,7 +1692,7 @@ def api_calendar_details():
                 })
             return jsonify({"total": len(incidents), "incidents": incidents})
         finally:
-            conn.close()
+            return_connection(conn)
     except Exception as e:
         logger.error(f"Calendar details API error: {e}")
         return jsonify({"total": 0, "incidents": [], "error": str(e)})
@@ -1759,7 +1759,7 @@ def api_review_incident():
             conn.commit()
             cur.close()
         finally:
-            conn.close()
+            return_connection(conn)
         log_activity(session['user']['id'], 'review_incident', f"ID {incident_id} -> {status}")
         return jsonify({"success": True})
     except Exception as e:
