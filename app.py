@@ -1535,6 +1535,8 @@ def api_modify_camera(camera_id):
     if not isinstance(cameras, list):
         cameras = []
     if request.method == 'DELETE':
+        if camera_id == 'Camera_1':
+            return jsonify({"success": False, "error": "Camera 1 (MAIN) cannot be removed"}), 403
         cameras = [c for c in cameras if c.get('id') != camera_id]
         set_config_value("CAMERAS", cameras)
         return jsonify({"success": True})

@@ -271,11 +271,15 @@ def get_pi_url():
 
 @app.route('/api/camera_status')
 def camera_status():
-    # Dummy response for compatibility
-    return jsonify({
-        "Camera_1": {"reconnecting": False, "online": True},
-        "Camera_2": {"reconnecting": False, "online": True}
-    })
+    status = {
+        "Camera_1": {"reconnecting": not c1.is_online(), "online": c1.is_online()},
+        "Camera_2": {"reconnecting": not c2.is_online(), "online": c2.is_online()},
+    }
+    if c3:
+        status["Camera_3"] = {"reconnecting": not c3.is_online(), "online": c3.is_online()}
+    else:
+        status["Camera_3"] = {"reconnecting": False, "online": False}
+    return jsonify(status)
 
 # ---- PART 3: Remote AI Detection Controls ----
 @app.route('/api/detection_control', methods=['GET', 'POST'])
@@ -573,7 +577,7 @@ violation_recorders_lock = threading.Lock()
 # --- Parking Monitor ---
 class ParkingMonitor:
     def __init__(self):
-        self.trackers = {"Camera_1": ByteTrackLite(), "Camera_2": ByteTrackLite()}
+        self.trackers = {"Camera_1": ByteTrackLite(), "Camera_2": ByteTrackLite(), "Camera_3": ByteTrackLite()}
         self.timers = {}
         self.last_upload_time = {}
         self.raw_zones = getattr(config, "PARKING_ZONES", {})
@@ -914,10 +918,10 @@ health_mon = HealthMonitor()
 # Use config values directly, fallback to defaults if missing
 CAM1_URL = getattr(config, "CAM1_URL", None)
 CAM2_URL = getattr(config, "CAM2_URL", None)
+CAM3_URL = getattr(config, "CAM3_URL", None)
 CAM1_HIRES_URL = getattr(config, "CAM1_HIRES_URL", None)
 CAM2_HIRES_URL = getattr(config, "CAM2_HIRES_URL", None)
 
-# Camera 1 uses main stream (4MP) for display + OCR; Hailo resizes internally for detection
 if CAM1_URL and "/stream1" in CAM1_URL:
     logger.info(f"Camera_1 using main stream for full resolution: {CAM1_URL}")
 
@@ -926,7 +930,8 @@ if not CAM1_URL or not CAM2_URL:
     raise SystemExit(1)
 
 c1, c2 = Stream(CAM1_URL), Stream(CAM2_URL)
-latest_processed = {"Camera_1": None, "Camera_2": None}
+c3 = Stream(CAM3_URL) if CAM3_URL else None
+latest_processed = {"Camera_1": None, "Camera_2": None, "Camera_3": None}
 proc_lock = threading.Lock()
 
 # Hi-res capture for plate OCR (on-demand, not continuous)
@@ -954,8 +959,10 @@ else:
 
 # Feature 14: Set reference frames after a short delay
 def _set_reference_frames():
-    time.sleep(5)  # Wait for cameras to stabilize
-    for cam_name, stream in [("Camera_1", c1), ("Camera_2", c2)]:
+    time.sleep(5)
+    cam_streams = [("Camera_1", c1), ("Camera_2", c2)]
+    if c3: cam_streams.append(("Camera_3", c3))
+    for cam_name, stream in cam_streams:
         frame = stream.get_frame()
         if frame is not None:
             tamper_detectors[cam_name].set_reference(frame)
@@ -1006,6 +1013,9 @@ def processing_worker(cam_name, stream):
 
 threading.Thread(target=processing_worker, args=("Camera_1", c1), daemon=True).start()
 threading.Thread(target=processing_worker, args=("Camera_2", c2), daemon=True).start()
+if c3:
+    threading.Thread(target=processing_worker, args=("Camera_3", c3), daemon=True).start()
+    logger.info("Camera_3 processing thread started.")
 
 def cleanup_local_files():
     """Periodically remove old local tamper images and leftover /tmp violation videos."""
@@ -1031,8 +1041,9 @@ def cleanup_local_files():
 threading.Thread(target=cleanup_local_files, daemon=True).start()
 
 STREAM_RESOLUTION = {
-    "Camera_1": (1280, 720),
+    "Camera_1": (1920, 1080),
     "Camera_2": (1280, 720),
+    "Camera_3": (1280, 720),
 }
 
 def gen_single(stream, cam_name):
@@ -1065,6 +1076,15 @@ def video_feed_c1():
 @app.route('/video_feed_c2')
 def video_feed_c2():
     return Response(gen_single(c2, "Camera_2"), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/video_feed_c3')
+def video_feed_c3():
+    if c3:
+        return Response(gen_single(c3, "Camera_3"), mimetype='multipart/x-mixed-replace; boundary=frame')
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    cv2.putText(frame, "Camera_3 NOT CONFIGURED", (300, 360), 0, 1.5, (100,100,100), 3)
+    _, buf = cv2.imencode('.jpg', frame)
+    return Response(b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buf.tobytes() + b'\r\n', mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/api/list_images')
 def api_list_images():

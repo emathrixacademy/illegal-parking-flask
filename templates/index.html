@@ -10,6 +10,8 @@
   gap: 0.5rem;
   padding: 0.5rem;
 }
+.cam-card.primary-cam .cam-feed-wrap { aspect-ratio: 16/9; }
+.cam-row-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .cam-card {
   background: var(--card);
   border-radius: 12px;
@@ -189,7 +191,8 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 /* ===== Tablet+ ===== */
 @media (min-width: 768px) {
-  .cam-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; padding: 0.75rem; }
+  .cam-grid { grid-template-columns: 1fr; gap: 0.75rem; padding: 0.75rem; }
+  .cam-row-secondary { gap: 0.75rem; }
   .analytics-grid { grid-template-columns: repeat(3, 1fr); }
   .vehicle-row { grid-template-columns: 1fr 1fr; }
   .detail-grid { grid-template-columns: repeat(3, 1fr); }
@@ -213,8 +216,9 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 {% block content %}
 <!-- Camera Feeds -->
 <div class="cam-grid">
-  <div class="cam-card">
-    <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 1</span>
+  <!-- CCTV 1: Primary (full-width, large) -->
+  <div class="cam-card primary-cam">
+    <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 1 <span class="badge bg-danger ms-1" style="font-size:0.6rem;">MAIN</span></span>
     <div class="cam-feed-wrap" id="zoomContainerC1">
       <img src="" class="cam-feed" alt="CCTV 1" id="liveVideoC1" style="transform-origin:0 0;">
       <div class="reconnect-overlay" id="reconnectingOverlayC1">
@@ -231,25 +235,83 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
       </div>
     </div>
   </div>
-  <div class="cam-card">
-    <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 2</span>
-    <div class="cam-feed-wrap" id="zoomContainerC2">
-      <img src="" class="cam-feed" alt="CCTV 2" id="liveVideoC2" style="transform-origin:0 0;">
-      <div class="reconnect-overlay" id="reconnectingOverlayC2">
-        <div class="d-flex flex-column align-items-center">
-          <div class="spinner-border" role="status"></div>
-          <span>Reconnecting</span>
+  <!-- CCTV 2 + CCTV 3: Secondary row -->
+  <div class="cam-row-secondary">
+    <div class="cam-card" id="camCard2">
+      <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 2</span>
+      <div class="cam-feed-wrap" id="zoomContainerC2">
+        <img src="" class="cam-feed" alt="CCTV 2" id="liveVideoC2" style="transform-origin:0 0;">
+        <div class="reconnect-overlay" id="reconnectingOverlayC2">
+          <div class="d-flex flex-column align-items-center">
+            <div class="spinner-border" role="status"></div>
+            <span>Reconnecting</span>
+          </div>
+        </div>
+        <div class="zoom-btns">
+          <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+          <span class="zoom-level badge bg-warning text-dark">1.0x</span>
         </div>
       </div>
-      <div class="zoom-btns">
-        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="zoomC2.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
-        <span class="zoom-level badge bg-warning text-dark">1.0x</span>
+    </div>
+    <div class="cam-card" id="camCard3">
+      <span class="cam-label"><i class="bi bi-camera-video"></i> CCTV 3</span>
+      <div class="cam-feed-wrap" id="zoomContainerC3">
+        <img src="" class="cam-feed" alt="CCTV 3" id="liveVideoC3" style="transform-origin:0 0;">
+        <div class="reconnect-overlay" id="reconnectingOverlayC3">
+          <div class="d-flex flex-column align-items-center">
+            <div class="spinner-border" role="status"></div>
+            <span>Reconnecting</span>
+          </div>
+        </div>
+        <div class="zoom-btns">
+          <button class="btn btn-sm btn-outline-secondary" onclick="zoomC3.zoom(0.5,320,240)" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="zoomC3.zoom(-0.5,320,240)" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="zoomC3.reset()" title="Reset"><i class="bi bi-arrows-fullscreen"></i></button>
+          <span class="zoom-level badge bg-warning text-dark">1.0x</span>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Camera Management (Admin only) -->
+{% if user and user.role == 'admin' %}
+<div class="mx-2 mt-1 mb-2">
+  <div class="card" style="border-radius:10px;border:1px solid var(--border);">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <span style="font-size:0.8rem;font-weight:700;color:var(--primary);"><i class="bi bi-gear"></i> Camera Management</span>
+        <button class="btn btn-sm btn-outline-primary" style="font-size:0.72rem;" onclick="document.getElementById('camMgmtPanel').style.display=document.getElementById('camMgmtPanel').style.display==='none'?'block':'none'"><i class="bi bi-pencil-square"></i> Configure</button>
+      </div>
+      <div id="camMgmtPanel" style="display:none;margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.5rem;">
+        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Assign IP addresses to cameras. CCTV 1 is the main camera and cannot be removed.</div>
+        <div id="camConfigList"></div>
+        <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;">
+          <select id="addCamSelect" class="form-select" style="font-size:0.78rem;max-width:200px;padding:0.3rem 0.5rem;">
+            <option value="">Add camera...</option>
+            <option value="Camera_3">Camera 3</option>
+            <option value="Camera_4">Camera 4</option>
+          </select>
+          <select id="addCamIp" class="form-select" style="font-size:0.78rem;max-width:220px;padding:0.3rem 0.5rem;">
+            <option value="">Select IP...</option>
+            <option value="192.168.1.5">192.168.1.5</option>
+            <option value="192.168.1.8">192.168.1.8</option>
+            <option value="192.168.1.14">192.168.1.14</option>
+            <option value="192.168.8.2">192.168.8.2</option>
+            <option value="192.168.8.100">192.168.8.100</option>
+            <option value="192.168.8.199">192.168.8.199</option>
+          </select>
+          <button class="btn btn-sm btn-accent" style="font-size:0.72rem;" onclick="addCamera()"><i class="bi bi-plus-circle"></i> Add</button>
+        </div>
+        <button class="btn btn-sm btn-primary mt-2" style="font-size:0.72rem;" onclick="saveCamConfig()"><i class="bi bi-floppy"></i> Save & Apply</button>
+        <span id="camSaveMsg" style="font-size:0.72rem;margin-left:0.5rem;"></span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Tamper Alert -->
 <div id="tamperAlert" class="mx-2 mt-1" style="display:none;">
@@ -405,8 +467,10 @@ async function updateVideoFeeds() {
     } catch (e) {}
     const c1 = document.getElementById('liveVideoC1');
     const c2 = document.getElementById('liveVideoC2');
+    const c3 = document.getElementById('liveVideoC3');
     if (c1 && RASPI_BASE) c1.src = RASPI_BASE + '/video_feed_c1';
     if (c2 && RASPI_BASE) c2.src = RASPI_BASE + '/video_feed_c2';
+    if (c3 && RASPI_BASE) c3.src = RASPI_BASE + '/video_feed_c3';
 }
 function pollRaspiBase() {
     fetch('/api/get_pi_url').then(r => r.json()).then(data => {
@@ -421,21 +485,31 @@ function apiFetch(path, opts = {}) {
 
 // ===== Reconnecting overlays =====
 function updateReconnectingOverlays(camStatus) {
-    const oC1 = document.getElementById('reconnectingOverlayC1');
-    const oC2 = document.getElementById('reconnectingOverlayC2');
-    const sC1 = oC1.querySelector('span');
-    const sC2 = oC2.querySelector('span');
+    const cams = [
+      {id: 'Camera_1', overlay: 'reconnectingOverlayC1'},
+      {id: 'Camera_2', overlay: 'reconnectingOverlayC2'},
+      {id: 'Camera_3', overlay: 'reconnectingOverlayC3'}
+    ];
     apiFetch('/api/get_pi_url').then(r => r.json()).then(data => {
-        if (!data.public_url) {
-            oC1.classList.add('active'); oC2.classList.add('active');
-            sC1.textContent = "Cloud Link Disconnected"; sC2.textContent = "Cloud Link Disconnected";
-        } else {
-            if (!(camStatus.Camera_1 && camStatus.Camera_1.online === true)) { oC1.classList.add('active'); sC1.textContent = "Reconnecting"; }
-            else { oC1.classList.remove('active'); }
-            if (!(camStatus.Camera_2 && camStatus.Camera_2.online === true)) { oC2.classList.add('active'); sC2.textContent = "Reconnecting"; }
-            else { oC2.classList.remove('active'); }
-        }
-    }).catch(() => { oC1.classList.add('active'); oC2.classList.add('active'); sC1.textContent = "Cloud Link Disconnected"; sC2.textContent = "Cloud Link Disconnected"; });
+        cams.forEach(cam => {
+            const o = document.getElementById(cam.overlay);
+            if (!o) return;
+            const s = o.querySelector('span');
+            if (!data.public_url) {
+                o.classList.add('active'); s.textContent = "Cloud Link Disconnected";
+            } else if (!(camStatus[cam.id] && camStatus[cam.id].online === true)) {
+                o.classList.add('active'); s.textContent = "Reconnecting";
+            } else {
+                o.classList.remove('active');
+            }
+        });
+    }).catch(() => {
+        cams.forEach(cam => {
+            const o = document.getElementById(cam.overlay);
+            if (!o) return;
+            o.classList.add('active'); o.querySelector('span').textContent = "Cloud Link Disconnected";
+        });
+    });
 }
 function checkCameraStatus() {
     apiFetch('/api/camera_status').then(async r => { try { updateReconnectingOverlays(await r.json()); } catch(e){} }).catch(() => {});
@@ -527,13 +601,60 @@ window.onload = function() {
 </script>
 <script src="/static/js/zoom.js"></script>
 <script>
-let zoomC1, zoomC2;
+let zoomC1, zoomC2, zoomC3;
 document.addEventListener('DOMContentLoaded', function() {
     const i1=document.getElementById('liveVideoC1'), c1=document.getElementById('zoomContainerC1');
     if(i1&&c1) zoomC1 = new DigitalZoom(i1, c1);
     const i2=document.getElementById('liveVideoC2'), c2=document.getElementById('zoomContainerC2');
     if(i2&&c2) zoomC2 = new DigitalZoom(i2, c2);
+    const i3=document.getElementById('liveVideoC3'), c3=document.getElementById('zoomContainerC3');
+    if(i3&&c3) zoomC3 = new DigitalZoom(i3, c3);
+    loadCamConfig();
 });
+
+function loadCamConfig() {
+    fetch('/api/cameras').then(r=>r.json()).then(cams => {
+        const list = document.getElementById('camConfigList');
+        if (!list) return;
+        list.innerHTML = cams.map(c => `
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;padding:0.3rem 0.5rem;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+                <span style="font-weight:700;font-size:0.78rem;min-width:70px;">${c.name || c.id}</span>
+                <span style="font-size:0.72rem;color:var(--text-secondary);flex:1;">${c.url || 'No URL'}</span>
+                ${c.id === 'Camera_1' ? '<span class="badge bg-danger" style="font-size:0.6rem;">MAIN</span>' : `<button class="btn btn-sm btn-outline-danger" style="font-size:0.65rem;padding:0.15rem 0.4rem;" onclick="removeCam('${c.id}')"><i class="bi bi-trash"></i></button>`}
+            </div>
+        `).join('');
+    }).catch(() => {});
+}
+function addCamera() {
+    const camId = document.getElementById('addCamSelect').value;
+    const ip = document.getElementById('addCamIp').value;
+    if (!camId || !ip) { alert('Select both camera and IP address'); return; }
+    const url = `rtsp://${ip}:554/stream`;
+    fetch('/api/cameras', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: camId, name: camId.replace('_',' '), location:'Brgy. Kanluran', url: url, status:'active'})})
+    .then(r=>r.json()).then(d => { if(d.success) loadCamConfig(); else alert(d.error||'Failed'); });
+}
+function removeCam(id) {
+    if (id === 'Camera_1') { alert('CCTV 1 cannot be removed'); return; }
+    if (!confirm(`Remove ${id}?`)) return;
+    fetch(`/api/cameras/${id}`, {method:'DELETE'}).then(r=>r.json()).then(d => { if(d.success) loadCamConfig(); });
+}
+function saveCamConfig() {
+    const msg = document.getElementById('camSaveMsg');
+    msg.textContent = 'Saving...';
+    msg.style.color = 'var(--primary)';
+    fetch('/api/cameras').then(r=>r.json()).then(cams => {
+        const settings = {};
+        cams.forEach((c,i) => {
+            if (c.id === 'Camera_1') settings.CAM1_URL = c.url;
+            else if (c.id === 'Camera_2') settings.CAM2_URL = c.url;
+            else if (c.id === 'Camera_3') settings.CAM3_URL = c.url;
+        });
+        return fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(settings)});
+    }).then(r=>r.json()).then(() => {
+        msg.textContent = 'Saved! Pi will sync in ~30s.';
+        msg.style.color = 'var(--success)';
+    }).catch(() => { msg.textContent = 'Save failed'; msg.style.color = 'var(--danger)'; });
+}
 
 // Health monitoring
 async function updateHealth() {
