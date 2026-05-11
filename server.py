@@ -21,10 +21,11 @@ try:
 except ImportError:
     extract_plate = None
 try:
-    from claude_vision import analyze_violation, is_available as vision_available
+    from claude_vision import analyze_violation, is_available as vision_available, detect_garbage
 except ImportError:
     analyze_violation = None
     vision_available = lambda: False
+    detect_garbage = None
 from tamper_detect import TamperDetector
 from health_monitor import HealthMonitor
 try:
@@ -679,6 +680,19 @@ class ParkingMonitor:
         if zone is None:
             return
         cv2.polylines(frame, [zone], True, (0, 0, 255), 2)
+
+        if detect_garbage and vision_available():
+            try:
+                garbage_items = detect_garbage(frame, camera_id=name)
+                for g in garbage_items:
+                    gx1, gy1, gx2, gy2 = g["region"]
+                    glabel = g["label"]
+                    gconf = g.get("confidence", 0)
+                    cv2.rectangle(frame, (gx1, gy1), (gx2, gy2), (0, 165, 255), 2)
+                    cv2.putText(frame, f"{glabel} {gconf:.0%}", (gx1, gy1 - 8), 0, 0.6, (0, 165, 255), 2)
+            except Exception as e:
+                logger.warning(f"Garbage scan error: {e}")
+
         pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
         tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
         now = time.time()
