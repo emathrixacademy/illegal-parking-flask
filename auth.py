@@ -2,7 +2,7 @@ import bcrypt
 import logging
 from flask import session, request, redirect, url_for, jsonify
 from functools import wraps
-from db import get_connection
+from db import get_connection, return_connection
 
 logger = logging.getLogger("Auth")
 
@@ -37,7 +37,7 @@ def authenticate(username, password):
         row = cur.fetchone()
         cur.close()
     finally:
-        conn.close()
+        return_connection(conn)
 
     if not row:
         return None
@@ -56,7 +56,7 @@ def authenticate(username, password):
             conn.commit()
             cur.close()
         finally:
-            conn.close()
+            return_connection(conn)
     except Exception as e:
         logger.error(f"Failed to update last_login: {e}")
 
@@ -80,7 +80,7 @@ def log_activity(user_id, action, details=None):
         """, (user_id, action, details, ip))
         conn.commit()
         cur.close()
-        conn.close()
+        return_connection(conn)
     except Exception as e:
         logger.error(f"Failed to log activity: {e}")
 
@@ -131,7 +131,7 @@ def list_users():
         cur.close()
         return [dict(zip(cols, r)) for r in rows]
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 def create_user(username, password, role='viewer', display_name=None, email=None):
@@ -153,7 +153,7 @@ def create_user(username, password, role='viewer', display_name=None, email=None
         cur.close()
         return user_id
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 def update_user(user_id, data):
@@ -175,7 +175,7 @@ def update_user(user_id, data):
             conn.commit()
         cur.close()
     finally:
-        conn.close()
+        return_connection(conn)
 
 
 def delete_user(user_id):
@@ -186,4 +186,4 @@ def delete_user(user_id):
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        return_connection(conn)

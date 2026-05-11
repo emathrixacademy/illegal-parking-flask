@@ -700,7 +700,6 @@ def api_system_health():
 @login_required
 def playback_dates():
     try:
-        ensure_violations_table()
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("SELECT DISTINCT camera_id, date FROM recordings ORDER BY date DESC")
@@ -937,7 +936,6 @@ def proxy_video_feed(feed_path):
 @pi_api_key_required
 def upload_event():
     try:
-        ensure_violations_table()
         data = request.get_json(force=True)
         if not isinstance(data, dict):
             return jsonify({"error": "Invalid JSON"}), 400

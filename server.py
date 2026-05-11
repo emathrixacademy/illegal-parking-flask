@@ -154,9 +154,11 @@ def update_local_config(data):
         if "PARKING_ZONES" in data and data["PARKING_ZONES"]:
             replace_line("PARKING_ZONES", data["PARKING_ZONES"])
 
-        with open(config_path, "w") as f:
+        tmp_path = config_path + ".tmp"
+        with open(tmp_path, "w") as f:
             f.writelines(lines)
-        
+        os.replace(tmp_path, config_path)
+
         # Reload config module
         importlib.reload(config)
         
@@ -452,7 +454,8 @@ def api_sync_from_railway():
 @app.route('/')
 def index():
     public_url = app.config.get("PUBLIC_URL", "")
-    index_html = open("templates/index.html").read()
+    with open("templates/index.html") as _f:
+        index_html = _f.read()
     html_with_url = index_html.replace(
         'const RASPI_BASE = "{{ public_url }}";',
         f'const RASPI_BASE = "{public_url}";'
@@ -808,12 +811,13 @@ class ParkingMonitor:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 165, 255), 2)
                 cv2.putText(frame, f"{label} #{tid}: {dur}s", (x1, y1-8), 0, 0.6, (0, 165, 255), 2)
 
-        # Clean up timers for vehicles no longer tracked
+        # Clean up timers and last_upload_time for vehicles no longer tracked
         active_tids = set(tracked.keys())
         with self.lock:
             stale = [k for k in self.timers if k[0] == name and k[1] not in active_tids]
             for k in stale:
                 self.timers.pop(k, None)
+                self.last_upload_time.pop(k, None)
 
         # Keep feeding frames to recorders for vehicles that left the zone (until 60s is up)
         with violation_recorders_lock:
@@ -851,8 +855,8 @@ class Stream:
         self.url = url
         self.cap = cv2.VideoCapture(url)
         self.frame_buffer = None
-        self.last_update = 0
-        self.reconnecting = False
+        self.last_update = time.time()
+        self.reconnecting = True
         self.read_lock = threading.Lock()
         self.reconnect_event = threading.Event()
         self.running = True

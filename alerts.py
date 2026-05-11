@@ -7,7 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from datetime import datetime
-from db import get_config_value, set_config_value, get_connection
+from db import get_config_value, set_config_value, get_connection, return_connection
 
 logger = logging.getLogger("Alerts")
 
@@ -284,10 +284,12 @@ def send_email_alert(violation_data, image_bytes=None):
             msg.attach(img)
 
         server = smtplib.SMTP(config['smtp_server'], config['smtp_port'])
-        server.starttls()
-        server.login(config['smtp_email'], config['smtp_password'])
-        server.send_message(msg)
-        server.quit()
+        try:
+            server.starttls()
+            server.login(config['smtp_email'], config['smtp_password'])
+            server.send_message(msg)
+        finally:
+            server.quit()
 
         _log_alert("email", violation_data, True)
         return True
@@ -309,10 +311,12 @@ def send_test_email(config):
     msg.attach(MIMEText(html, 'html'))
 
     server = smtplib.SMTP(config.get('smtp_server', 'smtp.gmail.com'), config.get('smtp_port', 587))
-    server.starttls()
-    server.login(config['smtp_email'], config['smtp_password'])
-    server.send_message(msg)
-    server.quit()
+    try:
+        server.starttls()
+        server.login(config['smtp_email'], config['smtp_password'])
+        server.send_message(msg)
+    finally:
+        server.quit()
 
 
 def send_sms_alert(violation_data):
@@ -407,6 +411,7 @@ def send_violation_alert(violation_data, image_bytes=None):
 
 def _log_alert(alert_type, violation_data, success, error=None):
     """Log alert to database for history."""
+    conn = None
     try:
         conn = get_connection()
         cur = conn.cursor()
@@ -416,6 +421,8 @@ def _log_alert(alert_type, violation_data, success, error=None):
         """, (alert_type, violation_data.get('camera'), violation_data.get('label'), success, error))
         conn.commit()
         cur.close()
-        conn.close()
     except Exception as e:
         logger.error(f"Failed to log alert: {e}")
+    finally:
+        if conn:
+            return_connection(conn)
