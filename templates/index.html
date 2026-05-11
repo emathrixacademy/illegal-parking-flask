@@ -256,7 +256,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
   <div class="alert alert-danger tamper-alert d-flex align-items-center mb-0 py-2" role="alert">
     <i class="bi bi-exclamation-triangle-fill me-2"></i>
     <div class="flex-grow-1">
-      <strong>TAMPER DETECTED!</strong> <span id="tamperAlertMsg"></span>
+      <strong>⚠ Camera Alert!</strong> <span id="tamperAlertMsg"></span>
     </div>
     <button class="btn btn-sm btn-outline-light ms-2" onclick="dismissTamperAlert()">Dismiss</button>
   </div>
@@ -581,7 +581,18 @@ async function checkTamperAlerts() {
         const r = await fetch('/api/tamper_events?unresolved=1');
         const ev = await r.json();
         const ad = document.getElementById('tamperAlert'), ms = document.getElementById('tamperAlertMsg');
-        if(ev&&ev.length>0){ ms.textContent=` ${ev[0].camera} - ${ev[0].tamper_type} at ${ev[0].timestamp||''}`; ad.style.display='block'; }
+        if(ev&&ev.length>0){
+            const camName = (ev[0].camera||'').replace('_',' ');
+            const typeMap = {
+                'SCENE_CHANGE': 'Camera may have been moved or view has changed',
+                'OBSTRUCTION': 'Camera lens appears to be blocked or covered',
+                'DEFOCUS': 'Camera image is blurry — lens may be dirty or sprayed'
+            };
+            const friendly = typeMap[ev[0].tamper_type] || ev[0].tamper_type;
+            const ts = ev[0].timestamp ? new Date(ev[0].timestamp).toLocaleString() : '';
+            ms.textContent = ` ${camName} — ${friendly} (${ts})`;
+            ad.style.display='block';
+        }
     } catch(e) {}
 }
 function dismissTamperAlert() { document.getElementById('tamperAlert').style.display='none'; }
