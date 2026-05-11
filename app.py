@@ -761,7 +761,10 @@ def playback_stream():
         cur.close()
         conn.close()
         if row and row[0]:
-            return redirect(row[0])
+            url = row[0]
+            if 'cloudinary' in url and '/upload/' in url and 'f_mp4' not in url:
+                url = url.replace('/upload/', '/upload/f_mp4,vc_h264/')
+            return redirect(url)
         return jsonify({"error": "Recording not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 502
@@ -1150,9 +1153,13 @@ def upload_recording():
             public_id=f"{time_str}",
             overwrite=True,
             resource_type="video",
-            chunk_size=6000000
+            chunk_size=6000000,
+            eager=[{"format": "mp4", "video_codec": "h264"}],
+            eager_async=True
         )
         video_url = result.get("secure_url", "")
+        if video_url and ".mp4" in video_url:
+            video_url = video_url.rsplit(".mp4", 1)[0] + ".mp4"
         logger.info(f"Uploaded recording to Cloudinary: {camera_id}/{date_str}/{time_str} -> {video_url}")
 
         try:

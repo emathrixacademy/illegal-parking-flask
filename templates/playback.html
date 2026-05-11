@@ -159,9 +159,15 @@ document.getElementById('loadSegmentsBtn').addEventListener('click', async () =>
 
 function playSegment(camera, date, timeStr, url) {
     const player = document.getElementById('videoPlayer');
-    player.src = url || `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(timeStr)}`;
+    player.pause();
+    let src = url || `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(timeStr)}`;
+    if (src.includes('cloudinary') && !src.includes('f_mp4')) {
+        src = src.replace('/upload/', '/upload/f_mp4,vc_h264/');
+    }
+    player.querySelector('source').src = src;
+    player.querySelector('source').type = 'video/mp4';
     player.load();
-    player.play();
+    player.play().catch(() => {});
     document.getElementById('playerStatus').textContent = `Playing: ${camera} - ${date} ${timeStr}`;
 }
 
