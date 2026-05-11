@@ -652,6 +652,29 @@ def api_generate_report():
             """, params)
             daily_data = cur.fetchall()
 
+        # Detailed violations list (unique per camera+tracker)
+        cur.execute(f"""
+            SELECT sub.id, sub.camera, sub.label, sub.timestamp,
+                   sub.confidence_score, sub.duration_minutes,
+                   COALESCE(sub.review_status, 'for_review'),
+                   COALESCE(NULLIF(sub.image_url, ''), sub.image_path, '') as img,
+                   COALESCE(sub.video_url, '') as vid,
+                   bp.plate_number
+            FROM (
+                SELECT DISTINCT ON (camera, tracker_id) *
+                FROM violations
+                WHERE {where_sql}
+                ORDER BY camera, tracker_id, timestamp DESC
+            ) sub
+            LEFT JOIN LATERAL (
+                SELECT plate_number FROM plate_records
+                WHERE violation_id = sub.id ORDER BY confidence DESC LIMIT 1
+            ) bp ON true
+            ORDER BY sub.timestamp DESC
+            LIMIT 500
+        """, params)
+        detail_rows = cur.fetchall()
+
         cur.close()
     except Exception as e:
         logging.error(f"Failed to query DB for PDF report: {e}")
@@ -874,13 +897,97 @@ def api_generate_report():
                 c.drawString(92, y, f"{lbl}: {int(cnt)}")
                 y -= 18
         
+        # === DETAILED INCIDENTS TABLE ===
+        if detail_rows:
+            c.showPage()
+            y = height - 72
+            page_num = 2
+
+            c.setFillColor(HexColor('#000000'))
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(72, y, "DETAILED INCIDENT LOG")
+            y -= 5
+            c.setStrokeColor(primary_light)
+            c.setLineWidth(2)
+            c.line(72, y, width - 72, y)
+            y -= 15
+
+            detail_headers = ['ID', 'Camera', 'Vehicle', 'Date & Time', 'Plate', 'Conf.', 'Duration', 'Status', 'Evidence']
+            detail_col_widths = [35, 55, 60, 95, 55, 35, 45, 55, 40]
+            detail_row_height = 20
+
+            detail_table_data = [detail_headers]
+            base_url = os.environ.get("RAILWAY_PUBLIC_URL", "https://web-production-dbb23.up.railway.app")
+
+            for dr in detail_rows:
+                v_id, v_cam, v_label, v_ts, v_conf, v_dur, v_status, v_img, v_vid, v_plate = dr
+                ts_str = v_ts.strftime('%m/%d %I:%M %p') if v_ts else ''
+                conf_str = f"{float(v_conf or 0)*100:.0f}%"
+                dur_str = f"{float(v_dur or 0):.1f}m"
+                status_map = {'for_review': 'Review', 'approved': 'Approved', 'rejected': 'Rejected', 'needs_investigation': 'Investigate'}
+                st = status_map.get(v_status, v_status or 'Review')
+                evidence = []
+                if v_img:
+                    evidence.append('IMG')
+                if v_vid:
+                    evidence.append('VID')
+                ev_str = ', '.join(evidence) if evidence else 'None'
+
+                detail_table_data.append([
+                    str(v_id), v_cam or '', v_label or '', ts_str,
+                    v_plate or '—', conf_str, dur_str, st, ev_str
+                ])
+
+            rows_per_page = int((y - 80) / detail_row_height)
+            chunks = [detail_table_data[i:i+rows_per_page] for i in range(1, len(detail_table_data), rows_per_page)]
+
+            for chunk_idx, chunk in enumerate(chunks):
+                if chunk_idx > 0:
+                    c.setFont("Helvetica", 8)
+                    c.setFillColor(HexColor('#666666'))
+                    c.drawString(72, 40, "Illegal Parking Detection System - Automated Violation Tracking")
+                    c.drawRightString(width - 72, 40, f"Page {page_num}")
+                    c.showPage()
+                    page_num += 1
+                    y = height - 72
+
+                page_data = [detail_headers] + chunk
+                tbl = Table(page_data, colWidths=detail_col_widths, rowHeights=[detail_row_height] * len(page_data))
+                tbl.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2d1b69')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 7),
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 7),
+                    ('TEXTCOLOR', (0, 1), (-1, -1), HexColor('#000000')),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [HexColor('#ffffff'), HexColor('#f8f6ff')]),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('ALIGN', (3, 0), (3, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('GRID', (0, 0), (-1, -1), 0.4, HexColor('#cccccc')),
+                    ('LINEBELOW', (0, 0), (-1, 0), 1.5, HexColor('#5b3fbc')),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                    ('TOPPADDING', (0, 0), (-1, -1), 2),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ]))
+                tbl_h = len(page_data) * detail_row_height
+                tbl.wrapOn(c, sum(detail_col_widths), tbl_h)
+                tbl.drawOn(c, 72, y - tbl_h)
+                y = y - tbl_h - 10
+
+            c.setFont("Helvetica", 7)
+            c.setFillColor(HexColor('#888888'))
+            c.drawString(72, y - 5, "Evidence: IMG = Captured Image available, VID = Video Clip available. Access full evidence at the web dashboard.")
+
         # Footer
         c.setFont("Helvetica", 8)
         c.setFillColor(HexColor('#666666'))
         footer_text = "Illegal Parking Detection System - Automated Violation Tracking"
         c.drawString(72, 40, footer_text)
-        c.drawRightString(width - 72, 40, f"Page 1")
-        
+        c.drawRightString(width - 72, 40, f"Page {page_num if detail_rows else 1}")
+
         c.showPage()
         c.save()
         buf.seek(0)
