@@ -23,7 +23,6 @@ const CACHEABLE_API = [
   '/api/violation_counts',
   '/api/violation_stats',
   '/api/violations_list',
-  '/api/fine_map',
   '/api/alert_config',
   '/api/alert_log',
   '/api/db_violations_count',

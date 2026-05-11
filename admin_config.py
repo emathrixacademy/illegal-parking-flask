@@ -1,31 +1,5 @@
-from db import get_config_value, set_config_value, get_connection
+from db import get_connection
 from typing import List, Dict, Any
-
-DEFAULT_FINE_MAP = {
-    'CAR': 100,
-    'MOTORCYCLE': 50
-}
-
-_CONFIG_KEY = 'FINE_MAP'
-
-
-def get_fine_map():
-    """Return the fine map from DB config, falling back to DEFAULT_FINE_MAP."""
-    val = get_config_value(_CONFIG_KEY, None)
-    if isinstance(val, dict):
-        # normalize keys to uppercase
-        return {k.upper(): float(v) for k, v in val.items()}
-    return DEFAULT_FINE_MAP.copy()
-
-
-def set_fine_map(mapping):
-    """Save the fine map (dict) to DB config."""
-    if not isinstance(mapping, dict):
-        raise ValueError('mapping must be a dict')
-    # ensure numeric values
-    cleaned = {k.upper(): float(v) for k, v in mapping.items()}
-    set_config_value(_CONFIG_KEY, cleaned)
-    return cleaned
 
 
 def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> Dict[str, Any]:
@@ -129,7 +103,7 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
             SELECT * FROM (
                 SELECT DISTINCT ON (camera, tracker_id)
                     id, camera, tracker_id, label, timestamp, image_path,
-                    confidence_score, duration_minutes, fine_amount, barangay, enforced,
+                    confidence_score, duration_minutes, barangay, enforced,
                     COALESCE(review_status, 'for_review') as review_status,
                     COALESCE(review_notes, '') as review_notes,
                     COALESCE(image_url, '') as image_url,
@@ -143,7 +117,7 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
         """, params + [per_page, offset])
         rows = cur.fetchall()
         cols = ['id', 'camera', 'tracker_id', 'label', 'timestamp', 'image_path',
-                'confidence_score', 'duration_minutes', 'fine_amount', 'barangay', 'enforced',
+                'confidence_score', 'duration_minutes', 'barangay', 'enforced',
                 'review_status', 'review_notes', 'image_url', 'video_url']
         items = [dict(zip(cols, r)) for r in rows]
         cur.close()

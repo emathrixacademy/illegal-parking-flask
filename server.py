@@ -15,7 +15,7 @@ from app_detect import detect
 import signal
 from cloudlink import start_cloudflared
 from db import insert_violation_event  # (You can remove this import if not used elsewhere)
-from admin_config import get_fine_map
+
 try:
     from ocr_module import extract_plate
 except ImportError:
@@ -614,9 +614,6 @@ class ParkingMonitor:
             else:
                 duration_minutes = round(dur / 60.0, 2)
 
-            fine_map = get_fine_map()
-            fine_amount = float(fine_map.get(label.upper(), 0))
-
             plate_number = None
             plate_confidence = 0.0
             bbox = list(map(int, d['box']))
@@ -658,7 +655,6 @@ class ParkingMonitor:
                 "bbox": bbox,
                 "duration_minutes": duration_minutes,
                 "confidence_score": float(d.get('conf', 0)),
-                "fine_amount": fine_amount,
                 "enforced": False,
                 "meta": {}
             }

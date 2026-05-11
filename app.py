@@ -20,7 +20,7 @@ import threading
 import time
 from db import ensure_tables, get_all_settings, save_settings, init_default_settings, get_connection, get_config_value, set_config_value
 from analytics import analytics_bp
-from admin_config import list_violations, mark_enforced, get_fine_map, set_fine_map
+from admin_config import list_violations, mark_enforced
 from auth import (
     authenticate, login_required, role_required, log_activity,
     list_users, create_user, update_user, delete_user
@@ -811,7 +811,7 @@ def search_plates():
         cur = conn.cursor()
         cur.execute("""
             SELECT p.id, p.violation_id, p.plate_number, p.confidence, p.plate_image_path,
-                   p.camera, p.timestamp, v.label, v.duration_minutes, v.fine_amount
+                   p.camera, p.timestamp, v.label, v.duration_minutes
             FROM plate_records p
             LEFT JOIN violations v ON p.violation_id = v.id
             WHERE p.plate_number ILIKE %s
@@ -1090,14 +1090,13 @@ def upload_event():
             cur = conn.cursor()
             confidence_score = data.get('confidence_score', 0.0)
             duration_minutes = data.get('duration_minutes', 0.0)
-            fine_amount = data.get('fine_amount', 0.0)
             barangay = data.get('barangay', None)
             enforced = data.get('enforced', False)
 
             cur.execute("""
-                INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, image_url, video_url, confidence_score, duration_minutes, fine_amount, barangay, enforced)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-            """, (camera_id, tracker_id, label, timestamp, img_path, image_url, video_url, confidence_score, duration_minutes, fine_amount, barangay or 'Bgry. Kanluran', enforced))
+                INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, image_url, video_url, confidence_score, duration_minutes, barangay, enforced)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            """, (camera_id, tracker_id, label, timestamp, img_path, image_url, video_url, confidence_score, duration_minutes, barangay or 'Bgry. Kanluran', enforced))
             violation_id = cur.fetchone()[0]
             conn.commit()
 
@@ -1124,7 +1123,6 @@ def upload_event():
                     "tracker_id": tracker_id,
                     "label": label,
                     "duration_minutes": duration_minutes,
-                    "fine_amount": fine_amount,
                     "timestamp": timestamp,
                     "plate_number": plate_number or '',
                     "confidence_score": confidence_score,
@@ -1214,31 +1212,6 @@ def api_image_from_db():
     with open(abs_path, "rb") as f:
         data = f.read()
     return Response(data, mimetype="image/jpeg")
-
-@app.route('/api/fine_map')
-@login_required
-def api_get_fine_map():
-    try:
-        fm = get_fine_map()
-        return jsonify({"success": True, "fine_map": fm})
-    except Exception as e:
-        logger.error(f"Failed to get fine map: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/set_fine_map', methods=['POST'])
-@login_required
-@role_required('operator')
-def api_set_fine_map():
-    try:
-        data = request.get_json(force=True)
-        if not isinstance(data, dict):
-            return jsonify({"success": False, "error": "Invalid payload"}), 400
-        mapping = data.get('fine_map') if 'fine_map' in data else data
-        cleaned = set_fine_map(mapping)
-        return jsonify({"success": True, "fine_map": cleaned})
-    except Exception as e:
-        logger.error(f"Failed to set fine map: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/proxy_image')
 @login_required

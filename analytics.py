@@ -122,8 +122,7 @@ def api_violation_stats():
                 COUNT(DISTINCT barangay) AS affected_barangays,
                 AVG(confidence_score) AS avg_confidence,
                 AVG(duration_minutes) AS avg_duration_minutes,
-                SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count,
-                SUM(CASE WHEN enforced = TRUE THEN COALESCE(fine_amount, 0.0) ELSE 0.0 END) AS total_fines_collected
+                SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count
             FROM violations;
         """)
         row = cur.fetchone()
@@ -136,11 +135,10 @@ def api_violation_stats():
                 "affected_barangays": 0,
                 "avg_confidence": 0.0,
                 "avg_duration_minutes": 0.0,
-                "enforced_count": 0,
-                "total_fines_collected": 0.0
+                "enforced_count": 0
             })
 
-        total_violations, active_cameras, affected_barangays, avg_confidence, avg_duration_minutes, enforced_count, total_fines_collected = row
+        total_violations, active_cameras, affected_barangays, avg_confidence, avg_duration_minutes, enforced_count = row
 
         return jsonify({
             "total_violations": int(total_violations or 0),
@@ -148,8 +146,7 @@ def api_violation_stats():
             "affected_barangays": int(affected_barangays or 0),
             "avg_confidence": float(avg_confidence or 0.0),
             "avg_duration_minutes": float(avg_duration_minutes or 0.0),
-            "enforced_count": int(enforced_count or 0),
-            "total_fines_collected": float(total_fines_collected or 0.0)
+            "enforced_count": int(enforced_count or 0)
         })
     except Exception as e:
         logger.error(f"Failed to query violation stats: {e}")
@@ -159,8 +156,7 @@ def api_violation_stats():
             "affected_barangays": 0,
             "avg_confidence": 0.0,
             "avg_duration_minutes": 0.0,
-            "enforced_count": 0,
-            "total_fines_collected": 0.0
+            "enforced_count": 0
         })
     finally:
         conn.close()
@@ -634,7 +630,6 @@ def api_generate_report():
                 COUNT(DISTINCT (camera, tracker_id)) AS unique_violations,
                 COUNT(*) AS total_records,
                 SUM(CASE WHEN enforced = TRUE THEN 1 ELSE 0 END) AS enforced_count,
-                SUM(COALESCE(fine_amount, 0.0)) AS total_fines,
                 AVG(confidence_score) AS avg_confidence,
                 AVG(duration_minutes) AS avg_duration
             FROM violations
@@ -738,9 +733,8 @@ def api_generate_report():
         unique_violations = int(stats_row[0] or 0)
         total_records = int(stats_row[1] or 0)
         enforced_count = int(stats_row[2] or 0)
-        total_fines = float(stats_row[3] or 0.0)
-        avg_conf = float(stats_row[4] or 0.0)
-        avg_dur = float(stats_row[5] or 0.0)
+        avg_conf = float(stats_row[3] or 0.0)
+        avg_dur = float(stats_row[4] or 0.0)
         
         c.setFillColor(text_color)
         c.setFont("Helvetica", 10)

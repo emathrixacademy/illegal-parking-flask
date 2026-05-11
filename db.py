@@ -259,7 +259,7 @@ def ensure_tables():
         if conn:
             conn.close()
 
-def insert_violation_event(camera, tracker_id, label, timestamp, image_path, confidence_score=0.0, duration_minutes=0.0, fine_amount=0.0, barangay='Bgry. Kanluran', enforced=False):
+def insert_violation_event(camera, tracker_id, label, timestamp, image_path, confidence_score=0.0, duration_minutes=0.0, barangay='Bgry. Kanluran', enforced=False):
     if not POSTGRES_URL:
         logging.warning("POSTGRES_URL not set, skipping DB insert.")
         return
@@ -268,9 +268,9 @@ def insert_violation_event(camera, tracker_id, label, timestamp, image_path, con
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, fine_amount, barangay, enforced))
+            INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, barangay, enforced)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (camera, tracker_id, label, timestamp, image_path, confidence_score, duration_minutes, barangay, enforced))
         conn.commit()
         cur.close()
     except Exception as e:

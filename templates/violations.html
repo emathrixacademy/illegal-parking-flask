@@ -699,7 +699,8 @@ function showDetail(v) {
       <div><div class="detail-label">Barangay</div><div class="detail-value">${v.barangay || '—'}</div></div>
       <div><div class="detail-label">Timestamp</div><div class="detail-value">${ts}</div></div>
       <div><div class="detail-label">Status</div><div class="detail-value">${status}</div></div>
-      <div style="grid-column:1/-1;"><div class="detail-label">Fine Amount</div><div class="detail-value">${v.fine_amount != null ? '₱' + Number(v.fine_amount).toFixed(2) : '—'}</div></div>
+      ${v.plate_number ? `<div style="grid-column:1/-1;"><div class="detail-label">Plate Number</div><div class="detail-value" style="font-size:1.1rem;font-weight:600;letter-spacing:1px;">${v.plate_number}${v.plate_confidence ? ' (' + (v.plate_confidence * 100).toFixed(0) + '% confidence)' : ''}</div></div>` : ''}
+      ${v.image_url || v.image_path ? `<div style="grid-column:1/-1;"><div class="detail-label">Captured Image</div><div class="detail-value"><img src="${v.image_url || v.image_path}" style="max-width:100%;border-radius:8px;margin-top:4px;" alt="Violation capture"></div></div>` : ''}
       ${notes !== '—' ? `<div style="grid-column:1/-1;"><div class="detail-label">Review Notes</div><div class="detail-value" style="font-weight:400;">${notes}</div></div>` : ''}
     </div>
   `;
