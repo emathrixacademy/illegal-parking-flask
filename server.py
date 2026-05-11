@@ -140,6 +140,13 @@ def update_local_config(data):
                 else:
                     lines.append(f"{key} = {value}\n")
 
+        if "CAMERAS" in data and data["CAMERAS"]:
+            cams = data["CAMERAS"]
+            for cam in cams:
+                if cam.get("id") == "Camera_1" and cam.get("url"):
+                    replace_line("CAM1_URL", f'"{cam["url"]}"')
+                elif cam.get("id") == "Camera_2" and cam.get("url"):
+                    replace_line("CAM2_URL", f'"{cam["url"]}"')
         if "VIOLATION_TIME_THRESHOLD" in data:
             replace_line("VIOLATION_TIME_THRESHOLD", int(data["VIOLATION_TIME_THRESHOLD"]))
         if "REPEAT_CAPTURE_INTERVAL" in data:
