@@ -12,6 +12,7 @@ PI_API_KEY = os.environ.get("PI_API_KEY", "dcgl-pi-secret-2026")
 
 CAM1_URL = getattr(config, "CAM1_URL", "rtsp://192.168.8.2:554/stream")
 CAM2_URL = getattr(config, "CAM2_URL", "rtsp://192.168.8.199:554/stream")
+CAM3_URL = getattr(config, "CAM3_URL", None)
 
 window_base = "Zone Selector"
 points = []
@@ -140,8 +141,10 @@ def main():
 
     cameras = {
         "Camera_1": CAM1_URL,
-        "Camera_2": CAM2_URL
+        "Camera_2": CAM2_URL,
     }
+    if CAM3_URL:
+        cameras["Camera_3"] = CAM3_URL
 
     zones = existing.copy()
 
