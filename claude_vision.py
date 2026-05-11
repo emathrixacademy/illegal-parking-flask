@@ -150,34 +150,36 @@ def detect_garbage(frame, camera_id=""):
 
     try:
         h, w = frame.shape[:2]
-        small = cv2.resize(frame, (640, int(640 * h / w)))
-        _, buf = cv2.imencode('.jpg', small, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        send_w, send_h = 800, int(800 * h / w)
+        small = cv2.resize(frame, (send_w, send_h))
+        _, buf = cv2.imencode('.jpg', small, [cv2.IMWRITE_JPEG_QUALITY, 85])
         img_b64 = base64.b64encode(buf).decode('utf-8')
 
-        prompt = f"""You are a CCTV garbage/trash detection system. Analyze this street camera image.
-Camera: {camera_id}, Image size: {w}x{h}
+        prompt = f"""You are a precise CCTV garbage/trash detection system. The image below is {send_w}x{send_h} pixels.
 
-Find ALL garbage, trash, litter, trash cans, debris, plastic bags, scattered waste, or any form of waste/rubbish visible in the image.
+Find ALL garbage, trash, litter, trash cans, debris, plastic bags, scattered waste, or any waste/rubbish visible.
 
 Respond ONLY with valid JSON (no markdown, no code blocks):
 {{
   "garbage_found": true or false,
   "items": [
     {{
-      "label": "type of garbage (e.g. TRASH_CAN, GARBAGE, PLASTIC_BAG, DEBRIS, LITTER)",
+      "label": "TRASH_CAN or GARBAGE or PLASTIC_BAG or DEBRIS or LITTER",
       "confidence": 0.0 to 1.0,
       "description": "brief description",
-      "region": [x1_percent, y1_percent, x2_percent, y2_percent]
+      "bbox": [x1, y1, x2, y2]
     }}
   ]
 }}
 
-Rules:
-- region coordinates are PERCENTAGES (0-100) of image width/height
-- Include even small items like scattered papers or plastic
-- TRASH_CAN means a garbage bin/container
-- GARBAGE means loose garbage/waste on the ground
-- Be thorough — detect everything that is waste or waste-related"""
+CRITICAL RULES for bbox accuracy:
+- bbox values are PIXEL coordinates in the {send_w}x{send_h} image (not percentages)
+- x1,y1 = top-left corner of the object, x2,y2 = bottom-right corner
+- The box must TIGHTLY wrap the object — no extra padding, no loose boxes
+- Look carefully at exactly WHERE the object sits in the image before giving coordinates
+- Double-check your coordinates: the box should cover ONLY the object, not the surrounding area
+- If an object is at the right edge, x2 should be close to {send_w}
+- If an object is at the bottom, y2 should be close to {send_h}"""
 
         with _lock:
             response = client.messages.create(
@@ -210,13 +212,15 @@ Rules:
             result = json.loads(raw_text)
 
         items = result.get("items", [])
+        scale_x = w / send_w
+        scale_y = h / send_h
         detections = []
         for item in items:
-            region = item.get("region", [0, 0, 100, 100])
-            x1 = int(region[0] / 100 * w)
-            y1 = int(region[1] / 100 * h)
-            x2 = int(region[2] / 100 * w)
-            y2 = int(region[3] / 100 * h)
+            bbox = item.get("bbox", [0, 0, send_w, send_h])
+            x1 = int(max(0, min(bbox[0], send_w)) * scale_x)
+            y1 = int(max(0, min(bbox[1], send_h)) * scale_y)
+            x2 = int(max(0, min(bbox[2], send_w)) * scale_x)
+            y2 = int(max(0, min(bbox[3], send_h)) * scale_y)
             detections.append({
                 "label": item.get("label", "GARBAGE"),
                 "confidence": item.get("confidence", 0.5),
