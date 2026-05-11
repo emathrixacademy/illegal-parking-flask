@@ -329,7 +329,7 @@ async function selectDate(dateStr) {
             const imgSrc = raw.startsWith('http') || raw.startsWith('/static') ? raw : (raw ? '/api/proxy_image?image_path=' + encodeURIComponent(raw) : '');
             return imgSrc ? '<div style="margin-top:6px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display=\'none\'"></div>' : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>';
           })()}
-          ${inc.video_url ? `<div style="margin-top:6px;"><video src="${inc.video_url}" controls style="max-width:100%;border-radius:8px;" preload="metadata"></video>` : '<div style="color:#aaa;margin-top:4px;"><i class="bi bi-camera-video"></i> No video clip</div>'}
+          ${inc.video_url ? `<div style="margin-top:6px;"><video controls playsinline style="max-width:100%;border-radius:8px;background:#000;" preload="metadata"><source src="${inc.video_url}" type="video/mp4"></video></div>` : '<div style="color:#aaa;margin-top:4px;"><i class="bi bi-camera-video"></i> No video clip</div>'}
         </div>
       </div>`;
     });

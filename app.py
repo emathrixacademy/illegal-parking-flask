@@ -1014,13 +1014,16 @@ def upload_event():
                     result = cloudinary.uploader.upload_large(
                         tmp_path,
                         folder="violations/videos",
-                        public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_5min",
+                        public_id=f"{camera_id}_{timestamp.replace(':', '-').replace('.', '-')}_clip",
                         overwrite=True,
                         resource_type="video",
-                        chunk_size=6000000
+                        chunk_size=6000000,
+                        format="mp4",
+                        eager=[{"format": "mp4", "video_codec": "h264"}],
+                        eager_async=True
                     )
                     video_url = result.get("secure_url", "")
-                    logger.info(f"Uploaded 5-min violation video to Cloudinary: {video_url}")
+                    logger.info(f"Uploaded violation video to Cloudinary: {video_url}")
                 else:
                     logger.warning("Cloudinary not configured, saving video locally")
 
