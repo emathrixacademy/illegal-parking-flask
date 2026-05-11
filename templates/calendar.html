@@ -324,9 +324,11 @@ async function selectDate(dateStr) {
           <div style="color:#666;margin-bottom:4px;"><strong>Confidence:</strong> ${inc.confidence ? (inc.confidence * 100).toFixed(1) + '%' : 'N/A'}</div>
           <div style="color:#666;margin-bottom:4px;"><strong>Plate:</strong> ${plate || 'Not visible'}</div>
           <div style="color:#666;margin-bottom:4px;"><strong>Full Time:</strong> ${inc.timestamp || 'N/A'}</div>
-          ${inc.image_url ? `<div style="margin-top:6px;"><a href="${inc.image_url}" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none;"><i class="bi bi-image"></i> View Image</a></div>` : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>'}
-          ${inc.video_url ? `<div style="margin-top:4px;"><a href="${inc.video_url}" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none;"><i class="bi bi-play-circle"></i> View Video</a></div>` : ''}
-          ${inc.image_url ? `<div style="margin-top:6px;"><img src="${inc.image_url}" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display='none'"></div>` : ''}
+          ${(() => {
+            const imgSrc = inc.image_url || (inc.image_path ? '/api/proxy_image?image_path=' + encodeURIComponent(inc.image_path) : '');
+            return imgSrc ? '<div style="margin-top:6px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.onerror=null;this.src=\'/api/proxy_image?image_path=\'+encodeURIComponent(\'' + (inc.image_path||'') + '\')"></div>' : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>';
+          })()}
+          ${inc.video_url ? `<div style="margin-top:6px;"><video src="${inc.video_url}" controls style="max-width:100%;border-radius:8px;" preload="metadata"></video>` : '<div style="color:#aaa;margin-top:4px;"><i class="bi bi-camera-video"></i> No video clip</div>'}
         </div>
       </div>`;
     });
