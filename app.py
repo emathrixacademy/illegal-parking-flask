@@ -400,8 +400,12 @@ def cleanup_demo_data():
         demo_trackers = (101, 202, 303, 404, 505, 606, 707, 808, 909, 1010)
         cur.execute("DELETE FROM plate_records WHERE plate_number IN %s", (demo_plates,))
         plate_del = cur.rowcount
+        cur.execute("DELETE FROM plate_records WHERE violation_id IN (SELECT id FROM violations WHERE tracker_id IN %s AND barangay = 'Brgy. Kanluran')", (demo_trackers,))
+        plate_del += cur.rowcount
         cur.execute("DELETE FROM violations WHERE tracker_id IN %s AND barangay = 'Brgy. Kanluran'", (demo_trackers,))
         viol_del = cur.rowcount
+        cur.execute("DELETE FROM violations WHERE barangay = 'Brgy. Kanluran'")
+        viol_del += cur.rowcount
         conn.commit()
         cur.close()
         conn.close()
