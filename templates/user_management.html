@@ -72,7 +72,22 @@
           </div>
           <div class="mb-3">
             <label class="form-label" for="newPassword">Password</label>
-            <input id="newPassword" type="password" class="form-control" required>
+            <div class="input-group">
+              <input id="newPassword" type="password" class="form-control" required>
+              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('newPassword', this)" title="Show/Hide Password">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="newConfirmPassword">Confirm Password</label>
+            <div class="input-group">
+              <input id="newConfirmPassword" type="password" class="form-control" required>
+              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('newConfirmPassword', this)" title="Show/Hide Password">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div id="passwordMismatch" class="form-text text-danger" style="display:none;">Passwords do not match.</div>
           </div>
           <div class="mb-3">
             <label class="form-label" for="newDisplayName">Display Name</label>
@@ -127,7 +142,22 @@
           </div>
           <div class="mb-3">
             <label class="form-label" for="editPassword">New Password (leave blank to keep)</label>
-            <input id="editPassword" type="password" class="form-control">
+            <div class="input-group">
+              <input id="editPassword" type="password" class="form-control">
+              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('editPassword', this)" title="Show/Hide Password">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3" id="editConfirmGroup" style="display:none;">
+            <label class="form-label" for="editConfirmPassword">Confirm New Password</label>
+            <div class="input-group">
+              <input id="editConfirmPassword" type="password" class="form-control">
+              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('editConfirmPassword', this)" title="Show/Hide Password">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div id="editPasswordMismatch" class="form-text text-danger" style="display:none;">Passwords do not match.</div>
           </div>
           <div class="form-check mb-3">
             <input id="editActive" class="form-check-input" type="checkbox" checked>
@@ -145,6 +175,28 @@
 
 {% block scripts %}
 <script>
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const ep = document.getElementById('editPassword');
+    if (ep) {
+        ep.addEventListener('input', function() {
+            document.getElementById('editConfirmGroup').style.display = this.value ? 'block' : 'none';
+            if (!this.value) document.getElementById('editConfirmPassword').value = '';
+        });
+    }
+});
+
 async function fetchUsers() {
     const tbody = document.querySelector('#usersTable tbody');
     tbody.innerHTML = '';
@@ -174,9 +226,18 @@ async function fetchUsers() {
 }
 
 async function addUser() {
+    const pw = document.getElementById('newPassword').value;
+    const cpw = document.getElementById('newConfirmPassword').value;
+    const mismatchEl = document.getElementById('passwordMismatch');
+    if (pw !== cpw) {
+        mismatchEl.style.display = 'block';
+        document.getElementById('newConfirmPassword').focus();
+        return;
+    }
+    mismatchEl.style.display = 'none';
     const data = {
         username: document.getElementById('newUsername').value,
-        password: document.getElementById('newPassword').value,
+        password: pw,
         display_name: document.getElementById('newDisplayName').value,
         email: document.getElementById('newEmail').value,
         role: document.getElementById('newRole').value
@@ -188,6 +249,8 @@ async function addUser() {
             bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
             document.getElementById('newUsername').value='';
             document.getElementById('newPassword').value='';
+            document.getElementById('newConfirmPassword').value='';
+            document.getElementById('passwordMismatch').style.display='none';
             document.getElementById('newDisplayName').value='';
             document.getElementById('newEmail').value='';
             fetchUsers();
@@ -204,6 +267,9 @@ function openEditUser(id, displayName, email, role, isActive) {
     document.getElementById('editRole').value = role;
     document.getElementById('editActive').checked = isActive;
     document.getElementById('editPassword').value = '';
+    document.getElementById('editConfirmPassword').value = '';
+    document.getElementById('editConfirmGroup').style.display = 'none';
+    document.getElementById('editPasswordMismatch').style.display = 'none';
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }
 
@@ -216,7 +282,16 @@ async function saveEditUser() {
         is_active: document.getElementById('editActive').checked
     };
     const pw = document.getElementById('editPassword').value;
-    if (pw) data.password = pw;
+    if (pw) {
+        const cpw = document.getElementById('editConfirmPassword').value;
+        if (pw !== cpw) {
+            document.getElementById('editPasswordMismatch').style.display = 'block';
+            document.getElementById('editConfirmPassword').focus();
+            return;
+        }
+        document.getElementById('editPasswordMismatch').style.display = 'none';
+        data.password = pw;
+    }
     try {
         const r = await fetch(`/api/users/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
         const j = await r.json();
