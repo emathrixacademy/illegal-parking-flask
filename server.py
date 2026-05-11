@@ -815,21 +815,34 @@ class ParkingMonitor:
             for k in stale:
                 self.timers.pop(k, None)
 
-        # Finalize recorders for vehicles that left the zone
+        # Keep feeding frames to recorders for vehicles that left the zone (until 60s is up)
         with violation_recorders_lock:
             gone_keys = [k for k in violation_recorders if k[0] == name and k not in active_violation_keys]
             for k in gone_keys:
-                rec = violation_recorders.pop(k)
-                if not rec.finished:
-                    logger.info(f"Vehicle left zone, finalizing video: camera={k[0]} tid={k[1]}")
+                rec = violation_recorders[k]
+                if rec.finished:
+                    violation_recorders.pop(k)
+                    continue
+                rec.add_frame(frame)
+                if rec.is_done():
+                    violation_recorders.pop(k)
+                    logger.info(f"1-min recording complete (vehicle left zone): camera={k[0]} tid={k[1]}, frames={rec.frame_count}")
                     last_d = rec.last_detection or {'box': [0,0,0,0], 'conf': 0}
                     last_frame = rec.last_frame if rec.last_frame is not None else frame
                     video_b64 = rec.get_video_b64()
-                    threading.Thread(
-                        target=self._upload_violation,
-                        args=(k[0], k[1], rec.label, last_frame, last_d, 0, now, video_b64 or ""),
-                        daemon=True
-                    ).start()
+                    is_vehicle = last_d.get('cls', 0) in VEHICLE_VIOLATION_CLASSES
+                    if is_vehicle:
+                        threading.Thread(
+                            target=self._upload_violation,
+                            args=(k[0], k[1], rec.label, last_frame, last_d, 0, now, video_b64 or ""),
+                            daemon=True
+                        ).start()
+                    elif video_b64:
+                        threading.Thread(
+                            target=self._upload_violation,
+                            args=(k[0], k[1], rec.label, last_frame, last_d, 0, now, video_b64 or ""),
+                            daemon=True
+                        ).start()
 
 
 # --- Stream handler ---
