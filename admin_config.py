@@ -100,7 +100,9 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
         offset = (page - 1) * per_page
 
         cur.execute(f"""
-            SELECT * FROM (
+            SELECT sub.*,
+                   bp.plate_number, bp.plate_confidence
+            FROM (
                 SELECT DISTINCT ON (camera, tracker_id)
                     id, camera, tracker_id, label, timestamp, image_path,
                     confidence_score, duration_minutes, barangay, enforced,
@@ -112,13 +114,21 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
                 {where_sql}
                 ORDER BY camera, tracker_id, timestamp DESC
             ) sub
+            LEFT JOIN LATERAL (
+                SELECT plate_number, confidence as plate_confidence
+                FROM plate_records
+                WHERE violation_id = sub.id
+                ORDER BY confidence DESC
+                LIMIT 1
+            ) bp ON true
             ORDER BY {order_col}
             LIMIT %s OFFSET %s
         """, params + [per_page, offset])
         rows = cur.fetchall()
         cols = ['id', 'camera', 'tracker_id', 'label', 'timestamp', 'image_path',
                 'confidence_score', 'duration_minutes', 'barangay', 'enforced',
-                'review_status', 'review_notes', 'image_url', 'video_url']
+                'review_status', 'review_notes', 'image_url', 'video_url',
+                'plate_number', 'plate_confidence']
         items = [dict(zip(cols, r)) for r in rows]
         cur.close()
         return {

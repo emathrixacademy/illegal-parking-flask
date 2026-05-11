@@ -290,12 +290,21 @@ function selectIncident(id) {
 
   const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;
   const dur = row.duration_minutes != null ? Number(row.duration_minutes).toFixed(1) : '0.0';
-  const imgUrl = row.image_url || (row.image_path && row.image_path.startsWith('http') ? row.image_path : (row.image_path ? '/api/image_from_db?image_path=' + encodeURIComponent(row.image_path) : ''));
+  const imgUrl = row.image_url || row.image_path || '';
+  const imgDisplay = imgUrl.startsWith('http') || imgUrl.startsWith('/static')
+    ? imgUrl
+    : (imgUrl ? '/api/proxy_image?image_path=' + encodeURIComponent(imgUrl) : '');
+  const videoUrl = row.video_url || '';
   const status = row.review_status || 'for_review';
 
-  // Progress steps
   const step1Done = true;
   const step2Done = status !== 'for_review';
+
+  let plateHtml = '';
+  if (row.plate_number) {
+    const pconf = row.plate_confidence ? ' (' + (Number(row.plate_confidence) * 100).toFixed(0) + '%)' : '';
+    plateHtml = `<div class="dp-field" style="grid-column:1/-1;"><div class="dp-field-label">Plate Number</div><div class="dp-field-value" style="font-size:1.1rem;font-weight:700;letter-spacing:2px;color:var(--primary);">${row.plate_number}${pconf}</div></div>`;
+  }
 
   document.getElementById('detailBody').innerHTML = `
     <div class="dp-fields">
@@ -305,6 +314,7 @@ function selectIncident(id) {
       <div class="dp-field"><div class="dp-field-label">Time</div><div class="dp-field-value">${formatTime(row.timestamp)}</div></div>
       <div class="dp-field"><div class="dp-field-label">Vehicle</div><div class="dp-field-value">${row.label || 'Unknown'}</div></div>
       <div class="dp-field"><div class="dp-field-label">Duration</div><div class="dp-field-value">${dur} min</div></div>
+      ${plateHtml}
     </div>
 
     <div class="ai-badge ${conf >= 0.5 ? 'detected' : 'low-conf'}">
@@ -312,19 +322,24 @@ function selectIncident(id) {
     </div>
 
     <div class="dp-image-wrap">
-      <div class="dp-image-title">Captured Image</div>
-      ${imgUrl
-        ? `<img class="dp-image" src="${imgUrl}" alt="Incident capture" onerror="this.parentElement.innerHTML='<div class=dp-no-image><i class=\\'bi bi-image\\'></i> Image unavailable</div>'">`
-        : '<div class="dp-no-image"><i class="bi bi-image"></i> No captured image for this incident</div>'
+      <div class="dp-image-title"><i class="bi bi-camera"></i> Captured Image</div>
+      ${imgDisplay
+        ? `<img class="dp-image" src="${imgDisplay}" alt="Incident capture" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">
+           <div class="dp-no-image" style="display:none;"><i class="bi bi-image"></i> Image could not be loaded</div>`
+        : '<div class="dp-no-image"><i class="bi bi-image"></i> No captured image</div>'
       }
     </div>
-    ${row.video_url ? `
+
     <div class="dp-image-wrap" style="margin-top:0.5rem;">
-      <div class="dp-image-title">Captured Video Clip</div>
-      <video controls style="width:100%;border-radius:8px;" preload="metadata">
-        <source src="${row.video_url}" type="video/mp4">
-      </video>
-    </div>` : ''}
+      <div class="dp-image-title"><i class="bi bi-camera-video"></i> Video Clip</div>
+      ${videoUrl
+        ? `<video controls style="width:100%;border-radius:8px;background:#000;" preload="metadata">
+             <source src="${videoUrl}" type="video/mp4">
+             Your browser does not support video playback.
+           </video>`
+        : '<div class="dp-no-image"><i class="bi bi-film"></i> No video clip available</div>'
+      }
+    </div>
 
     <div class="dp-review">
       <div class="dp-review-title">Review Status</div>

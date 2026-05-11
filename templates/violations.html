@@ -701,8 +701,13 @@ function showDetail(v) {
       <div><div class="detail-label">Status</div><div class="detail-value">${status}</div></div>
       ${v.plate_number ? `<div style="grid-column:1/-1;"><div class="detail-label">Plate Number</div><div class="detail-value" style="font-size:1.1rem;font-weight:600;letter-spacing:1px;">${v.plate_number}${v.plate_confidence ? ' (' + (v.plate_confidence * 100).toFixed(0) + '% confidence)' : ''}</div></div>` : ''}
       ${(() => {
-        const imgSrc = v.image_url || (v.image_path ? '/api/proxy_image?image_path=' + encodeURIComponent(v.image_path) : '');
-        return imgSrc ? `<div style="grid-column:1/-1;"><div class="detail-label">Captured Image</div><div class="detail-value"><img src="${imgSrc}" style="max-width:100%;border-radius:8px;margin-top:4px;" onerror="this.style.display='none'" alt="Violation capture"></div></div>` : '';
+        const raw = v.image_url || v.image_path || '';
+        const imgSrc = raw.startsWith('http') || raw.startsWith('/static') ? raw : (raw ? '/api/proxy_image?image_path=' + encodeURIComponent(raw) : '');
+        return imgSrc ? `<div style="grid-column:1/-1;"><div class="detail-label"><i class="bi bi-camera"></i> Captured Image</div><div class="detail-value"><img src="${imgSrc}" style="max-width:100%;border-radius:8px;margin-top:4px;" onerror="this.style.display='none'" alt="Violation capture"></div></div>` : '<div style="grid-column:1/-1;"><div class="detail-label"><i class="bi bi-camera"></i> Captured Image</div><div class="detail-value" style="color:#999;">No image available</div></div>';
+      })()}
+      ${(() => {
+        const videoUrl = v.video_url || '';
+        return videoUrl ? `<div style="grid-column:1/-1;"><div class="detail-label"><i class="bi bi-camera-video"></i> Video Clip</div><div class="detail-value"><video controls style="max-width:100%;border-radius:8px;margin-top:4px;background:#000;" preload="metadata"><source src="${videoUrl}" type="video/mp4"></video></div></div>` : '<div style="grid-column:1/-1;"><div class="detail-label"><i class="bi bi-camera-video"></i> Video Clip</div><div class="detail-value" style="color:#999;">No video clip available</div></div>';
       })()}
       ${notes !== '—' ? `<div style="grid-column:1/-1;"><div class="detail-label">Review Notes</div><div class="detail-value" style="font-weight:400;">${notes}</div></div>` : ''}
     </div>

@@ -325,8 +325,9 @@ async function selectDate(dateStr) {
           <div style="color:#666;margin-bottom:4px;"><strong>Plate:</strong> ${plate || 'Not visible'}</div>
           <div style="color:#666;margin-bottom:4px;"><strong>Full Time:</strong> ${inc.timestamp || 'N/A'}</div>
           ${(() => {
-            const imgSrc = inc.image_url || (inc.image_path ? '/api/proxy_image?image_path=' + encodeURIComponent(inc.image_path) : '');
-            return imgSrc ? '<div style="margin-top:6px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.onerror=null;this.src=\'/api/proxy_image?image_path=\'+encodeURIComponent(\'' + (inc.image_path||'') + '\')"></div>' : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>';
+            const raw = inc.image_url || inc.image_path || '';
+            const imgSrc = raw.startsWith('http') || raw.startsWith('/static') ? raw : (raw ? '/api/proxy_image?image_path=' + encodeURIComponent(raw) : '');
+            return imgSrc ? '<div style="margin-top:6px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display=\'none\'"></div>' : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>';
           })()}
           ${inc.video_url ? `<div style="margin-top:6px;"><video src="${inc.video_url}" controls style="max-width:100%;border-radius:8px;" preload="metadata"></video>` : '<div style="color:#aaa;margin-top:4px;"><i class="bi bi-camera-video"></i> No video clip</div>'}
         </div>
