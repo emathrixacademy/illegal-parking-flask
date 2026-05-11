@@ -688,7 +688,11 @@ class ParkingMonitor:
             return
         cv2.polylines(frame, [zone], True, (0, 0, 255), 2)
 
-        if detect_garbage and vision_available():
+        pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
+        tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
+
+        yolo_has_garbage = any(d['cls'] >= 100 for d in tracked.values())
+        if not yolo_has_garbage and detect_garbage and vision_available():
             try:
                 garbage_items = detect_garbage(frame, camera_id=name)
                 for g in garbage_items:
@@ -699,9 +703,6 @@ class ParkingMonitor:
                     cv2.putText(frame, f"{glabel} {gconf:.0%}", (gx1, gy1 - 8), 0, 0.6, (0, 165, 255), 2)
             except Exception as e:
                 logger.warning(f"Garbage scan error: {e}")
-
-        pixel_boxes = [[b[0]*fw, b[1]*fh, b[2]*fw, b[3]*fh] for b in res.xyxy]
-        tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
         now = time.time()
         active_violation_keys = set()
 
