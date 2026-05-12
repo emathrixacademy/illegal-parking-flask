@@ -26,15 +26,18 @@ class TamperDetector:
         self.last_good_frame = None
         self.sensitivity = sensitivity
         self.blur_threshold = 100      # Laplacian variance threshold
-        self.ssim_threshold = 0.4      # Below this = scene changed
+        self.ssim_threshold = 0.25     # Below this = scene changed (lowered to reduce false positives from lighting)
         self.dark_threshold = 15       # Average pixel value below this = covered
         self.last_alert_time = 0
         self.cooldown = 60             # seconds between alerts
+        self.ref_update_interval = 1800  # refresh reference frame every 30 min
+        self.ref_set_time = 0
 
     def set_reference(self, frame):
-        """Set the reference frame (call once when camera is properly positioned)."""
+        """Set or refresh the reference frame."""
         self.reference_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         self.reference_frame = cv2.resize(self.reference_frame, (320, 240))
+        self.ref_set_time = time.time()
 
     def check(self, frame):
         """
@@ -48,6 +51,9 @@ class TamperDetector:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         small = cv2.resize(gray, (320, 240))
         self.last_good_frame = frame.copy()
+
+        if self.reference_frame is not None and (now - self.ref_set_time) > self.ref_update_interval:
+            self.set_reference(frame)
 
         # 1. OBSTRUCTION CHECK — is the lens covered?
         avg_brightness = np.mean(small)

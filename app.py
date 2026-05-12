@@ -693,80 +693,8 @@ def api_system_health():
     except Exception:
         return jsonify({"overall_status": "unreachable", "error": "Pi offline"})
 
-# ==================================================
-# Routes – Playback Proxy (Feature 13)
-# ==================================================
-@app.route('/api/playback/dates')
-@login_required
-def playback_dates():
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT DISTINCT camera_id, date FROM recordings ORDER BY date DESC")
-        rows = cur.fetchall()
-        cur.close()
-        return_connection(conn)
-        dates = {}
-        for cam, d in rows:
-            dates.setdefault(cam, []).append(d)
-        return jsonify(dates)
-    except Exception as e:
-        logger.error(f"Playback dates error: {e}")
-        return jsonify({})
 
-@app.route('/api/playback/segments')
-@login_required
-def playback_segments():
-    camera = request.args.get('camera', 'Camera_1')
-    date = request.args.get('date')
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT time, video_url FROM recordings
-            WHERE camera_id = %s AND date = %s
-            ORDER BY time
-        """, (camera, date))
-        rows = cur.fetchall()
-        cur.close()
-        return_connection(conn)
-        segments = []
-        for t, url in rows:
-            segments.append({
-                "filename": f"{t}.mp4",
-                "time": t.replace('-', ':'),
-                "video_url": url
-            })
-        return jsonify(segments)
-    except Exception as e:
-        logger.error(f"Playback segments error: {e}")
-        return jsonify([])
 
-@app.route('/api/playback/stream')
-@login_required
-def playback_stream():
-    camera = request.args.get('camera', 'Camera_1')
-    date = request.args.get('date')
-    time_str = request.args.get('time')
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT video_url FROM recordings
-            WHERE camera_id = %s AND date = %s AND time = %s
-            LIMIT 1
-        """, (camera, date, time_str))
-        row = cur.fetchone()
-        cur.close()
-        return_connection(conn)
-        if row and row[0]:
-            url = row[0]
-            if 'cloudinary' in url and '/upload/' in url and 'f_mp4' not in url:
-                url = url.replace('/upload/', '/upload/f_mp4,vc_h264/')
-            return redirect(url)
-        return jsonify({"error": "Recording not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
 
 # ==================================================
 # Routes – Plate Search API (Feature 13)
@@ -1126,64 +1054,8 @@ def upload_event():
         logger.error(f"Upload event failed: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/upload_recording', methods=['POST'])
-@pi_api_key_required
-def upload_recording():
-    try:
-        data = request.get_json(force=True)
-        camera_id = data.get("camera_id")
-        date_str = data.get("date")
-        time_str = data.get("time")
-        video_b64 = data.get("video")
 
-        if not video_b64:
-            return jsonify({"error": "No video data"}), 400
 
-        import tempfile
-        video_bytes = base64.b64decode(video_b64)
-        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
-            tmp.write(video_bytes)
-            tmp_path = tmp.name
-
-        result = cloudinary.uploader.upload_large(
-            tmp_path,
-            folder=f"recordings/{camera_id}/{date_str}",
-            public_id=f"{time_str}",
-            overwrite=True,
-            resource_type="video",
-            chunk_size=6000000,
-            eager=[{"format": "mp4", "video_codec": "h264"}],
-            eager_async=True
-        )
-        video_url = result.get("secure_url", "")
-        if video_url and ".mp4" in video_url:
-            video_url = video_url.rsplit(".mp4", 1)[0] + ".mp4"
-        logger.info(f"Uploaded recording to Cloudinary: {camera_id}/{date_str}/{time_str} -> {video_url}")
-
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-
-        if video_url:
-            try:
-                conn = get_connection()
-                cur = conn.cursor()
-                cur.execute("""
-                    INSERT INTO recordings (camera_id, date, time, video_url)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT DO NOTHING
-                """, (camera_id, date_str, time_str, video_url))
-                conn.commit()
-                cur.close()
-                return_connection(conn)
-            except Exception as db_err:
-                logger.error(f"Failed to store recording URL in DB: {db_err}")
-
-        return jsonify({"success": True, "video_url": video_url})
-    except Exception as e:
-        logger.error(f"Recording upload failed: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/image_from_db')
 @login_required

@@ -55,7 +55,7 @@
 .sp-stat-value { font-size: 0.85rem; font-weight: 700; color: var(--text); }
 
 /* Incident list in side panel */
-.sp-incidents { max-height: 400px; overflow-y: auto; }
+.sp-incidents { max-height: 70vh; overflow-y: auto; }
 .sp-incident { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.5rem; transition: border-color 0.15s; cursor: pointer; }
 .sp-incident:hover { border-color: var(--primary-light); }
 .sp-incident-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
@@ -121,7 +121,7 @@
       <h3>Incident Overview</h3>
       <span class="live-badge">Live view</span>
     </div>
-    <p class="sp-subtitle" style="padding:0 1.25rem;">Click a date to view incidents and recordings.</p>
+    <p class="sp-subtitle" style="padding:0 1.25rem;">Click a date to view incident reports.</p>
 
     <div style="padding:0 1.25rem;">
       <div class="sp-info">
@@ -129,16 +129,6 @@
         <div class="sp-stat"><span class="sp-stat-label">Date:</span> <span class="sp-stat-value" id="spDate">--</span></div>
         <div class="sp-stat"><span class="sp-stat-label">Incidents:</span> <span class="sp-stat-value" id="spCount">--</span></div>
         <div class="sp-stat"><span class="sp-stat-label">Cameras:</span> <span class="sp-stat-value" id="spCameras">--</span></div>
-      </div>
-
-      <!-- Playback Section -->
-      <div class="sp-info" id="playbackSection" style="display:none;">
-        <div class="sp-info-title"><i class="bi bi-play-circle"></i> Recording Playback</div>
-        <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;flex-wrap:wrap;" id="segmentBtns"></div>
-        <div style="border-radius:10px;overflow:hidden;background:#111;margin-bottom:0.5rem;">
-          <video id="sidePlayer" controls style="width:100%;max-height:220px;display:none;"></video>
-        </div>
-        <div id="playerStatus" style="font-size:0.72rem;color:var(--text-secondary);"></div>
       </div>
 
       <!-- Plate Search -->
@@ -294,22 +284,25 @@ async function selectDate(dateStr) {
     const cameras = [...new Set((data.incidents || []).map(i => i.camera))];
     document.getElementById('spCameras').textContent = cameras.length ? cameras.join(', ') : '--';
 
-    // Load playback segments for this date
-    loadPlaybackForDate(dateStr, cameras);
-
     if (!data.incidents || !data.incidents.length) {
       document.getElementById('spIncidents').innerHTML = `<div class="sp-empty"><i class="bi bi-check-circle"></i>No incidents on this date</div>`;
       return;
     }
 
     let html = '';
-    data.incidents.forEach(inc => {
+    data.incidents.forEach((inc, idx) => {
       const timeStr = inc.timestamp ? new Date(inc.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
       const duration = inc.duration_minutes ? inc.duration_minutes.toFixed(1) + ' min' : '';
       const plate = inc.plate_number || '';
 
-      const incId = `inc-${inc.id}`;
-      html += `<div class="sp-incident" style="cursor:pointer;" onclick="toggleIncident('${incId}')">
+      const raw = inc.image_url || inc.image_path || '';
+      const imgSrc = raw.startsWith('http') || raw.startsWith('/static') ? raw : (raw ? '/api/proxy_image?image_path=' + encodeURIComponent(raw) : '');
+      let videoUrl = inc.video_url || '';
+      if (videoUrl && videoUrl.includes('cloudinary') && videoUrl.includes('/upload/') && !videoUrl.includes('f_mp4')) {
+        videoUrl = videoUrl.replace('/upload/', '/upload/f_mp4,vc_h264/');
+      }
+
+      html += `<div class="sp-incident" style="cursor:default;">
         <div class="sp-incident-header">
           <span class="sp-incident-camera"><i class="bi bi-camera-video"></i> ${inc.camera || 'Unknown'}</span>
           <span class="sp-incident-time"><i class="bi bi-clock"></i> ${timeStr}</span>
@@ -319,17 +312,12 @@ async function selectDate(dateStr) {
           ${duration ? `<span><i class="bi bi-hourglass-split"></i> ${duration}</span>` : ''}
           ${plate ? `<span><i class="bi bi-card-text"></i> ${plate}</span>` : ''}
         </div>
-        <div id="${incId}" class="sp-incident-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #eee;font-size:0.75rem;">
-          <div style="color:#666;margin-bottom:4px;"><strong>Tracker ID:</strong> ${inc.tracker_id || 'N/A'}</div>
-          <div style="color:#666;margin-bottom:4px;"><strong>Confidence:</strong> ${inc.confidence ? (inc.confidence * 100).toFixed(1) + '%' : 'N/A'}</div>
-          <div style="color:#666;margin-bottom:4px;"><strong>Plate:</strong> ${plate || 'Not visible'}</div>
-          <div style="color:#666;margin-bottom:4px;"><strong>Full Time:</strong> ${inc.timestamp || 'N/A'}</div>
-          ${(() => {
-            const raw = inc.image_url || inc.image_path || '';
-            const imgSrc = raw.startsWith('http') || raw.startsWith('/static') ? raw : (raw ? '/api/proxy_image?image_path=' + encodeURIComponent(raw) : '');
-            return imgSrc ? '<div style="margin-top:6px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;border:1px solid #ddd;" onerror="this.style.display=\'none\'"></div>' : '<div style="color:#aaa;margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>';
-          })()}
-          ${inc.video_url ? `<div style="margin-top:6px;"><video controls playsinline style="max-width:100%;border-radius:8px;background:#000;" preload="metadata"><source src="${inc.video_url}" type="video/mp4"></video></div>` : '<div style="color:#aaa;margin-top:4px;"><i class="bi bi-camera-video"></i> No video clip</div>'}
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:0.75rem;">
+          <div style="color:var(--text-secondary);margin-bottom:4px;"><strong>Tracker ID:</strong> ${inc.tracker_id || 'N/A'}</div>
+          <div style="color:var(--text-secondary);margin-bottom:4px;"><strong>Confidence:</strong> ${inc.confidence ? (inc.confidence * 100).toFixed(1) + '%' : 'N/A'}</div>
+          ${plate ? `<div style="color:var(--text-secondary);margin-bottom:4px;"><strong>Plate:</strong> ${plate}</div>` : ''}
+          ${imgSrc ? `<div style="margin-top:6px;"><img src="${imgSrc}" style="max-width:100%;border-radius:8px;border:1px solid var(--border);" onerror="this.style.display='none'" loading="lazy"></div>` : '<div style="color:var(--muted);margin-top:6px;"><i class="bi bi-image"></i> No image captured</div>'}
+          ${videoUrl ? `<div style="margin-top:6px;"><video controls playsinline style="max-width:100%;border-radius:8px;background:#000;" preload="metadata"><source src="${videoUrl}" type="video/mp4"></video></div>` : '<div style="color:var(--muted);margin-top:4px;"><i class="bi bi-camera-video-off"></i> No video clip</div>'}
         </div>
       </div>`;
     });
@@ -342,49 +330,8 @@ async function selectDate(dateStr) {
   }
 }
 
-function toggleIncident(id) {
-  const el = document.getElementById(id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
 
-// ===== Playback integration =====
-async function loadPlaybackForDate(dateStr, cameras) {
-  const section = document.getElementById('playbackSection');
-  const btns = document.getElementById('segmentBtns');
-  const player = document.getElementById('sidePlayer');
-  const status = document.getElementById('playerStatus');
-  player.style.display = 'none';
-  status.textContent = '';
 
-  try {
-    // Try loading segments for Camera_1 first
-    const camera = 'Camera_1';
-    const resp = await fetch(`/api/playback/segments?camera=${camera}&date=${dateStr}`);
-    const segments = await resp.json();
-
-    if (!segments || !segments.length) {
-      section.style.display = 'none';
-      return;
-    }
-
-    section.style.display = 'block';
-    btns.innerHTML = segments.map(s => {
-      const url = s.video_url || `/api/playback/stream?camera=${camera}&date=${dateStr}&time=${encodeURIComponent(s.time)}`;
-      return `<button class="btn btn-sm" style="background:var(--primary-lighter);color:var(--primary);font-size:0.7rem;font-weight:600;border-radius:8px;padding:0.25rem 0.5rem;" onclick="playSeg('${camera}','${dateStr}','${s.time}','${url}')"><i class="bi bi-play-fill"></i> ${s.time}</button>`;
-    }).join('');
-  } catch(e) {
-    section.style.display = 'none';
-  }
-}
-
-function playSeg(camera, date, time, url) {
-  const player = document.getElementById('sidePlayer');
-  player.src = url || `/api/playback/stream?camera=${camera}&date=${date}&time=${encodeURIComponent(time)}`;
-  player.style.display = 'block';
-  player.load();
-  player.play();
-  document.getElementById('playerStatus').textContent = `Playing: ${camera} - ${date} ${time}`;
-}
 
 // ===== Plate search =====
 async function searchPlate() {

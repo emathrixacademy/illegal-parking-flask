@@ -28,12 +28,7 @@ except ImportError:
     detect_garbage = None
 from tamper_detect import TamperDetector
 from health_monitor import HealthMonitor
-try:
-    from recorder import ContinuousRecorder, get_recording_dates, get_recording_segments
-except ImportError:
-    ContinuousRecorder = None
-    get_recording_dates = lambda c=None: []
-    get_recording_segments = lambda c, d: []
+# Continuous recorder removed — recordings only happen per-violation (60s clips)
 import sys
 
 app = Flask(__name__)
@@ -225,46 +220,8 @@ def health():
     }
     return jsonify(health_mon.get_full_health(cameras))
 
-# Feature 13: Recording/Playback routes
-@app.route('/api/recording_dates')
-def api_recording_dates():
-    """List available recording dates per camera."""
-    camera = request.args.get('camera')
-    return jsonify(get_recording_dates(camera))
 
-@app.route('/api/recording_segments')
-def api_recording_segments():
-    """List available segments for a camera and date."""
-    camera = request.args.get('camera', 'Camera_1')
-    date = request.args.get('date')
-    if not date:
-        return jsonify({"error": "date parameter required"}), 400
-    return jsonify(get_recording_segments(camera, date))
 
-@app.route('/api/playback')
-def api_playback():
-    """Serve a recorded video file."""
-    camera = request.args.get('camera', 'Camera_1')
-    date = request.args.get('date')
-    time_str = request.args.get('time')
-    if not date or not time_str:
-        return jsonify({"error": "date and time parameters required"}), 400
-    try:
-        from recorder import RECORDING_DIR
-    except ImportError:
-        return jsonify({"error": "Recording module not available"}), 404
-    filename = f"{time_str.replace(':', '-')}.mp4"
-    filepath = os.path.join(RECORDING_DIR, camera, date, filename)
-    if not os.path.exists(filepath):
-        return jsonify({"error": "Recording not found"}), 404
-    def generate():
-        with open(filepath, 'rb') as f:
-            while True:
-                chunk = f.read(8192)
-                if not chunk:
-                    break
-                yield chunk
-    return Response(generate(), content_type='video/mp4')
 
 @app.route('/api/get_pi_url')
 def get_pi_url():
@@ -959,20 +916,8 @@ if CAM1_HIRES_URL:
 if CAM2_HIRES_URL:
     hires_captures["Camera_2"] = HiResCapture(CAM2_HIRES_URL)
 
-# Feature 13: Start continuous recorders
-recorders = {}
-if ContinuousRecorder is not None:
-    try:
-        rec_cam1_url = CAM1_HIRES_URL or CAM1_URL
-        recorders["Camera_1"] = ContinuousRecorder("Camera_1", rec_cam1_url)
-        recorders["Camera_2"] = ContinuousRecorder("Camera_2", CAM2_URL)
-        for rec in recorders.values():
-            rec.start()
-        logger.info("Continuous recorders started.")
-    except Exception as e:
-        logger.warning(f"Could not start recorders: {e}")
-else:
-    logger.info("ContinuousRecorder not available, skipping.")
+
+
 
 # Feature 14: Set reference frames after a short delay
 def _set_reference_frames():
