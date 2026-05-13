@@ -11,7 +11,7 @@
   padding: 0.5rem;
 }
 .cam-card.primary-cam .cam-feed-wrap { aspect-ratio: 16/9; }
-.cam-row-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.cam-row-secondary { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
 .cam-card {
   background: var(--card);
   border-radius: 12px;
@@ -68,10 +68,10 @@
   right: 6px;
   z-index: 10;
   display: flex;
-  gap: 3px;
+  gap: 4px;
 }
-.zoom-btns .btn { font-size: 0.7rem; padding: 0.2rem 0.35rem; }
-.zoom-btns .zoom-level { font-size: 0.65rem; align-self: center; }
+.zoom-btns .btn { font-size: 0.8rem; padding: 0.3rem 0.45rem; min-width: 32px; min-height: 32px; }
+.zoom-btns .zoom-level { font-size: 0.7rem; align-self: center; }
 
 /* Status widgets */
 .status-bar {
@@ -189,7 +189,18 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 .insight-card .ic-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
 .insight-card .ic-desc { font-size: 0.8rem; line-height: 1.45; color: var(--text-secondary); }
 
+/* ===== Mobile: camera management & model perf ===== */
+.cam-mgmt-controls { display: flex; flex-direction: column; gap: 0.4rem; }
+.cam-mgmt-controls select, .cam-mgmt-controls button { width: 100%; }
+.model-perf-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+.analytics-2col { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+
 /* ===== Tablet+ ===== */
+@media (min-width: 480px) {
+  .cam-row-secondary { grid-template-columns: 1fr 1fr; }
+  .cam-mgmt-controls { flex-direction: row; }
+  .cam-mgmt-controls select, .cam-mgmt-controls button { width: auto; }
+}
 @media (min-width: 768px) {
   .cam-grid { grid-template-columns: 1fr; gap: 0.75rem; padding: 0.75rem; }
   .cam-row-secondary { gap: 0.75rem; }
@@ -200,6 +211,8 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
   .chart-wrap canvas { max-width: 200px; max-height: 200px; }
   #summary-cards { grid-template-columns: repeat(4, 1fr) !important; }
   #insights-container { grid-template-columns: repeat(3, 1fr) !important; }
+  .model-perf-grid { grid-template-columns: 1fr 1fr; }
+  .analytics-2col { grid-template-columns: 1fr 1fr; }
   div[style*="grid-template-columns:1fr; gap:0;"] { grid-template-columns: 1fr 1fr !important; }
 }
 @media (min-width: 1024px) {
@@ -288,7 +301,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
       <div id="camMgmtPanel" style="display:none;margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.5rem;">
         <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem;">Assign IP addresses to cameras. CCTV 1 is the main camera and cannot be removed.</div>
         <div id="camConfigList"></div>
-        <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;">
+        <div class="cam-mgmt-controls" style="margin-top:0.5rem;align-items:center;">
           <select id="addCamSelect" class="form-select" style="font-size:0.78rem;max-width:200px;padding:0.3rem 0.5rem;">
             <option value="">Add camera...</option>
             <option value="Camera_3">Camera 3</option>
@@ -348,11 +361,11 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 <!-- Quick Stats (Pie + Counts) -->
 <div class="content-card">
   <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-    <div class="stat-card chart-wrap" style="grid-row:span 2;">
+  <div class="analytics-2col">
+    <div class="stat-card chart-wrap">
       <canvas id="analyticsChart" width="200" height="200"></canvas>
     </div>
-    <div class="stat-card" id="typeCounts" style="grid-row:span 2;">
+    <div class="stat-card" id="typeCounts">
       <div class="vehicle-row" id="typeCountGrid" style="grid-template-columns:1fr 1fr;gap:0.5rem;">
         <!-- Populated dynamically -->
       </div>
@@ -402,7 +415,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 <div class="content-card">
   <h2><i class="bi bi-cpu"></i> Model Performance</h2>
   <p class="small-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Detection and recognition model evaluation metrics.</p>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+  <div class="model-perf-grid">
     <!-- YOLOv8 -->
     <div style="background:var(--bg);border-radius:12px;padding:1rem;border:1px solid var(--border);">
       <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.75rem;">
