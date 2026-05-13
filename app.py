@@ -424,6 +424,12 @@ def logout():
 # Routes – UI (all protected by login_required)
 # ==================================================
 @app.route('/')
+def landing():
+    if 'user' in session:
+        return redirect(url_for('index'))
+    return render_template('landing.html')
+
+@app.route('/dashboard')
 @login_required
 def index():
     return render_template('index.html', user=session.get('user'), public_url=PI_PUBLIC_URL or "", active_page='home')

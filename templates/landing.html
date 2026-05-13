@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
+  <meta name="theme-color" content="#2d1b69">
+  <title>DECONGESTILAGUNA — Illegal Parking Detection System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      background: #f4f6fb;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #2d1b69 0%, #5b3fbc 100%);
+      color: #fff;
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+    .hero-logo {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: rgba(255,255,255,0.15);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .hero-logo i { font-size: 1.8rem; }
+    .hero h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .hero p { font-size: 0.92rem; opacity: 0.85; max-width: 500px; margin: 0 auto 1.5rem; line-height: 1.6; }
+    .hero-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: #fff; color: #2d1b69;
+      padding: 0.75rem 1.75rem; border-radius: 10px;
+      text-decoration: none; font-weight: 700; font-size: 0.92rem;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .hero-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+
+    .features {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem;
+    }
+    .features h2 {
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #2d1b69;
+      margin-bottom: 1.5rem;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    .feature-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .feature-card:hover { border-color: #5b3fbc; box-shadow: 0 4px 12px rgba(45,27,105,0.08); }
+    .feature-icon {
+      width: 40px; height: 40px; min-width: 40px;
+      border-radius: 10px;
+      background: #f0ecf9;
+      color: #2d1b69;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .feature-card h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 0.2rem; color: #1e293b; }
+    .feature-card p { font-size: 0.78rem; color: #64748b; line-height: 1.5; margin: 0; }
+
+    .footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    @media (min-width: 480px) {
+      .feature-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 768px) {
+      .hero { padding: 4rem 2rem 3rem; }
+      .hero h1 { font-size: 2rem; }
+      .hero p { font-size: 1rem; }
+      .feature-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .feature-card { padding: 1.5rem; }
+    }
+    @media (min-width: 1024px) {
+      .feature-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-logo"><i class="bi bi-camera-video-fill"></i></div>
+  <h1>DECONGESTILAGUNA</h1>
+  <p>AI-powered illegal parking detection and traffic monitoring system for Laguna. Real-time CCTV surveillance with automated violation tracking.</p>
+  <a href="/login" class="hero-btn"><i class="bi bi-box-arrow-in-right"></i> Login to Dashboard</a>
+</section>
+
+<section class="features">
+  <h2>System Features</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-eye-fill"></i></div>
+      <div>
+        <h3>Live CCTV Monitoring</h3>
+        <p>Real-time video feeds from multiple cameras with zoom controls and reconnection handling.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-cpu"></i></div>
+      <div>
+        <h3>AI Vehicle Detection</h3>
+        <p>YOLOv8 object detection on Hailo-8L edge AI accelerator for real-time vehicle identification.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      <div>
+        <h3>Violation Tracking</h3>
+        <p>Automated detection of illegal parking violations with image capture and 60-second video recording.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-card-text"></i></div>
+      <div>
+        <h3>Plate Number Recognition</h3>
+        <p>EasyOCR-based license plate reading for vehicle identification and searchable records.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-bell-fill"></i></div>
+      <div>
+        <h3>Instant Alerts</h3>
+        <p>Email and SMS notifications with captured images sent immediately when violations are detected.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-bar-chart-fill"></i></div>
+      <div>
+        <h3>Analytics Dashboard</h3>
+        <p>Comprehensive statistics, heatmaps, trends, and camera comparison charts for data-driven insights.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-calendar3"></i></div>
+      <div>
+        <h3>Incident Calendar</h3>
+        <p>Browse violations by date with incident reports, images, and video playback for each event.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-shield-lock-fill"></i></div>
+      <div>
+        <h3>Admin Review</h3>
+        <p>Review and approve violations, generate enforcement reports, and manage user access.</p>
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="bi bi-camera-fill"></i></div>
+      <div>
+        <h3>Tamper Detection</h3>
+        <p>Automatic alerts when cameras are moved, obstructed, or defocused to ensure system integrity.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  DECONGESTILAGUNA &copy; 2026 — Illegal Parking Detection System
+</footer>
+
+</body>
+</html>

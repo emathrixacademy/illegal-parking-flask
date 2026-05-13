@@ -122,11 +122,11 @@ a.stat-card:hover, a.scard-link:hover {
   border-color: var(--primary-light);
   box-shadow: 0 4px 12px rgba(45,27,105,0.12);
 }
-.stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-.stat-value { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+.stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.stat-value { font-size: 1.3rem; font-weight: 800; color: var(--text); }
 .stat-value.accent { color: var(--accent); }
-.chart-wrap { display: flex; justify-content: center; align-items: center; min-height: 160px; }
-.chart-wrap canvas { max-width: 180px; max-height: 180px; }
+.chart-wrap { display: flex; justify-content: center; align-items: center; min-height: 140px; }
+.chart-wrap canvas { max-width: 160px; max-height: 160px; }
 
 /* Vehicle count cards */
 .vehicle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
@@ -180,14 +180,14 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 }
 
 /* Summary cards */
-#summary-cards .scard { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; }
-#summary-cards .scard .sc-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
-#summary-cards .scard .sc-value { font-size: 1.5rem; font-weight: 800; color: var(--text); }
-#summary-cards .scard .sc-sub { font-size: 0.7rem; color: var(--muted); }
+#summary-cards .scard { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; overflow: hidden; word-break: break-word; }
+#summary-cards .scard .sc-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+#summary-cards .scard .sc-value { font-size: 1.2rem; font-weight: 800; color: var(--text); }
+#summary-cards .scard .sc-sub { font-size: 0.65rem; color: var(--muted); }
 /* Insight cards */
-.insight-card { border-radius: 10px; padding: 0.85rem; }
-.insight-card .ic-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
-.insight-card .ic-desc { font-size: 0.8rem; line-height: 1.45; color: var(--text-secondary); }
+.insight-card { border-radius: 10px; padding: 0.75rem; overflow: hidden; word-break: break-word; }
+.insight-card .ic-title { font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+.insight-card .ic-desc { font-size: 0.78rem; line-height: 1.45; color: var(--text-secondary); }
 
 /* ===== Mobile: camera management & model perf ===== */
 .cam-mgmt-controls { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -210,9 +210,12 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
   .report-grid { grid-template-columns: 1fr 1fr; }
   .chart-wrap canvas { max-width: 200px; max-height: 200px; }
   #summary-cards { grid-template-columns: repeat(4, 1fr) !important; }
+  #summary-cards .scard .sc-value { font-size: 1.5rem; }
+  #summary-cards .scard .sc-label { font-size: 0.65rem; }
   #insights-container { grid-template-columns: repeat(3, 1fr) !important; }
   .model-perf-grid { grid-template-columns: 1fr 1fr; }
   .analytics-2col { grid-template-columns: 1fr 1fr; }
+  .stat-value { font-size: 1.5rem; }
   div[style*="grid-template-columns:1fr; gap:0;"] { grid-template-columns: 1fr 1fr !important; }
 }
 @media (min-width: 1024px) {

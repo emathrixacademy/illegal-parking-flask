@@ -170,10 +170,12 @@
     .content-card {
       background: var(--card);
       border-radius: 14px;
-      padding: 1.5rem;
-      margin: 0.75rem;
+      padding: 1rem;
+      margin: 0.5rem;
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
       border: 1px solid var(--border);
+      overflow: hidden;
+      min-width: 0;
     }
     .content-card h2, .section-title {
       color: var(--text);
@@ -333,6 +335,12 @@
     .alert-danger { background: var(--danger-bg); color: var(--danger); }
     .alert-warning { background: var(--warning-bg); color: var(--warning); }
     .alert-info { background: var(--info-bg); color: var(--info); }
+
+    /* ===== GLOBAL MOBILE FIXES ===== */
+    * { min-width: 0; }
+    img, video, canvas { max-width: 100%; height: auto; }
+    table { word-break: break-word; }
+    .table-responsive-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
     /* ===== DESKTOP SIDEBAR ===== */
     .desktop-sidebar { display: none; }

@@ -4,8 +4,8 @@
 {% block header_title %}<i class="bi bi-shield-lock-fill"></i> Incident Review{% endblock %}
 
 {% block extra_css %}
-.admin-layout { display: grid; grid-template-columns: 1fr; gap: 0.75rem; padding: 0.75rem; }
-.admin-card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 0; overflow: hidden; }
+.admin-layout { display: grid; grid-template-columns: 1fr; gap: 0.5rem; padding: 0.5rem; }
+.admin-card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 0; overflow: hidden; min-width: 0; }
 
 /* Header bar inside cards */
 .card-topbar { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
@@ -15,7 +15,7 @@
 
 /* Filter bar */
 .filter-bar { padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; background: var(--bg); }
-.filter-bar .form-control, .filter-bar .form-select { font-size: 0.78rem; padding: 0.35rem 0.6rem; border-radius: 8px; max-width: 160px; }
+.filter-bar .form-control, .filter-bar .form-select { font-size: 0.78rem; padding: 0.35rem 0.6rem; border-radius: 8px; max-width: 100%; flex: 1 1 100px; min-width: 0; }
 .filter-btn { padding: 0.35rem 0.75rem; font-size: 0.75rem; border-radius: 8px; font-weight: 600; }
 
 /* Table */
@@ -24,7 +24,7 @@
 .admin-table tbody tr { cursor: pointer; transition: background 0.1s; }
 .admin-table tbody tr.selected { background: var(--primary-lighter) !important; }
 
-.table-scroll { max-height: 600px; overflow-y: auto; }
+.table-scroll { max-height: 600px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* Side panel */
 .detail-panel { padding: 0; }
@@ -66,9 +66,9 @@
 .rp-line.done { background: var(--success); }
 
 /* Decision buttons */
-.decision-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
+.decision-btns { display: grid; grid-template-columns: 1fr; gap: 0.4rem; margin-bottom: 0.75rem; }
 .decision-btn {
-  padding: 0.6rem 0.5rem; border-radius: 12px;
+  padding: 0.5rem 0.5rem; border-radius: 12px;
   border: 1px solid var(--border); background: var(--card);
   cursor: pointer; font-weight: 700; font-size: 0.75rem;
   text-align: center; transition: all 0.15s;
@@ -94,6 +94,9 @@
 .dp-empty i { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.25; }
 .dp-empty p { font-size: 0.85rem; margin: 0; }
 
+@media (min-width: 480px) {
+  .decision-btns { grid-template-columns: repeat(3, 1fr); }
+}
 @media (min-width: 1024px) {
   .admin-layout { grid-template-columns: 1fr 380px; padding: 1rem 1.5rem; }
   .table-scroll { max-height: 700px; }
