@@ -35,17 +35,16 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 - **Enforcement Tracking** - Mark violations as paid/enforced
 - **PDF Report Generation** - Filterable reports with daily/weekly/monthly breakdown (ReportLab)
 
-### Feature 13: OCR + Playback System
+### Feature 13: OCR + Plate Search
 - **License Plate Recognition** - EasyOCR-based offline plate text extraction from violation frames
 - **Plate Search** - Search violations by plate number across all records
-- **Continuous Recording** - Records RTSP streams to 1-hour MP4 segments on USB HDD
-- **7-Day Retention** - Automatic cleanup of recordings older than 7 days
-- **Video Playback** - Browse and play back recorded segments by camera and date
+- **Violation Recording** - 60-second MP4 clips recorded per violation, uploaded to Cloudinary
+- **Incident Calendar** - Browse violations by date with image and video playback per incident
 
 ### Feature 14: Tampering Detection
 - **Obstruction Detection** - Detects if the camera lens is covered (brightness analysis)
 - **Defocus/Spray Detection** - Detects blur via Laplacian variance
-- **Scene Change Detection** - SSIM-based comparison against reference frame
+- **Scene Change Detection** - SSIM-based comparison against reference frame (threshold 0.25, auto-refreshes every 30 min)
 - **Tamper Event Logging** - Saves last good frame and logs to database
 - **Dashboard Alerts** - Real-time tamper alert banner on the dashboard
 
@@ -92,7 +91,7 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 |---------|-------|----------|--------|
 | View Dashboard | Yes | Yes | Yes |
 | View Violations | Yes | Yes | Yes |
-| View Playback | Yes | Yes | Yes |
+| View Calendar | Yes | Yes | Yes |
 | Change Settings | Yes | Yes | No |
 | Configure Alerts | Yes | Yes | No |
 | Test SMTP | Yes | Yes | No |
@@ -103,7 +102,7 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
 ### Feature 19: Progressive Web App (PWA) + Mobile-First UI
 - **Installable PWA** - Add to home screen on mobile/desktop; standalone app mode
 - **Web App Manifest** - App name, icons (192/512 SVG), theme color (#352070)
-- **Service Worker v3** - Aggressive caching for offline-first experience
+- **Service Worker v4** - Aggressive caching for offline-first experience
   - Precaches all HTML pages, static assets, CDN resources (Bootstrap, Chart.js)
   - Separate data cache for API responses
   - Network-first strategy for API calls and HTML pages with cache fallback
@@ -116,7 +115,9 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
   - Tablet (768px+): 2-column grids, larger nav icons
   - Desktop (1024px+): Sidebar navigation replaces bottom nav
   - Wide desktop (1400px+): Expanded content cards
-- **Bottom Navigation Bar** - Home, Violations, Playback, Settings (operator+), More menu
+- **Landing Page** - Public landing page with system features overview for unauthenticated visitors
+- **Password Visibility Toggle** - Show/hide password on login pages for input verification
+- **Bottom Navigation Bar** - Home, Violations, Calendar, Settings (operator+), More menu
 - **Slide-Up "More" Sheet** - User info, Admin Panel, User Management (admin), Logout
 - **Desktop Sidebar** - Auto-switches at 1024px+ with full navigation links
 - **Clean Light Theme** - CSS variables: `--bg: #f0f2f7`, `--card: #ffffff`, `--primary: #352070`
@@ -188,9 +189,10 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
               | - YOLOv8     |    | - config      |
               | - ByteTrack  |    | - plate_records|
               | - EasyOCR    |    | - tamper_events|
-              | - Recording  |    | - alert_log   |
-              | - Tampering  |    | - users       |
-              | - Health Mon |    | - activity_log|
+              | - Violation  |    | - alert_log   |
+              |   Recorder   |    | - users       |
+              | - Tampering  |    | - activity_log|
+              | - Health Mon |
               +------+-------+   +---------------+
                      |
               +------+------+
@@ -198,10 +200,6 @@ An AI-powered illegal parking detection system using YOLOv8 object detection wit
               | Camera 1    |
               | Camera 2    |
               +------+------+
-                     |
-              USB HDD (/mnt/recording)
-              1-hour MP4 segments
-              7-day retention
 ```
 
 ## Requirements
@@ -230,7 +228,6 @@ easyocr
 ### Hardware (Edge Device)
 - Raspberry Pi 5 (8GB RAM)
 - Hailo-8L AI Accelerator (13 TOPS) - optional, CPU fallback available
-- 4TB USB HDD for continuous recording
 - 4MP varifocal camera + IR illuminator for plate recognition
 - PoE IP cameras (2x) for parking zone monitoring
 
@@ -312,7 +309,7 @@ This starts:
 - Cloudflare tunnel for public URL
 - Camera stream connections
 - Parking monitor + detection pipeline
-- Continuous recorders (1-hour MP4 segments)
+- Violation recorder (60s clips per incident, uploaded to Cloudinary)
 - Tamper detection (obstruction, defocus, scene change)
 - Health monitoring (CPU, RAM, disk, cameras)
 
@@ -405,19 +402,20 @@ Port:     22
 
 ## API Documentation
 
-### Authentication Routes
+### Public Routes
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/` | GET | Landing page (system features overview for visitors) |
 | `/login` | GET/POST | Login page and form submission |
 | `/logout` | GET | Logout and clear session |
 
 ### UI Routes (all require login)
 | Endpoint | Method | Role | Description |
 |----------|--------|------|-------------|
-| `/` | GET | Any | Main dashboard (live feeds, analytics, notifications) |
+| `/dashboard` | GET | Any | Main dashboard (live feeds, analytics, notifications) |
 | `/violations` | GET | Any | Violations timeline with image zoom |
-| `/calendar` | GET | Any | Incident heatmap calendar with drill-down |
-| `/playback` | GET | Any | Video playback + plate search |
+| `/calendar` | GET | Any | Incident calendar with violation clips |
+| `/playback` | GET | Any | Redirects to calendar |
 | `/settings` | GET | Operator+ | Settings, alert config, SMTP test |
 | `/8f3c9a2d71b4e6c0f9d2a8b7c4e1` | GET | Admin | Admin panel (violations table, fines) |
 | `/user-management` | GET | Admin | User CRUD + activity log |
@@ -472,13 +470,6 @@ Port:     22
 | `/api/list_images` | GET | Raw image list from Pi |
 | `/video_feed_c1` | GET | MJPEG stream proxy for Camera 1 |
 | `/video_feed_c2` | GET | MJPEG stream proxy for Camera 2 |
-
-### Playback API
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/playback/dates` | GET | Available recording dates |
-| `/api/playback/segments` | GET | Segments for date (`?camera=...&date=...`) |
-| `/api/playback/stream` | GET | Stream MP4 segment (HTTP range support) |
 
 ### Plate Search API
 | Endpoint | Method | Description |
@@ -623,7 +614,7 @@ illegal-parking/
 ├── config.py                   # Static configuration (cameras, zones, thresholds)
 ├── app_detect.py               # YOLOv8/Hailo detection engine
 ├── ocr_module.py               # License plate OCR (EasyOCR)
-├── recorder.py                 # Continuous 1-hour MP4 recording
+├── recorder.py                 # Violation clip recorder (60s per incident)
 ├── tamper_detect.py            # Camera tampering detection (SSIM)
 ├── health_monitor.py           # System health monitoring (psutil)
 ├── zone_selector.py            # Interactive parking zone polygon editor
@@ -634,11 +625,11 @@ illegal-parking/
 ├── setup_pi.sh                 # Automated Pi 5 setup (deps, service, auto-pull)
 ├── templates/
 │   ├── base.html               # Master template (mobile-first, PWA, clean light theme)
+│   ├── landing.html            # Public landing page (system features overview)
 │   ├── index.html              # Dashboard (live feeds, analytics, notification bell)
-│   ├── login.html              # Login page (standalone, PWA-enabled)
+│   ├── login.html              # Login page (password toggle, PWA-enabled)
 │   ├── violations.html         # Violations timeline with image zoom
-│   ├── playback.html           # Video playback + plate search
-│   ├── calendar.html           # Incident heatmap calendar with drill-down
+│   ├── calendar.html           # Incident calendar with violation clips
 │   ├── settings.html           # Settings + alert config + SMTP test
 │   ├── admin.html              # Admin panel (paginated violations + fines)
 │   ├── user_management.html    # User CRUD + activity log
@@ -646,7 +637,7 @@ illegal-parking/
 │   └── history.html            # Placeholder for future history features
 ├── static/
 │   ├── manifest.json           # PWA manifest (installable app)
-│   ├── sw.js                   # Service worker v3 (offline-first + background sync)
+│   ├── sw.js                   # Service worker v4 (offline-first + background sync)
 │   ├── icons/
 │   │   ├── icon-192.svg        # PWA icon 192x192
 │   │   └── icon-512.svg        # PWA icon 512x512
@@ -899,11 +890,11 @@ Only needed if the quick fix above doesn't work.
 
 ## Known Stable Commit
 
-**Commit `81cc5c4`** (May 10, 2026) — fully working and verified in production.
+**Commit `f45d5c1`** (May 12, 2026) — fully working and verified in production.
 
 To revert to this known-good state:
 ```bash
-git reset --hard 81cc5c4
+git reset --hard f45d5c1
 ```
 
 What works at this commit:
@@ -916,6 +907,18 @@ What works at this commit:
 - Pi SSH: `admin` / `admin123`
 
 ## Changelog
+
+### May 12, 2026 - Mobile Responsive, Landing Page, Security & Cleanup
+- **Mobile Responsive**: All pages fully responsive with mobile-first CSS, proper breakpoints (480px, 768px, 1024px), stacking layouts, and touch-friendly controls
+- **Landing Page**: Public landing page at `/` with system features overview for unauthenticated visitors; dashboard moved to `/dashboard`
+- **Password Toggle**: Show/hide password on login and admin login pages
+- **Removed Continuous Recorder**: Eliminated 24/7 recording that wasted Cloudinary storage; violations now only produce 60s clips per incident
+- **Calendar Redesign**: Shows only violation-specific incident reports (image + 60s video) instead of continuous recording segments
+- **Tamper Detection Tuning**: Lowered SSIM threshold to 0.25, added 30-minute auto-refresh of reference frames to reduce false alerts
+- **Security Fix**: Open redirect vulnerability in `/api/image_from_db` — now validates Cloudinary URLs before redirect
+- **Code Cleanup**: Removed orphaned `recordings` table creation, dead `get_current_settings()` function, added response validation in analytics fetch
+- **Service Worker v4**: Updated precache URLs, replaced `/playback` with `/calendar`, added `/dashboard`
+- **Navigation Updates**: Bottom nav Playback replaced with Calendar, `/playback` redirects to `/calendar`
 
 ### May 10, 2026 - Hailo Fix, Disk Cleanup & Cloudinary Tamper Upload
 - **Hailo Acceleration Restored**: Installed `python3-hailort` + `hailort-pcie-driver`, symlinked to venv

@@ -1,11 +1,12 @@
-const CACHE_NAME = 'decongestilaguna-v3';
+const CACHE_NAME = 'decongestilaguna-v4';
 const DATA_CACHE = 'decongestilaguna-data-v1';
 
 // Pages & static assets to precache for offline access
 const PRECACHE_URLS = [
   '/',
+  '/dashboard',
   '/violations',
-  '/playback',
+  '/calendar',
   '/settings',
   '/login',
   '/static/manifest.json',

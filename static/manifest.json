@@ -2,7 +2,7 @@
   "name": "DECONGESTILAGUNA - Illegal Parking Detection",
   "short_name": "DECONGESTILAGUNA",
   "description": "AI-powered illegal parking detection system",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#181c23",
   "theme_color": "#181c23",

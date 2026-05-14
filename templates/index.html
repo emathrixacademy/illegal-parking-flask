@@ -676,6 +676,7 @@ function saveCamConfig() {
 async function updateHealth() {
     try {
         const r = await fetch('/api/system_health');
+        if (!r.ok) return;
         const d = await r.json();
         const ind = document.getElementById('healthIndicator'), txt = document.getElementById('healthText');
         if(!ind||!txt) return;

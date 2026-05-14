@@ -263,6 +263,7 @@ function renderTable(items) {
   items.forEach(row => {
     const tr = document.createElement('tr');
     tr.className = row.id === selectedId ? 'selected' : '';
+    tr.dataset.id = row.id;
     tr.onclick = () => selectIncident(row.id);
     const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;
     const detBadge = conf >= 0.5
@@ -288,7 +289,7 @@ function selectIncident(id) {
 
   // Highlight row
   document.querySelectorAll('#violationsTable tbody tr').forEach(tr => {
-    tr.classList.toggle('selected', tr.querySelector('td')?.textContent == id);
+    tr.classList.toggle('selected', tr.dataset.id == id);
   });
 
   const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;

@@ -78,10 +78,6 @@ init_default_settings()
 # --------------------------------------------------
 # Config helpers (local config.py)
 # --------------------------------------------------
-def get_current_settings():
-    """Get settings from database."""
-    return get_all_settings()
-
 def update_config(new_settings):
     import importlib
     import json as pyjson
@@ -314,23 +310,13 @@ def ensure_violations_table():
             except Exception:
                 conn.rollback()
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS recordings (
-                id SERIAL PRIMARY KEY,
-                camera_id VARCHAR(32),
-                date TEXT,
-                time TEXT,
-                video_url TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        cur.execute("""
             UPDATE violations SET image_url = image_path
             WHERE (image_url IS NULL OR image_url = '') AND image_path IS NOT NULL AND image_path != ''
         """)
         conn.commit()
         cur.close()
         return_connection(conn)
-        logger.info("Ensured 'violations' and 'recordings' tables exist in PostgreSQL.")
+        logger.info("Ensured 'violations' table exists in PostgreSQL.")
     except Exception as e:
         logger.error(f"Failed to ensure violations table: {e}")
 
@@ -459,7 +445,7 @@ def violations_page():
 @app.route('/playback')
 @login_required
 def playback_page():
-    return render_template('playback.html', user=session.get('user'), active_page='playback')
+    return redirect(url_for('calendar_page'))
 
 @app.route('/user-management')
 @login_required
@@ -1070,7 +1056,11 @@ def api_image_from_db():
     if not image_path:
         return jsonify({"success": False, "error": "Missing image_path"}), 400
     if image_path.startswith("http"):
-        return redirect(image_path)
+        from urllib.parse import urlparse
+        parsed = urlparse(image_path)
+        if parsed.hostname and 'cloudinary' in parsed.hostname:
+            return redirect(image_path)
+        return jsonify({"success": False, "error": "Invalid URL"}), 400
     safe_path = os.path.normpath(image_path)
     if ".." in safe_path or os.path.isabs(safe_path):
         return jsonify({"success": False, "error": "Invalid image_path"}), 400

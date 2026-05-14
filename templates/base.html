@@ -410,7 +410,7 @@
 <nav class="desktop-sidebar">
   <div class="sb-brand"><i class="bi bi-camera-video-fill"></i> DECONGESTILAGUNA</div>
   <div class="sb-nav">
-    <a href="/" class="{% if active_page == 'home' %}active{% endif %}"><i class="bi bi-house-door-fill"></i> Dashboard</a>
+    <a href="/dashboard" class="{% if active_page == 'home' %}active{% endif %}"><i class="bi bi-house-door-fill"></i> Dashboard</a>
     <a href="/violations" class="{% if active_page == 'violations' %}active{% endif %}"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
     <a href="/calendar" class="{% if active_page == 'calendar' %}active{% endif %}"><i class="bi bi-calendar3"></i> Calendar</a>
     {% if user and user.role in ['admin','operator'] %}
@@ -465,14 +465,14 @@
 </div>
 
 <nav class="bottom-nav">
-  <a href="/" class="{% if active_page == 'home' %}active{% endif %}">
+  <a href="/dashboard" class="{% if active_page == 'home' %}active{% endif %}">
     <i class="bi bi-house-door-fill"></i><span>Home</span>
   </a>
   <a href="/violations" class="{% if active_page == 'violations' %}active{% endif %}">
     <i class="bi bi-exclamation-triangle-fill"></i><span>Violations</span>
   </a>
-  <a href="/playback" class="{% if active_page == 'playback' %}active{% endif %}">
-    <i class="bi bi-play-circle-fill"></i><span>Playback</span>
+  <a href="/calendar" class="{% if active_page == 'calendar' %}active{% endif %}">
+    <i class="bi bi-calendar3"></i><span>Calendar</span>
   </a>
   {% if user and user.role in ['admin','operator'] %}
   <a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}">
