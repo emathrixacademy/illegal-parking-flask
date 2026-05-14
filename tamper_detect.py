@@ -67,11 +67,8 @@ class TamperDetector:
             self.last_alert_time = now
             return True, "DEFOCUS", {"blur_score": float(laplacian_var)}
 
-        # 3. SCENE CHANGE — has the camera been moved?
-        if self.reference_frame is not None and HAS_SKIMAGE:
-            score = ssim(self.reference_frame, small)
-            if score < self.ssim_threshold:
-                self.last_alert_time = now
-                return True, "SCENE_CHANGE", {"ssim_score": float(score)}
+        # 3. SCENE CHANGE — disabled for outdoor fixed CCTVs
+        # Natural lighting changes (sunrise, clouds, shadows) cause constant false positives.
+        # Obstruction and defocus checks above are sufficient for real tampering.
 
         return False, None, {}
