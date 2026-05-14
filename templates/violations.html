@@ -750,7 +750,7 @@ function violationCard(ev) {
   let imgSrc = ev.proxy_image_url || ev.local_image_url || ev.image_url || '';
 
   return `
-  <div class="violation-card" onclick="showZoomModalBySrc('${imgSrc}')">
+  <div class="violation-card" onclick="showZoomModalBySrc(this.dataset.img)" data-img="${imgSrc.replace(/"/g,'&quot;')}">
       <div class="violation-card-body">
           <div class="violation-card-title">
               <i class="bi bi-camera-video"></i> <b>${camera_id}</b>

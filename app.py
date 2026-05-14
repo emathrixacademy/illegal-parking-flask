@@ -10,7 +10,7 @@ from flask import (
     Flask, request, jsonify, Response,
     render_template, render_template_string,
     stream_with_context, make_response,
-    session, redirect, url_for
+    session, redirect, url_for, send_file
 )
 import requests
 import config
@@ -1005,7 +1005,7 @@ def upload_event():
             cur.execute("""
                 INSERT INTO violations (camera, tracker_id, label, timestamp, image_path, image_url, video_url, confidence_score, duration_minutes, barangay, enforced)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-            """, (camera_id, tracker_id, label, timestamp, img_path, image_url, video_url, confidence_score, duration_minutes, barangay or 'Bgry. Kanluran', enforced))
+            """, (camera_id, tracker_id, label, timestamp, img_path, image_url, video_url, confidence_score, duration_minutes, barangay or 'Brgy. Kanluran', enforced))
             violation_id = cur.fetchone()[0]
             conn.commit()
 
@@ -1070,9 +1070,7 @@ def api_image_from_db():
         return jsonify({"success": False, "error": "Invalid image_path"}), 400
     if not os.path.exists(abs_path):
         return jsonify({"success": False, "error": "Image not found"}), 404
-    with open(abs_path, "rb") as f:
-        data = f.read()
-    return Response(data, mimetype="image/jpeg")
+    return send_file(abs_path, mimetype="image/jpeg")
 
 @app.route('/api/proxy_image')
 @login_required
@@ -1157,21 +1155,9 @@ def static_files(filename):
         return "Forbidden", 403
     if not os.path.exists(abs_path):
         return "Not found", 404
-    if filename.endswith('.js'):
-        mimetype = 'application/javascript'
-    elif filename.endswith('.css'):
-        mimetype = 'text/css'
-    elif filename.endswith('.json'):
-        mimetype = 'application/json'
-    elif filename.endswith('.svg'):
-        mimetype = 'image/svg+xml'
-    elif filename.endswith('.png'):
-        mimetype = 'image/png'
-    else:
-        mimetype = 'application/octet-stream'
-    with open(abs_path, "rb") as f:
-        data = f.read()
-    return Response(data, mimetype=mimetype)
+    import mimetypes
+    mimetype = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    return send_file(abs_path, mimetype=mimetype)
 
 # --------------------------------------------------
 # Camera Status

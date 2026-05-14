@@ -687,7 +687,7 @@ async function pollNewViolations() {
 
 loadNotificationIncidents();
 pollNewViolations();
-setInterval(() => { pollNewViolations(); loadNotificationIncidents(); }, 5000);
+setInterval(() => { pollNewViolations(); }, 5000);
 </script>
 {% block scripts %}{% endblock %}
 </body>

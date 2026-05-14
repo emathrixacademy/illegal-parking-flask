@@ -206,6 +206,7 @@ async function loadMonth() {
 
   try {
     const resp = await fetch(`/api/calendar?month=${ym}`);
+    if (!resp.ok) throw new Error();
     incidentData = await resp.json();
   } catch(e) {
     incidentData = {};
@@ -287,6 +288,7 @@ async function selectDate(dateStr) {
 
   try {
     const resp = await fetch(`/api/calendar/details?date=${dateStr}`);
+    if (!resp.ok) throw new Error();
     const data = await resp.json();
 
     document.getElementById('spCount').textContent = data.total || 0;

@@ -332,7 +332,7 @@
 
     function loadDbStatus() {
         fetch('/api/db_settings')
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error(); return r.json(); })
             .then(data => {
                 if (data.VIOLATION_TIME_THRESHOLD !== undefined) {
                     document.getElementById('dbStatus').innerHTML =
