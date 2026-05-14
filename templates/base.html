@@ -73,16 +73,17 @@
     .page-header .brand {
       display: flex; align-items: center; gap: 0.5rem;
       color: #fff; font-weight: 700; font-size: 0.9rem;
-      white-space: nowrap;
+      white-space: nowrap; flex-shrink: 0;
     }
     .page-header .brand i { font-size: 1rem; }
     .page-header .page-title {
       color: rgba(255,255,255,0.8);
       font-size: 0.82rem; font-weight: 500;
-      white-space: nowrap;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0; flex: 1 1 0;
     }
     .page-header .header-actions {
-      display: flex; align-items: center; gap: 0.5rem;
+      display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
     }
     .page-header .user-pill {
       font-size: 0.72rem;
@@ -90,10 +91,18 @@
       border-radius: 20px;
       background: rgba(255,255,255,0.12);
       color: #fff; font-weight: 600;
-      white-space: nowrap;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 180px;
       display: flex; align-items: center; gap: 0.35rem;
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255,255,255,0.1);
+    }
+    @media (max-width: 576px) {
+      .page-header .user-pill { display: none; }
+      .page-header .page-title { font-size: 0.75rem; }
+    }
+    @media (min-width: 577px) and (max-width: 768px) {
+      .page-header .user-pill { max-width: 140px; }
     }
     .page-header .header-badge {
       font-size: 0.68rem;
