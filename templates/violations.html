@@ -615,6 +615,7 @@ async function loadViolations() {
       return;
     }
 
+    window._violationItems = data.items;
     body.innerHTML = data.items.map((v, i) => {
       const idx = (data.page - 1) * data.per_page + i + 1;
       const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '—';
@@ -632,7 +633,7 @@ async function loadViolations() {
       if (v.enforced) statusInfo = { icon: 'bi-shield-fill-check', label: 'Enforced', cls: 'enforced' };
       const status = `<span class="vt-status ${statusInfo.cls}"><i class="bi ${statusInfo.icon}"></i> ${statusInfo.label}</span>`;
 
-      return `<tr onclick="showDetail(${JSON.stringify(v).replace(/"/g, '&quot;')})">
+      return `<tr data-idx="${i}" style="cursor:pointer;">
         <td>${idx}</td>
         <td>${(v.camera || '').replace('_', ' ')}</td>
         <td><span class="vt-label-badge ${labelClass}">${v.label || '—'}</span></td>
@@ -645,6 +646,11 @@ async function loadViolations() {
     }).join('');
 
     renderPagination(data);
+
+    body.onclick = e => {
+      const tr = e.target.closest('tr[data-idx]');
+      if (tr) showDetail(window._violationItems[parseInt(tr.dataset.idx)]);
+    };
   } catch (e) {
     body.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Failed to load violations. Please try again.</td></tr>';
     console.error(e);

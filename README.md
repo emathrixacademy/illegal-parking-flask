@@ -633,8 +633,7 @@ illegal-parking/
 │   ├── settings.html           # Settings + alert config + SMTP test
 │   ├── admin.html              # Admin panel (paginated violations + fines)
 │   ├── user_management.html    # User CRUD + activity log
-│   ├── admin_login.html        # Legacy admin login
-│   └── history.html            # Placeholder for future history features
+│   └── admin_login.html        # Legacy admin login
 ├── static/
 │   ├── manifest.json           # PWA manifest (installable app)
 │   ├── sw.js                   # Service worker v4 (offline-first + background sync)
