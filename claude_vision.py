@@ -164,7 +164,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
   "garbage_found": true or false,
   "items": [
     {{
-      "label": "TRASH_CAN or GARBAGE or PLASTIC_BAG or DEBRIS or LITTER",
+      "label": "TRASH or ROCK or CHAIR or TREE or VENDOR",
       "confidence": 0.0 to 1.0,
       "description": "brief description",
       "bbox": [x1, y1, x2, y2]
@@ -222,7 +222,7 @@ CRITICAL RULES for bbox accuracy:
             x2 = int(max(0, min(bbox[2], send_w)) * scale_x)
             y2 = int(max(0, min(bbox[3], send_h)) * scale_y)
             detections.append({
-                "label": item.get("label", "GARBAGE"),
+                "label": item.get("label", "TRASH"),
                 "confidence": item.get("confidence", 0.5),
                 "description": item.get("description", ""),
                 "region": [x1, y1, x2, y2]

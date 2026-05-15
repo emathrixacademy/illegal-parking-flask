@@ -45,13 +45,9 @@ CLASS_NAMES = {0: "PERSON", 1: "BIKE", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "
 
 # CCTV AI classes (offset by +100 to avoid ID conflicts with COCO)
 CCTV_AI_CLASS_NAMES = {
-    100: "BASKET", 101: "BOTTLE", 102: "BOX", 103: "BUCKET",
-    104: "CAN", 105: "CANAL", 106: "CARDBOARD", 107: "CHAIR",
-    108: "CONTAINER", 109: "CRATE", 110: "CUP", 111: "FALLEN_TREE",
-    112: "GARBAGE", 113: "GROCERY_BAG", 114: "LEAVES", 115: "OPEN_CANAL",
-    116: "PAPER", 117: "PLASTIC", 118: "PLASTIC_BOTTLE", 119: "PLASTIC_CONTAINER",
-    120: "PLASTIC_BAG", 121: "POT", 122: "ROCK", 123: "SACK",
-    124: "TISSUE", 125: "TRASH", 126: "TRASH_CAN", 127: "VENDOR"
+    100: "BIKE", 101: "CAR", 102: "CHAIR", 103: "JEEP",
+    104: "MOTORCYCLE", 105: "ROCK", 106: "TRASH", 107: "TREE",
+    108: "TRICYCLE", 109: "VENDOR",
 }
 
 # Combined lookup for all class names

@@ -586,6 +586,9 @@ def api_tamper_event():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON"}), 400
 
+    if data.get('tamper_type') == 'SCENE_CHANGE':
+        return jsonify({"success": True, "note": "SCENE_CHANGE disabled"}), 200
+
     image_url = ""
     image_b64 = data.get("image")
     if image_b64:
@@ -625,7 +628,7 @@ def api_tamper_events():
     try:
         cur = conn.cursor()
         if unresolved:
-            cur.execute("SELECT * FROM tamper_events WHERE resolved = FALSE ORDER BY timestamp DESC LIMIT 50")
+            cur.execute("SELECT * FROM tamper_events WHERE resolved = FALSE AND tamper_type != 'SCENE_CHANGE' ORDER BY timestamp DESC LIMIT 50")
         else:
             cur.execute("SELECT * FROM tamper_events ORDER BY timestamp DESC LIMIT 50")
         rows = cur.fetchall()

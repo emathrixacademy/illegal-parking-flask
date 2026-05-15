@@ -28,12 +28,8 @@ def api_violation_counts():
             "CAR": "CAR", "MOTORCYCLE": "MOTORCYCLE"
         }
         CCTV_AI_LABELS = [
-            "BASKET", "BOTTLE", "BOX", "BUCKET", "CAN", "CANAL",
-            "CARDBOARD", "CHAIR", "CONTAINER", "CRATE", "CUP",
-            "FALLEN_TREE", "GARBAGE", "GROCERY_BAG", "LEAVES",
-            "OPEN_CANAL", "PAPER", "PLASTIC", "PLASTIC_BOTTLE",
-            "PLASTIC_CONTAINER", "PLASTIC_BAG", "POT", "ROCK",
-            "SACK", "TISSUE", "TRASH", "TRASH_CAN", "VENDOR"
+            "BIKE", "CHAIR", "JEEP", "ROCK", "TRASH",
+            "TREE", "TRICYCLE", "VENDOR",
         ]
         for lbl in CCTV_AI_LABELS:
             CLASS_MAP[lbl] = lbl

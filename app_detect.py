@@ -43,7 +43,7 @@ if HAILO_AVAILABLE and not USE_REMOTE_DETECTION:
 
     # Hailo-based detection
     VEHICLE_CLASSES = [0, 1, 2, 3, 5, 7]
-    CCTV_AI_CLASSES = list(range(28))
+    CCTV_AI_CLASSES = list(range(10))
 
     class HailoDetector:
         def __init__(self, hef_path, monitored_classes=None, conf_threshold=None):
