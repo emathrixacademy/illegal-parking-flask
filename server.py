@@ -1006,8 +1006,8 @@ STREAM_RESOLUTION = {
 
 def gen_single(stream, cam_name):
     res = STREAM_RESOLUTION.get(cam_name, (960, 540))
-    FRAME_INTERVAL = 1.0 / 15
-    JPEG_QUALITY = 80
+    FRAME_INTERVAL = 1.0 / 30
+    JPEG_QUALITY = 70
     while True:
         start_time = time.time()
         with proc_lock:
