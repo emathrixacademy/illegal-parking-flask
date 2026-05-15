@@ -663,7 +663,7 @@ class ParkingMonitor:
         tracked = self.trackers[name].update(pixel_boxes, res.conf, res.cls)
 
         yolo_has_garbage = any(d['cls'] >= 100 for d in tracked.values())
-        if not yolo_has_garbage and detect_garbage and vision_available():
+        if False and not yolo_has_garbage and detect_garbage and vision_available():
             try:
                 garbage_items = detect_garbage(frame, camera_id=name)
                 for g in garbage_items:
