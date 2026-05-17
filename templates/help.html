@@ -325,66 +325,249 @@
 
 <!-- ==================== CALENDAR ==================== -->
 <div class="help-section" id="help-calendar">
-  <h2><i class="bi bi-calendar3"></i> Calendar</h2>
-  <p>Visual timeline of incidents organized by date with color-coded severity indicators.</p>
+  <h2><i class="bi bi-calendar3"></i> Incident Calendar</h2>
+  <p>The calendar page gives you a visual overview of incidents organized by date. It has two main areas: the <strong>calendar grid</strong> on the left and the <strong>incident overview panel</strong> on the right.</p>
   <a href="/calendar" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Calendar</a>
 
-  <h3><i class="bi bi-calendar2-week-fill"></i> Calendar Grid</h3>
-  <p>Each date cell shows the incident count. Colors tell you the severity at a glance:</p>
+  <!-- Full page layout mockup -->
+  <div class="mock">
+    <div class="mock-label">Calendar page layout</div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.5rem;">
+      <div class="mock-card" style="text-align:center;padding:1.2rem;border:2px dashed #2d1b69;">
+        <i class="bi bi-calendar3" style="font-size:1.5rem;color:#2d1b69;"></i>
+        <div style="font-weight:700;font-size:0.8rem;margin-top:0.2rem;">Calendar Grid</div>
+        <div style="font-size:0.65rem;color:#888;">Monthly view with color-coded dates</div>
+      </div>
+      <div class="mock-card" style="text-align:center;padding:1.2rem;border:2px dashed #d97706;">
+        <i class="bi bi-layout-sidebar-inset-reverse" style="font-size:1.5rem;color:#d97706;"></i>
+        <div style="font-weight:700;font-size:0.8rem;margin-top:0.2rem;">Incident Overview Panel</div>
+        <div style="font-size:0.65rem;color:#888;">Details for the selected date</div>
+      </div>
+    </div>
+  </div>
+
+  <h3><i class="bi bi-calendar2-week-fill"></i> Calendar Grid (Left Side)</h3>
+  <p>The calendar shows one month at a time. Each date cell displays the number of incidents detected on that day. The cells are <strong>color-coded</strong> so you can instantly spot problem days:</p>
+
+  <!-- Color legend -->
+  <div class="mock">
+    <div class="mock-label">Color legend &mdash; what each color means</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.4rem;">
+      <div class="mock-card" style="text-align:center;background:#d1fae5;border:2px solid #059669;">
+        <span style="font-size:1.2rem;">&#9679;</span>
+        <div style="font-weight:700;font-size:0.78rem;color:#065f46;">Green</div>
+        <div style="font-size:0.65rem;color:#065f46;">No incidents<br>All clear!</div>
+      </div>
+      <div class="mock-card" style="text-align:center;background:#fef3c7;border:2px solid #d97706;">
+        <span style="font-size:1.2rem;color:#d97706;">&#9679;</span>
+        <div style="font-weight:700;font-size:0.78rem;color:#92400e;">Yellow</div>
+        <div style="font-size:0.65rem;color:#92400e;">1-3 incidents<br>Low activity</div>
+      </div>
+      <div class="mock-card" style="text-align:center;background:#fee2e2;border:2px solid #ef4444;">
+        <span style="font-size:1.2rem;color:#ef4444;">&#9679;</span>
+        <div style="font-weight:700;font-size:0.78rem;color:#991b1b;">Red</div>
+        <div style="font-size:0.65rem;color:#991b1b;">4+ incidents<br>High activity!</div>
+      </div>
+      <div class="mock-card" style="text-align:center;background:#f3f4f6;border:2px solid #9ca3af;">
+        <span style="font-size:1.2rem;color:#9ca3af;">&#9679;</span>
+        <div style="font-weight:700;font-size:0.78rem;color:#4b5563;">Gray</div>
+        <div style="font-size:0.65rem;color:#4b5563;">Passed date<br>Past days</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Calendar mockup -->
   <div class="mock">
-    <div class="mock-label">Calendar view</div>
-    <div style="display:flex;gap:0.6rem;margin-bottom:0.4rem;flex-wrap:wrap;">
-      <span style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><span style="width:10px;height:10px;border-radius:50%;background:#059669;display:inline-block;"></span> No incidents</span>
-      <span style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><span style="width:10px;height:10px;border-radius:50%;background:#d97706;display:inline-block;"></span> 1-3 incidents</span>
-      <span style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span> 4+ incidents</span>
+    <div class="mock-label">Example calendar &mdash; May 2026</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+      <div>
+        <div style="font-weight:700;font-size:0.85rem;">May 2026</div>
+        <div style="display:flex;gap:0.5rem;font-size:0.6rem;">
+          <span><span style="color:#059669;">&#9679;</span> No incidents</span>
+          <span><span style="color:#d97706;">&#9679;</span> 1-3</span>
+          <span><span style="color:#ef4444;">&#9679;</span> 4+</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.3rem;">
+        <span class="mock-btn outline" style="font-size:0.6rem;padding:0.2rem 0.4rem;"><i class="bi bi-chevron-left"></i></span>
+        <span class="mock-btn primary" style="font-size:0.6rem;padding:0.2rem 0.4rem;"><i class="bi bi-calendar-check"></i> Today</span>
+        <span class="mock-btn outline" style="font-size:0.6rem;padding:0.2rem 0.4rem;"><i class="bi bi-chevron-right"></i></span>
+      </div>
     </div>
     <div class="mock-cal">
       <div class="mock-cal-head">SUN</div><div class="mock-cal-head">MON</div><div class="mock-cal-head">TUE</div><div class="mock-cal-head">WED</div><div class="mock-cal-head">THU</div><div class="mock-cal-head">FRI</div><div class="mock-cal-head">SAT</div>
-      <div class="mock-cal-day green">10<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
-      <div class="mock-cal-day red">11<br><span style="font-size:0.55rem;color:#991b1b;">265</span></div>
-      <div class="mock-cal-day red">12<br><span style="font-size:0.55rem;color:#991b1b;">317</span></div>
-      <div class="mock-cal-day yellow selected">13<br><span style="font-size:0.55rem;">10</span></div>
-      <div class="mock-cal-day green">14<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
-      <div class="mock-cal-day green">15<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
-      <div class="mock-cal-day green">16<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day" style="color:#ccc;">26</div><div class="mock-cal-day" style="color:#ccc;">27</div><div class="mock-cal-day" style="color:#ccc;">28</div><div class="mock-cal-day" style="color:#ccc;">29</div><div class="mock-cal-day" style="color:#ccc;">30</div>
+      <div class="mock-cal-day green">1<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">2<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">3<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">4<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">5<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">6<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">7<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">8<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">9<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day red">10<br><span style="font-size:0.5rem;color:#991b1b;">147</span></div>
+      <div class="mock-cal-day red selected" style="border:2px solid #2d1b69;">11<br><span style="font-size:0.5rem;">265</span></div>
+      <div class="mock-cal-day red">12<br><span style="font-size:0.5rem;color:#991b1b;">317</span></div>
+      <div class="mock-cal-day yellow">13<br><span style="font-size:0.5rem;color:#92400e;">10</span></div>
+      <div class="mock-cal-day green">14<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">15<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">16<br><span style="font-size:0.5rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day today green">17<br><span style="font-size:0.5rem;">Today</span></div>
+      <div class="mock-cal-day" style="color:#ccc;">18</div><div class="mock-cal-day" style="color:#ccc;">19</div><div class="mock-cal-day" style="color:#ccc;">20</div><div class="mock-cal-day" style="color:#ccc;">21</div><div class="mock-cal-day" style="color:#ccc;">22</div><div class="mock-cal-day" style="color:#ccc;">23</div>
     </div>
-    <div style="font-size:0.68rem;color:#f59e0b;font-weight:600;margin-top:0.3rem;"><span class="pointer-arrow"><i class="bi bi-hand-index-fill"></i></span> Click any date to view its incidents in the side panel!</div>
+    <div style="font-size:0.68rem;color:#f59e0b;font-weight:600;margin-top:0.3rem;"><span class="pointer-arrow"><i class="bi bi-hand-index-fill"></i></span> Click any date cell to load its incidents in the side panel!</div>
   </div>
 
-  <h3><i class="bi bi-layout-sidebar-inset-reverse"></i> Incident Overview Panel</h3>
-  <p>When you click a date, the right-side panel shows all incidents for that day:</p>
-
+  <h3><i class="bi bi-chevron-bar-left"></i> Navigation Controls</h3>
+  <p>Use the controls at the top-right of the calendar to navigate:</p>
   <div class="mock">
-    <div class="mock-label">Side panel (after clicking a date)</div>
-    <div class="mock-card">
-      <div style="font-weight:700;font-size:0.8rem;margin-bottom:0.3rem;">May 13, 2026</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.3rem;font-size:0.72rem;">
-        <div><span style="color:#888;">Incidents:</span> <strong>10</strong></div>
-        <div><span style="color:#888;">Cameras:</span> <strong>2</strong></div>
+    <div class="mock-label">Calendar navigation buttons</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;">
+      <div class="mock-card" style="text-align:center;">
+        <span class="mock-btn outline" style="font-size:0.8rem;"><i class="bi bi-chevron-left"></i></span>
+        <div style="font-size:0.68rem;font-weight:600;margin-top:0.3rem;">Previous Month</div>
+        <div style="font-size:0.62rem;color:#888;">Go back one month</div>
+      </div>
+      <div class="mock-card" style="text-align:center;">
+        <span class="mock-btn primary" style="font-size:0.8rem;"><i class="bi bi-calendar-check"></i> Today</span>
+        <div style="font-size:0.68rem;font-weight:600;margin-top:0.3rem;">Jump to Today</div>
+        <div style="font-size:0.62rem;color:#888;">Instantly return to the current month and highlight today's date</div>
+      </div>
+      <div class="mock-card" style="text-align:center;">
+        <span class="mock-btn outline" style="font-size:0.8rem;"><i class="bi bi-chevron-right"></i></span>
+        <div style="font-size:0.68rem;font-weight:600;margin-top:0.3rem;">Next Month</div>
+        <div style="font-size:0.62rem;color:#888;">Go forward one month</div>
       </div>
     </div>
-    <div class="mock-card" style="border-left:3px solid #2d1b69;">
+  </div>
+
+  <h3><i class="bi bi-layout-sidebar-inset-reverse"></i> Incident Overview Panel (Right Side)</h3>
+  <p>When you click a date on the calendar, the right panel loads all the incident details for that day. Here's everything it shows:</p>
+
+  <!-- Full side panel mockup -->
+  <div class="mock" style="border:2px solid #d97706;">
+    <div class="mock-label" style="color:#d97706;">Incident Overview panel &mdash; shown after clicking a date</div>
+
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+      <div style="font-weight:700;font-size:0.85rem;">Incident Overview <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#f59e0b;color:#fff;font-size:0.55rem;">?</span></div>
+      <span class="mock-badge" style="background:#059669;color:#fff;font-size:0.6rem;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:3px;"></span> Live view</span>
+    </div>
+    <div style="font-size:0.7rem;color:#888;margin-bottom:0.5rem;">Click a date to view incident reports.</div>
+
+    <!-- Selected date info -->
+    <div class="mock-card" style="background:#f8f7fc;">
+      <div style="font-weight:700;font-size:0.72rem;color:#6b5fa0;text-transform:uppercase;margin-bottom:0.3rem;">Selected Date</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:0.2rem 0.5rem;font-size:0.78rem;">
+        <span style="color:#888;">Date:</span><strong>2026-05-11</strong>
+        <span style="color:#888;">Incidents:</span><strong style="color:#ef4444;">2607</strong>
+        <span style="color:#888;">Cameras:</span><strong>Zavalla East Road, Zavalla West Road</strong>
+      </div>
+    </div>
+    <div class="help-tip" style="margin:0.4rem 0;font-size:0.72rem;"><i class="bi bi-info-circle" style="color:#f59e0b;"></i> This section updates every time you click a different date on the calendar.</div>
+
+    <!-- Plate search -->
+    <div class="mock-card" style="margin-top:0.4rem;">
+      <div style="font-weight:700;font-size:0.72rem;"><i class="bi bi-search"></i> Plate Number Search</div>
+      <div style="font-size:0.68rem;color:#888;margin:0.2rem 0;">Enter a plate number to find all incidents for that vehicle.</div>
+      <div style="display:flex;gap:0.3rem;">
+        <span class="mock-input" style="flex:1;">e.g. ABC-1234</span>
+        <span class="mock-btn primary" style="font-size:0.65rem;"><i class="bi bi-search"></i></span>
+      </div>
+    </div>
+
+    <!-- Incidents list -->
+    <div style="font-weight:700;font-size:0.72rem;color:#6b5fa0;text-transform:uppercase;margin-top:0.6rem;margin-bottom:0.3rem;">Incidents</div>
+
+    <!-- Incident card 1 -->
+    <div class="mock-card" style="border-left:3px solid #2d1b69;margin-bottom:0.3rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-weight:600;font-size:0.75rem;"><i class="bi bi-camera-video"></i> Zavalla East Road</span>
-        <span style="font-size:0.68rem;color:#888;">7:12 PM</span>
+        <span style="font-weight:700;font-size:0.78rem;"><i class="bi bi-camera-video" style="color:#2d1b69;"></i> Zavalla East Road</span>
+        <span style="font-size:0.65rem;color:#888;"><i class="bi bi-clock"></i> 11:59 PM</span>
       </div>
-      <div style="font-size:0.7rem;color:#666;">CAR &mdash; 77.6% confidence</div>
-      <div style="display:flex;gap:0.3rem;margin-top:0.3rem;">
-        <span class="mock-btn outline" style="font-size:0.6rem;"><i class="bi bi-image"></i> View Image</span>
-        <span class="mock-btn outline" style="font-size:0.6rem;"><i class="bi bi-play-circle"></i> View Video</span>
+      <div style="display:flex;gap:0.4rem;align-items:center;margin:0.2rem 0;font-size:0.72rem;">
+        <span class="mock-badge" style="background:#dbeafe;color:#1e40af;"><i class="bi bi-car-front"></i> CAR</span>
+        <span class="mock-badge" style="background:#f3f1fa;color:#2d1b69;"><i class="bi bi-upc-scan"></i> UAP 430</span>
+      </div>
+      <div style="font-size:0.68rem;color:#666;">
+        <strong>Tracker ID:</strong> 4918 &nbsp;&nbsp;
+        <strong>Confidence:</strong> 88.4% &nbsp;&nbsp;
+        <strong>Plate:</strong> UAP 430
+      </div>
+      <!-- Image/video -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.4rem;">
+        <div class="mock-cam" style="min-height:50px;border-radius:6px;">
+          <i class="bi bi-image" style="font-size:1rem;"></i>
+          <span style="font-size:0.6rem;">Captured Image</span>
+        </div>
+        <div class="mock-cam" style="min-height:50px;border-radius:6px;">
+          <i class="bi bi-play-circle" style="font-size:1rem;"></i>
+          <span style="font-size:0.6rem;">Video Clip</span>
+        </div>
       </div>
     </div>
+
+    <!-- Incident card 2 -->
+    <div class="mock-card" style="border-left:3px solid #d97706;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700;font-size:0.78rem;"><i class="bi bi-camera-video" style="color:#d97706;"></i> Zavalla West Road</span>
+        <span style="font-size:0.65rem;color:#888;"><i class="bi bi-clock"></i> 10:45 PM</span>
+      </div>
+      <div style="display:flex;gap:0.4rem;align-items:center;margin:0.2rem 0;font-size:0.72rem;">
+        <span class="mock-badge" style="background:#fce7f3;color:#9d174d;"><i class="bi bi-bicycle"></i> MOTORCYCLE</span>
+      </div>
+      <div style="font-size:0.68rem;color:#666;">
+        <strong>Tracker ID:</strong> 4905 &nbsp;&nbsp;
+        <strong>Confidence:</strong> 62.1%
+      </div>
+    </div>
+    <div style="font-size:0.65rem;color:#888;text-align:center;margin-top:0.3rem;"><i class="bi bi-arrow-down-circle"></i> Scroll down to see more incidents...</div>
+  </div>
+
+  <h3><i class="bi bi-list-check"></i> Step-by-Step: How to Use the Calendar</h3>
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content"><strong>Navigate to the right month</strong> &mdash; Use the <i class="bi bi-chevron-left"></i> <i class="bi bi-chevron-right"></i> arrows to go to previous or next month. Click <strong>Today</strong> to jump back to the current date.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Look at the colors</strong> &mdash; Scan the calendar for <span style="color:#ef4444;font-weight:700;">red</span> (high-incident) and <span style="color:#d97706;font-weight:700;">yellow</span> (some incidents) dates. Green dates are clear.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Click a date</strong> &mdash; The right panel updates to show the selected date, total incident count, which cameras were involved, and a scrollable list of every incident.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Browse incidents</strong> &mdash; Each incident card shows the camera name, time, vehicle type, tracker ID, confidence score, and plate number (if detected). Scroll down to see all incidents for that day.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>View evidence</strong> &mdash; Each incident has a <strong>captured image</strong> (screenshot from the camera) and a <strong>video clip</strong> (60-second recording) that you can view directly in the panel.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Search by plate</strong> &mdash; Use the Plate Number Search box in the side panel to find all incidents involving a specific vehicle (e.g., type <strong>UAP 430</strong> or <strong>ABC-1234</strong>).</div></div>
   </div>
 
   <h3><i class="bi bi-search"></i> Plate Number Search</h3>
-  <p>Search for a specific license plate number to find all recorded incidents involving that vehicle across all dates.</p>
+  <p>The plate search feature is located in the right-side panel. It lets you track a specific vehicle across all dates.</p>
   <div class="mock">
     <div class="mock-label">How plate search works</div>
     <div class="help-steps" style="margin:0;">
       <div class="help-step"><div class="help-step-content">Type the plate number in the search box (e.g., <strong>ABC-1234</strong> or just <strong>ABC</strong> for partial match)</div></div>
-      <div class="help-step"><div class="help-step-content">Click <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-search"></i></span> &mdash; results show all matching incidents with dates, cameras, and images</div></div>
+      <div class="help-step"><div class="help-step-content">Click <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-search"></i></span> &mdash; results show all matching incidents with dates, times, cameras, and images</div></div>
+      <div class="help-step"><div class="help-step-content">Results display below the search box with clickable incident cards showing evidence</div></div>
+    </div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Tip:</strong> Philippine plate format is typically 2-3 letters followed by 3-4 numbers (e.g., ABC 1234, UAP 430). You can search with or without dashes.</div>
+
+  <h3><i class="bi bi-question-circle"></i> Understanding the Incident Card</h3>
+  <p>Each incident in the list shows these details:</p>
+  <div class="mock">
+    <div class="mock-label">What each part of an incident card means</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:0.3rem 0.7rem;font-size:0.78rem;align-items:start;">
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-camera-video"></i> Camera Name</span>
+      <span>Which camera captured this incident (e.g., Zavalla East Road)</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-clock"></i> Time</span>
+      <span>When the violation was detected (Philippine Standard Time)</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-car-front"></i> Vehicle Type</span>
+      <span>Type of vehicle detected (Car, Truck, Motorcycle, Tricycle, etc.)</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-hash"></i> Tracker ID</span>
+      <span>Unique number the AI assigned to track this specific vehicle</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-speedometer2"></i> Confidence</span>
+      <span>How sure the AI is that this is a real violation (higher % = more certain)</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-upc-scan"></i> Plate Number</span>
+      <span>License plate detected by OCR (if readable from the camera angle)</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-image"></i> Image</span>
+      <span>Screenshot from the camera showing the violation</span>
+      <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-play-circle"></i> Video</span>
+      <span>60-second video clip of the incident (click play to watch)</span>
     </div>
   </div>
 </div>
