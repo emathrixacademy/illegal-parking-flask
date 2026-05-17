@@ -35,19 +35,19 @@
 
 <!-- Section 1: General Settings -->
 <div class="content-card">
-  <h2><i class="bi bi-sliders"></i> General Settings <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Set how long a vehicle must be stationary to trigger a violation, and the minimum interval between re-detections.">?</span></h2>
+  <h2><i class="bi bi-sliders"></i> General Settings <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Set how many seconds a vehicle must be stopped before it counts as a violation, and how long before the system can record the same vehicle again.">?</span></h2>
   <form id="settingsForm">
     <div class="mb-3">
-      <label for="violation_time" class="form-label">Violation Time Threshold (seconds)</label>
-      <input type="number" class="form-control" id="violation_time" name="violation_time" min="1" required>
+      <label for="violation_time" class="form-label" data-bs-toggle="tooltip" title="How many seconds a vehicle must be stopped in one spot before the system flags it as a parking violation. A lower number means violations are detected faster.">Violation Time Threshold (seconds)</label>
+      <input type="number" class="form-control" id="violation_time" name="violation_time" min="1" required data-bs-toggle="tooltip" title="Enter the number of seconds a vehicle must be stopped before it is flagged. For example, 100 means about 1 minute and 40 seconds.">
       <small class="small-muted">Time before a parked vehicle is flagged as a violation</small>
     </div>
     <div class="mb-3">
-      <label for="repeat_capture" class="form-label">Repeat Capture Interval (seconds)</label>
-      <input type="number" class="form-control" id="repeat_capture" name="repeat_capture" min="1" required>
-      <small class="small-muted">Cooldown between logging the same vehicle</small>
+      <label for="repeat_capture" class="form-label" data-bs-toggle="tooltip" title="After recording a vehicle, how many seconds must pass before the system can record the same vehicle again. This prevents recording the same parked car over and over.">Repeat Capture Interval (seconds)</label>
+      <input type="number" class="form-control" id="repeat_capture" name="repeat_capture" min="1" required data-bs-toggle="tooltip" title="Enter the waiting time in seconds before the same vehicle can be recorded again. For example, 60 means the system waits 1 minute.">
+      <small class="small-muted">Waiting time before recording the same vehicle again</small>
     </div>
-    <button type="submit" class="btn btn-accent">Save Settings</button>
+    <button type="submit" class="btn btn-accent" data-bs-toggle="tooltip" title="Save these timing settings. The changes will be sent to the camera system and take effect right away.">Save Settings</button>
   </form>
   <div id="status" class="mt-3"></div>
   <div id="dbStatus" class="mt-2 small-muted"></div>
@@ -55,39 +55,39 @@
 
 <!-- Section 2: Alert Configuration -->
 <div class="content-card">
-  <h2><i class="bi bi-bell-fill"></i> Alert Configuration <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Set up email and SMS notifications for new violations. Requires Gmail App Password for email alerts.">?</span></h2>
+  <h2><i class="bi bi-bell-fill"></i> Alert Configuration <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Set up email and text message notifications so you get alerted whenever a new parking violation is detected. Email alerts need a special Gmail password (explained below).">?</span></h2>
   <form id="alertForm">
     <div class="alert-columns mb-3">
       <!-- Email Alerts -->
       <div>
         <h6><i class="bi bi-envelope-fill"></i> Email Alerts</h6>
         <div class="form-check mb-2">
-          <input class="form-check-input" type="checkbox" id="emailEnabled">
-          <label class="form-check-label">Enable Email Alerts</label>
+          <input class="form-check-input" type="checkbox" id="emailEnabled" data-bs-toggle="tooltip" title="Turn email notifications on or off. When enabled, the system will send an email every time a new parking violation is detected.">
+          <label class="form-check-label" data-bs-toggle="tooltip" title="Turn email notifications on or off. When enabled, the system will send an email every time a new parking violation is detected.">Enable Email Alerts</label>
         </div>
         <div class="mb-2">
-          <label class="form-label">SMTP Email (Gmail)</label>
-          <input type="email" class="form-control" id="smtpEmail" placeholder="your-email@gmail.com">
+          <label class="form-label" data-bs-toggle="tooltip" title="The Gmail address the system will use to send alert emails from. This must be a Gmail account (example: yourname@gmail.com).">Email Address (Gmail)</label>
+          <input type="email" class="form-control" id="smtpEmail" placeholder="your-email@gmail.com" data-bs-toggle="tooltip" title="Type your Gmail address here. This is the email account that will send violation alerts.">
         </div>
         <div class="mb-2">
-          <label class="form-label">App Password</label>
-          <input type="password" class="form-control" id="smtpPassword" placeholder="Gmail App Password">
+          <label class="form-label" data-bs-toggle="tooltip" title="This is a special password created in your Google Account settings, NOT your regular Gmail password. Google requires this for apps that send email on your behalf. To get one: go to myaccount.google.com, then Security, then App Passwords, and create a new one for Mail.">Gmail App Password (special password, not your regular password)</label>
+          <input type="password" class="form-control" id="smtpPassword" placeholder="Gmail App Password" data-bs-toggle="tooltip" title="Paste the 16-character app password you created in your Google Account. This is different from your regular Gmail login password.">
         </div>
         <div class="mb-2">
-          <label class="form-label">Recipients (comma separated)</label>
-          <input type="text" class="form-control" id="emailRecipients" placeholder="user1@email.com, user2@email.com">
+          <label class="form-label" data-bs-toggle="tooltip" title="The email addresses that will receive violation alerts. You can add multiple addresses separated by commas.">Recipients (comma separated)</label>
+          <input type="text" class="form-control" id="emailRecipients" placeholder="user1@email.com, user2@email.com" data-bs-toggle="tooltip" title="Type the email addresses of people who should receive violation alerts. Separate multiple addresses with commas.">
         </div>
       </div>
       <!-- SMS Alerts -->
       <div>
         <h6><i class="bi bi-phone-fill"></i> SMS Alerts</h6>
         <div class="form-check mb-2">
-          <input class="form-check-input" type="checkbox" id="smsEnabled">
-          <label class="form-check-label">Enable SMS Alerts</label>
+          <input class="form-check-input" type="checkbox" id="smsEnabled" data-bs-toggle="tooltip" title="Turn text message notifications on or off. When enabled, the system will send a text message to the phone numbers listed below whenever a violation is detected.">
+          <label class="form-check-label" data-bs-toggle="tooltip" title="Turn text message notifications on or off. When enabled, the system will send a text message to the phone numbers listed below whenever a violation is detected.">Enable SMS Alerts</label>
         </div>
         <div class="mb-2">
-          <label class="form-label">SMS Provider</label>
-          <select class="form-select" id="smsProvider" onchange="toggleSmsFields()">
+          <label class="form-label" data-bs-toggle="tooltip" title="Choose which text message service to use for sending SMS alerts. Both services work, but they need different setup information.">SMS Provider</label>
+          <select class="form-select" id="smsProvider" onchange="toggleSmsFields()" data-bs-toggle="tooltip" title="Pick the text message service you signed up for. If you are unsure, ask your system administrator.">
             <option value="unisms">UniSMS</option>
             <option value="textbee">TextBee</option>
           </select>
@@ -95,36 +95,36 @@
         <!-- UniSMS fields -->
         <div id="unismsFields">
           <div class="mb-2">
-            <label class="form-label">UniSMS API Key</label>
-            <input type="text" class="form-control" id="unismsApiKey" placeholder="sk_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            <label class="form-label" data-bs-toggle="tooltip" title="The secret key from your UniSMS account. You can find this in your UniSMS dashboard after signing up.">UniSMS API Key</label>
+            <input type="text" class="form-control" id="unismsApiKey" placeholder="sk_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" data-bs-toggle="tooltip" title="Paste your UniSMS secret key here. It usually starts with sk_ followed by a long string of letters and numbers.">
           </div>
         </div>
         <!-- TextBee fields -->
         <div id="textbeeFields" style="display:none;">
           <div class="mb-2">
-            <label class="form-label">TextBee API Key</label>
-            <input type="text" class="form-control" id="textbeeApiKey" placeholder="API Key">
+            <label class="form-label" data-bs-toggle="tooltip" title="The secret key from your TextBee account. You can find this in your TextBee dashboard.">TextBee API Key</label>
+            <input type="text" class="form-control" id="textbeeApiKey" placeholder="API Key" data-bs-toggle="tooltip" title="Paste your TextBee secret key here.">
           </div>
           <div class="mb-2">
-            <label class="form-label">TextBee Device ID</label>
-            <input type="text" class="form-control" id="textbeeDeviceId" placeholder="Device ID">
+            <label class="form-label" data-bs-toggle="tooltip" title="The ID number of the phone or device connected to TextBee that will send the text messages.">TextBee Device ID</label>
+            <input type="text" class="form-control" id="textbeeDeviceId" placeholder="Device ID" data-bs-toggle="tooltip" title="Paste the device ID from your TextBee dashboard. This tells the system which phone to send texts from.">
           </div>
         </div>
         <div class="mb-2">
-          <label class="form-label">SMS Recipients (comma separated)</label>
-          <input type="text" class="form-control" id="smsRecipients" placeholder="+639171234567, +639181234567">
+          <label class="form-label" data-bs-toggle="tooltip" title="The phone numbers that will receive text message alerts. Use the format +63 followed by the number. Separate multiple numbers with commas.">SMS Recipients (comma separated)</label>
+          <input type="text" class="form-control" id="smsRecipients" placeholder="+639171234567, +639181234567" data-bs-toggle="tooltip" title="Type the phone numbers of people who should receive text alerts. Use the +63 format for Philippine numbers. Separate multiple numbers with commas.">
         </div>
       </div>
     </div>
     <div class="mb-3">
-      <label class="form-label">Alert Cooldown (seconds)</label>
-      <input type="number" class="form-control" id="alertCooldown" min="60" value="300">
-      <small class="small-muted">Minimum time between alerts per camera</small>
+      <label class="form-label" data-bs-toggle="tooltip" title="After sending an alert for a camera, how many seconds must pass before the system can send another alert for that same camera. This prevents your phone or inbox from being flooded with messages.">Alert Cooldown (seconds)</label>
+      <input type="number" class="form-control" id="alertCooldown" min="60" value="300" data-bs-toggle="tooltip" title="Enter the minimum waiting time in seconds between alerts for the same camera. For example, 300 means the system waits 5 minutes before sending another alert.">
+      <small class="small-muted">Minimum waiting time between alerts for the same camera</small>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <button type="button" class="btn btn-accent" onclick="saveAlertConfig()">Save Alert Settings</button>
-      <button type="button" class="btn btn-secondary" onclick="loadAlertConfig()">Refresh</button>
-      <button type="button" class="btn btn-outline-info" onclick="testSmtp()" id="testSmtpBtn"><i class="bi bi-send"></i> Test SMTP</button>
+      <button type="button" class="btn btn-accent" onclick="saveAlertConfig()" data-bs-toggle="tooltip" title="Save all the email and text message settings you entered above. The changes take effect right away.">Save Alert Settings</button>
+      <button type="button" class="btn btn-secondary" onclick="loadAlertConfig()" data-bs-toggle="tooltip" title="Reload the alert settings from the server. Use this if you want to undo your changes and see what is currently saved.">Refresh</button>
+      <button type="button" class="btn btn-outline-info" onclick="testSmtp()" id="testSmtpBtn" data-bs-toggle="tooltip" title="Send a test email to make sure your email settings are working correctly. You should receive a test message within a few seconds."><i class="bi bi-send"></i> Test Email</button>
     </div>
     <div id="alertStatus" class="mt-2"></div>
   </form>
@@ -145,39 +145,39 @@
 
 <!-- Section 4: Camera Management -->
 <div class="content-card">
-  <h2><i class="bi bi-camera-video-fill"></i> Camera Management <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Add, edit, or remove CCTV cameras. Each camera needs an ID, name, RTSP stream URL, and location.">?</span></h2>
+  <h2><i class="bi bi-camera-video-fill"></i> Camera Management <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Add, change, or remove cameras from the system. Each camera needs a unique ID, a friendly name, its video address (provided by the camera manufacturer), and where it is located.">?</span></h2>
   <div id="cameraList" style="margin-bottom:1rem;"></div>
   <div style="padding:1rem;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
     <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.75rem;">Add New Camera</div>
     <div class="row g-2 mb-2">
       <div class="col-sm-4">
-        <label class="form-label">Camera ID</label>
-        <input type="text" class="form-control" id="newCamId" placeholder="Camera_3">
+        <label class="form-label" data-bs-toggle="tooltip" title="A short unique name to identify this camera in the system, like Camera_1 or Camera_3. Each camera must have a different ID.">Camera ID</label>
+        <input type="text" class="form-control" id="newCamId" placeholder="Camera_3" data-bs-toggle="tooltip" title="Type a short unique name for this camera, such as Camera_3. No spaces allowed.">
       </div>
       <div class="col-sm-4">
-        <label class="form-label">Name / Label</label>
-        <input type="text" class="form-control" id="newCamName" placeholder="Front Gate Camera">
+        <label class="form-label" data-bs-toggle="tooltip" title="A friendly name to help you remember which camera this is, like Front Gate Camera or Parking Lot Camera.">Name / Label</label>
+        <input type="text" class="form-control" id="newCamName" placeholder="Front Gate Camera" data-bs-toggle="tooltip" title="Give this camera a name you will recognize, like Front Gate or Back Parking.">
       </div>
       <div class="col-sm-4">
-        <label class="form-label">Location</label>
-        <input type="text" class="form-control" id="newCamLocation" placeholder="Brgy. Kanluran Main Rd.">
+        <label class="form-label" data-bs-toggle="tooltip" title="Where the camera is physically installed, like a street name or building area.">Location</label>
+        <input type="text" class="form-control" id="newCamLocation" placeholder="Brgy. Kanluran Main Rd." data-bs-toggle="tooltip" title="Describe where this camera is placed, for example: Brgy. Kanluran Main Rd.">
       </div>
     </div>
     <div class="row g-2 mb-3">
       <div class="col-sm-6">
-        <label class="form-label">RTSP URL (optional)</label>
-        <input type="text" class="form-control" id="newCamUrl" placeholder="rtsp://192.168.8.x:554/stream">
+        <label class="form-label" data-bs-toggle="tooltip" title="The camera video address that the system uses to connect to the camera and receive its video feed. This is usually provided by the camera manufacturer or your technician. You can leave this blank if you do not know it yet.">Camera Video Address (optional)</label>
+        <input type="text" class="form-control" id="newCamUrl" placeholder="rtsp://192.168.8.x:554/stream" data-bs-toggle="tooltip" title="Paste the camera video address here. It usually starts with rtsp:// and your technician can provide it. Leave blank if unsure.">
       </div>
       <div class="col-sm-3">
-        <label class="form-label">Status</label>
-        <select class="form-select" id="newCamStatus">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="maintenance">Maintenance</option>
+        <label class="form-label" data-bs-toggle="tooltip" title="The current state of this camera. Active means it is working and being monitored. Inactive means it is turned off. Maintenance means it is being repaired or serviced.">Status</label>
+        <select class="form-select" id="newCamStatus" data-bs-toggle="tooltip" title="Choose the current state of this camera.">
+          <option value="active" data-bs-toggle="tooltip" title="The camera is working and the system is watching its video feed.">Active</option>
+          <option value="inactive" data-bs-toggle="tooltip" title="The camera is turned off or not being monitored right now.">Inactive</option>
+          <option value="maintenance" data-bs-toggle="tooltip" title="The camera is being repaired or serviced. It will not be monitored until set back to Active.">Maintenance</option>
         </select>
       </div>
       <div class="col-sm-3 d-flex align-items-end">
-        <button class="btn btn-accent w-100" onclick="addCamera()"><i class="bi bi-plus-lg"></i> Add Camera</button>
+        <button class="btn btn-accent w-100" onclick="addCamera()" data-bs-toggle="tooltip" title="Add this new camera to the system. Make sure you have filled in at least the Camera ID."><i class="bi bi-plus-lg"></i> Add Camera</button>
       </div>
     </div>
   </div>
@@ -195,24 +195,24 @@
       <div class="modal-body">
         <input type="hidden" id="editCamOrigId">
         <div class="mb-3">
-          <label class="form-label fw-bold">Camera ID</label>
-          <input type="text" class="form-control" id="editCamId" disabled style="background:var(--bg);">
+          <label class="form-label fw-bold" data-bs-toggle="tooltip" title="The unique ID for this camera. This cannot be changed after the camera is added.">Camera ID</label>
+          <input type="text" class="form-control" id="editCamId" disabled style="background:var(--bg);" data-bs-toggle="tooltip" title="This is the camera's unique ID. It cannot be changed.">
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">Name / Label</label>
-          <input type="text" class="form-control" id="editCamName">
+          <label class="form-label fw-bold" data-bs-toggle="tooltip" title="A friendly name to help you remember which camera this is.">Name / Label</label>
+          <input type="text" class="form-control" id="editCamName" data-bs-toggle="tooltip" title="Change the display name for this camera.">
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">Location</label>
-          <input type="text" class="form-control" id="editCamLocation">
+          <label class="form-label fw-bold" data-bs-toggle="tooltip" title="Where the camera is physically installed.">Location</label>
+          <input type="text" class="form-control" id="editCamLocation" data-bs-toggle="tooltip" title="Update where this camera is located.">
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">RTSP URL</label>
-          <input type="text" class="form-control" id="editCamUrl">
+          <label class="form-label fw-bold" data-bs-toggle="tooltip" title="The camera video address used to connect to this camera and receive its video feed. Ask your technician if you are unsure.">Camera Video Address</label>
+          <input type="text" class="form-control" id="editCamUrl" data-bs-toggle="tooltip" title="Update the camera video address. It usually starts with rtsp:// and your technician can help with this.">
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">Status</label>
-          <select class="form-select" id="editCamStatus">
+          <label class="form-label fw-bold" data-bs-toggle="tooltip" title="The current state of this camera. Active = working, Inactive = turned off, Maintenance = being repaired.">Status</label>
+          <select class="form-select" id="editCamStatus" data-bs-toggle="tooltip" title="Change the current state of this camera.">
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="maintenance">Maintenance</option>
@@ -221,8 +221,8 @@
         <div id="editCamMsg"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-accent" onclick="saveEditCamera()"><i class="bi bi-check-lg"></i> Save Changes</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-bs-toggle="tooltip" title="Close without saving any changes.">Cancel</button>
+        <button type="button" class="btn btn-accent" onclick="saveEditCamera()" data-bs-toggle="tooltip" title="Save the changes you made to this camera."><i class="bi bi-check-lg"></i> Save Changes</button>
       </div>
     </div>
   </div>
@@ -230,16 +230,16 @@
 
 <!-- Section 5: AI Detection Controls -->
 <div class="content-card">
-  <h2><i class="bi bi-cpu"></i> AI Detection Controls <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Toggle AI detection on/off, pause cloud uploads to save credits, and adjust confidence threshold. Lower threshold = more detections but more false positives.">?</span></h2>
+  <h2><i class="bi bi-cpu"></i> AI Detection Controls <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Turn vehicle detection on or off, pause saving images to cloud storage to save your storage allowance, and adjust how strict the detection should be. A lower strictness means more vehicles are detected but there may be more wrong detections.">?</span></h2>
 
   <!-- ON/OFF Toggle -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div>
       <div style="font-weight:600;">Detection Engine</div>
-      <div class="small-muted">Pause or resume AI violation detection</div>
+      <div class="small-muted">Turn vehicle detection on or off</div>
     </div>
     <div class="form-check form-switch">
-      <input class="form-check-input" type="checkbox" id="detectionToggle" checked style="width:50px;height:26px;">
+      <input class="form-check-input" type="checkbox" id="detectionToggle" checked style="width:50px;height:26px;" data-bs-toggle="tooltip" title="Turn vehicle detection on or off. When turned off, the cameras will still work but the system will stop looking for parking violations.">
     </div>
   </div>
 
@@ -247,10 +247,10 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div>
       <div style="font-weight:600;">Cloud Media Uploads</div>
-      <div class="small-muted">Pause image/video uploads to Cloudinary to save credits</div>
+      <div class="small-muted">Pause saving images and videos to cloud storage to save your storage allowance</div>
     </div>
     <div class="form-check form-switch">
-      <input class="form-check-input" type="checkbox" id="cloudinaryToggle" checked style="width:50px;height:26px;">
+      <input class="form-check-input" type="checkbox" id="cloudinaryToggle" checked style="width:50px;height:26px;" data-bs-toggle="tooltip" title="Turn saving images and videos to cloud storage on or off. When turned off, violation photos and videos will not be uploaded to the cloud, which saves your monthly storage allowance. Violations will still be recorded in the system, just without cloud backups.">
     </div>
   </div>
   <div id="cloudinaryStatus" style="margin-bottom:12px;"></div>
@@ -259,22 +259,22 @@
   <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
       <div>
-        <div style="font-weight:600;">Confidence Threshold</div>
-        <div class="small-muted">Higher = fewer detections but more accurate</div>
+        <div style="font-weight:600;" data-bs-toggle="tooltip" title="This controls how strict the detection should be. Think of it like adjusting the sensitivity of a smoke alarm — too sensitive and it goes off too often, too strict and it might miss things.">How Strict the Detection Is</div>
+        <div class="small-muted">Higher = fewer detections but more accurate, Lower = catches more but may have wrong detections</div>
       </div>
       <span id="confValue" style="font-size:20px;font-weight:700;color:var(--accent);">0.30</span>
     </div>
-    <input type="range" class="form-range" min="0.1" max="0.9" step="0.05" value="0.3" id="confSlider">
+    <input type="range" class="form-range" min="0.1" max="0.9" step="0.05" value="0.3" id="confSlider" data-bs-toggle="tooltip" title="Drag this slider left or right. Moving it to the left makes the system detect more vehicles (but it might sometimes be wrong). Moving it to the right makes it stricter (fewer wrong detections, but it might miss some vehicles).">
     <div style="display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;">
-      <span>0.10 (sensitive)</span><span>0.50 (balanced)</span><span>0.90 (strict)</span>
+      <span>0.10 (catches more, may have wrong detections)</span><span>0.50 (balanced)</span><span>0.90 (very strict, fewer mistakes)</span>
     </div>
   </div>
 
   <!-- Snapshot -->
   <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div style="font-weight:600;margin-bottom:8px;">Live Detection Snapshot</div>
-    <div class="small-muted" style="margin-bottom:12px;">Grab a single frame showing what the AI currently sees with bounding boxes.</div>
-    <button class="btn btn-outline-primary btn-sm" id="snapshotBtn"><i class="bi bi-camera"></i> Capture Snapshot</button>
+    <div class="small-muted" style="margin-bottom:12px;">Take a quick photo showing what the cameras see right now, with boxes drawn around any detected vehicles.</div>
+    <button class="btn btn-outline-primary btn-sm" id="snapshotBtn" data-bs-toggle="tooltip" title="Take a photo right now showing what the cameras see, with colored boxes drawn around any vehicles the system has detected. This helps you check if the detection is working properly."><i class="bi bi-camera"></i> Capture Snapshot</button>
     <div id="snapshotContainer" style="margin-top:12px;display:none;">
       <img id="snapshotImg" style="width:100%;border-radius:8px;border:1px solid var(--border);">
     </div>
@@ -282,27 +282,27 @@
 
   <!-- Action Buttons -->
   <div class="d-flex flex-wrap gap-2 mb-3">
-    <button class="btn btn-outline-primary btn-sm" id="saveDetectionBtn"><i class="bi bi-check-lg"></i> Save Settings</button>
-    <button class="btn btn-outline-danger btn-sm" id="restartDetectionBtn" style="border-radius:10px;"><i class="bi bi-arrow-clockwise"></i> Restart Detection</button>
+    <button class="btn btn-outline-primary btn-sm" id="saveDetectionBtn" data-bs-toggle="tooltip" title="Save the detection settings you changed above (detection on/off, cloud uploads, and how strict the detection is). Changes take effect right away."><i class="bi bi-check-lg"></i> Save Settings</button>
+    <button class="btn btn-outline-danger btn-sm" id="restartDetectionBtn" style="border-radius:10px;" data-bs-toggle="tooltip" title="Restart the vehicle detection system. Use this if detection seems stuck or not working properly. The cameras will pause for about 2 seconds while the system restarts."><i class="bi bi-arrow-clockwise"></i> Restart Detection</button>
   </div>
   <div id="detectionStatus" class="mt-2"></div>
 </div>
 
 <!-- Section 6: Cloud Media Management -->
 <div class="content-card">
-  <h2><i class="bi bi-cloud-fill"></i> Cloud Media Management <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Browse and delete uploaded violation images/videos from Cloudinary. Filter by age to clean up old media and save storage.">?</span></h2>
-  <div class="small-muted mb-3">Browse and selectively delete violation images/videos from Cloudinary to free up credits. Auto-cleanup removes media older than 14 days.</div>
+  <h2><i class="bi bi-cloud-fill"></i> Cloud Media Management <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="View and delete violation photos and videos that are saved in cloud storage. You can filter by how old the files are and delete the ones you no longer need to free up your storage allowance.">?</span></h2>
+  <div class="small-muted mb-3">View and delete violation photos and videos from cloud storage to free up your storage allowance. The system automatically removes files older than 14 days.</div>
 
   <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-    <select class="form-select form-select-sm" id="mediaFilter" style="width:auto;">
+    <select class="form-select form-select-sm" id="mediaFilter" style="width:auto;" data-bs-toggle="tooltip" title="Choose which files to show based on how old they are. For example, selecting 'Older than 7 days' will only show files from more than a week ago.">
       <option value="all">All with media</option>
       <option value="7">Older than 7 days</option>
       <option value="14">Older than 14 days</option>
       <option value="30">Older than 30 days</option>
     </select>
-    <button class="btn btn-outline-primary btn-sm" id="loadMediaBtn"><i class="bi bi-arrow-clockwise"></i> Load</button>
-    <button class="btn btn-outline-danger btn-sm" id="deleteSelectedBtn" disabled><i class="bi bi-trash"></i> Delete Selected</button>
-    <button class="btn btn-outline-secondary btn-sm" id="selectAllMediaBtn">Select All</button>
+    <button class="btn btn-outline-primary btn-sm" id="loadMediaBtn" data-bs-toggle="tooltip" title="Load and show the list of violation photos and videos stored in the cloud. Click this to refresh the list."><i class="bi bi-arrow-clockwise"></i> Browse</button>
+    <button class="btn btn-outline-danger btn-sm" id="deleteSelectedBtn" disabled data-bs-toggle="tooltip" title="Permanently delete the selected photos and videos from cloud storage. The violation records will still be kept, but the images and videos will be gone forever."><i class="bi bi-trash"></i> Delete Selected</button>
+    <button class="btn btn-outline-secondary btn-sm" id="selectAllMediaBtn" data-bs-toggle="tooltip" title="Select or unselect all items in the list at once. Useful when you want to delete everything shown.">Select All</button>
     <span class="small-muted" id="mediaCount"></span>
   </div>
 
@@ -316,6 +316,16 @@
 <script>
     let piPublicUrl = "";
     let currentSettings = {};
+
+    // Re-initialize Bootstrap tooltips (needed after dynamic content is loaded)
+    function refreshTooltips() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (el) {
+            if (!bootstrap.Tooltip.getInstance(el)) {
+                new bootstrap.Tooltip(el);
+            }
+        });
+    }
 
     // Fetch Pi public URL on load
     function fetchPiUrl() {
@@ -477,7 +487,7 @@
             status.innerHTML = '<div class="alert alert-danger">SMTP test failed: ' + e.message + '</div>';
         }
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-send"></i> Test SMTP';
+        btn.innerHTML = '<i class="bi bi-send"></i> Test Email';
         setTimeout(() => status.innerHTML = '', 5000);
     }
 
@@ -501,10 +511,11 @@
               <td>${c.location || '-'}</td>
               <td style="font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.url || ''}">${c.url || '-'}</td>
               <td><span class="badge bg-${statusCls}">${c.status || 'unknown'}</span></td>
-              <td class="text-nowrap"><button class="btn btn-sm btn-outline-primary me-1" onclick="editCamera('${c.id}')" title="Edit"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="removeCamera('${c.id}')" title="Remove"><i class="bi bi-trash"></i></button></td>
+              <td class="text-nowrap"><button class="btn btn-sm btn-outline-primary me-1" onclick="editCamera('${c.id}')" data-bs-toggle="tooltip" title="Edit this camera's name, location, video address, or status."><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" onclick="removeCamera('${c.id}')" data-bs-toggle="tooltip" title="Remove this camera from the system. You will be asked to confirm before it is deleted."><i class="bi bi-trash"></i></button></td>
             </tr>`;
           }).join('') +
           '</tbody></table></div>';
+        refreshTooltips();
       } catch(e) {
         document.getElementById('cameraList').innerHTML = '<div class="alert alert-warning">Could not load cameras.</div>';
       }
@@ -818,6 +829,7 @@
         document.querySelectorAll('.media-check').forEach(cb => {
             cb.addEventListener('change', updateDeleteBtn);
         });
+        refreshTooltips();
     }
 
     function updateDeleteBtn() {

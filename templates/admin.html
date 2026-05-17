@@ -111,33 +111,33 @@
   <!-- Left: Incident List -->
   <div class="admin-card">
     <div class="card-topbar">
-      <h2><i class="bi bi-exclamation-octagon-fill"></i> Road Blocking Incidents <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="AI-detected road blocking violations. Filter by date or status, then click a row to review the incident details and make a decision.">?</span></h2>
-      <span class="badge-count" id="totalBadge"><i class="bi bi-collection"></i> Total Incidents: <span id="totalInfo">0</span></span>
+      <h2><i class="bi bi-exclamation-octagon-fill"></i> Road Blocking Incidents <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="This is a list of road blocking incidents that were automatically detected by the system. You can narrow down by date or status, then click on any row to see the full details and make your decision.">?</span></h2>
+      <span class="badge-count" id="totalBadge" data-bs-toggle="tooltip" data-bs-placement="bottom" title="The total number of incidents matching your current search. If you have no search active, this is all incidents."><i class="bi bi-collection"></i> Total Incidents: <span id="totalInfo">0</span></span>
     </div>
     <div class="filter-bar">
-      <input type="date" class="form-control" id="filterDate" title="Filter by date">
-      <select class="form-select" id="filterStatus">
+      <input type="date" class="form-control" id="filterDate" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Pick a date to see only the incidents from that day.">
+      <select class="form-select" id="filterStatus" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Choose a status to narrow down the list. For example, pick 'For Review' to see only incidents that haven't been decided yet.">
         <option value="">All Status</option>
         <option value="for_review">For Review</option>
         <option value="approved">Approved</option>
         <option value="rejected">Rejected</option>
         <option value="needs_investigation">Needs Investigation</option>
       </select>
-      <button class="btn btn-accent filter-btn" onclick="applyFilter()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Apply date and status filters to the incident list."><i class="bi bi-funnel-fill"></i> Filter</button>
-      <button class="btn btn-outline-secondary filter-btn" onclick="clearFilter()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Remove all filters and show all incidents."><i class="bi bi-x-lg"></i> Clear</button>
-      <button class="btn btn-outline-secondary filter-btn" onclick="goToday()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Jump to today's incidents only.">Today</button>
+      <button class="btn btn-accent filter-btn" onclick="applyFilter()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Press this to search the list using the date and status you chose above."><i class="bi bi-funnel-fill"></i> Search</button>
+      <button class="btn btn-outline-secondary filter-btn" onclick="clearFilter()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Press this to remove your search choices and show all incidents again."><i class="bi bi-x-lg"></i> Clear</button>
+      <button class="btn btn-outline-secondary filter-btn" onclick="goToday()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Press this to quickly see only today's incidents.">Today</button>
     </div>
-    <div style="font-size:0.72rem;color:var(--text-secondary);padding:0 1.25rem 0.2rem;"><i class="bi bi-hand-index"></i> Click any row to review its details, image, video, and set your admin decision.</div>
+    <div style="font-size:0.82rem;color:var(--primary);padding:0.5rem 1.25rem;font-weight:600;background:var(--primary-lighter);border-bottom:1px solid var(--border);"><i class="bi bi-hand-index-thumb"></i> Tap or click any row below to open its details on the right side, where you can view the photo, video, and make your decision.</div>
     <div class="table-scroll">
       <table class="table table-sm table-hover admin-table" id="violationsTable">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Vehicle</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th data-bs-toggle="tooltip" data-bs-placement="top" title="AI confidence level. 'Detected' means high confidence, 'Low conf' means the AI is less certain.">Detection</th>
-            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Admin review decision: For Review (pending), Approved (confirmed violation), Rejected (false detection), or Investigate (needs more info).">Admin Status</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="A unique number assigned to each incident so you can refer to it easily.">ID</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="The type of vehicle or object that was spotted, and which camera saw it.">Vehicle</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="The date when this incident happened.">Date</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="The time of day when this incident happened.">Time</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="How sure the system is about this detection. 'Detected' means the system is quite sure. 'Low conf' means the system is less certain and it may need your closer review.">Detection</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Your review decision for this incident. 'For Review' means nobody has decided yet. 'Approved' means it was confirmed as a real violation. 'Rejected' means it was a mistake. 'Investigate' means someone needs to look more closely.">Admin Status</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -145,18 +145,18 @@
     </div>
     <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
       <div class="d-flex align-items-center gap-2">
-        <button id="prevPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-left"></i></button>
-        <span id="pageInfo" class="small-muted">Page 1 / 1</span>
-        <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
+        <button id="prevPage" class="btn btn-sm btn-outline-secondary" disabled data-bs-toggle="tooltip" data-bs-placement="top" title="Go to the previous page of incidents."><i class="bi bi-chevron-left"></i></button>
+        <span id="pageInfo" class="small-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows which page of results you are currently viewing.">Page 1 / 1</span>
+        <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled data-bs-toggle="tooltip" data-bs-placement="top" title="Go to the next page of incidents."><i class="bi bi-chevron-right"></i></button>
       </div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()" data-bs-toggle="tooltip" data-bs-placement="top" title="Reload the incident list with latest data."><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-      <button class="btn btn-sm btn-outline-primary" onclick="toggleReportPanel()" data-bs-toggle="tooltip" data-bs-placement="top" title="Generate and download a PDF report of violations for a specific period."><i class="bi bi-file-earmark-pdf"></i> Download Report</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()" data-bs-toggle="tooltip" data-bs-placement="top" title="Press this to reload the list and see the newest incidents. Use this if you think new incidents may have come in."><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button class="btn btn-sm btn-outline-primary" onclick="toggleReportPanel()" data-bs-toggle="tooltip" data-bs-placement="top" title="Press this to create a printable PDF document listing all violations for a date range you choose. Great for filing reports or sharing with others."><i class="bi bi-file-earmark-pdf"></i> Download Report</button>
     </div>
 
     <!-- PDF Report Panel (collapsible) -->
     <div id="reportPanel" style="display:none;padding:1rem 1.25rem;border-top:1px solid var(--border);background:var(--bg);">
       <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.35rem;">
-        <i class="bi bi-file-earmark-pdf" style="color:var(--danger);"></i> Generate PDF Report <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Download a professional PDF report. Choose Day/Week/Month/Custom period, filter by vehicle type, camera, or review status.">?</span>
+        <i class="bi bi-file-earmark-pdf" style="color:var(--danger);"></i> Generate PDF Report <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="This lets you create a printable PDF document. Pick a time period (one day, one week, one month, or a custom range), and optionally narrow down by vehicle type, camera, or review status.">?</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;">
         <div>
@@ -227,8 +227,8 @@
   <!-- Right: Detail Panel -->
   <div class="admin-card detail-panel">
     <div class="dp-header">
-      <h3>Incident Details <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Click an incident on the left to load its details here. Review the image/video and choose Approved, Rejected, or Investigate.">?</span></h3>
-      <div class="dp-sub">Review the detected incident and record your decision.</div>
+      <h3>Incident Details <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Click on any incident in the list on the left side. The details, photo, and video will appear here. Then you can choose Approved, Rejected, or Investigate and save your decision.">?</span></h3>
+      <div class="dp-sub">Look at the photo and video, then record your decision below.</div>
     </div>
     <div class="dp-body" id="detailBody">
       <div class="dp-empty">
@@ -245,6 +245,14 @@
 let currentPage = 1, totalPages = 1, allItems = [], selectedId = null, selectedDecision = null;
 const PER_PAGE = 15;
 let cameraNameMap = {};
+
+// Re-initialize Bootstrap tooltips for dynamically added elements
+function reinitTooltips() {
+  var tl = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tl.forEach(function(el) {
+    if (!bootstrap.Tooltip.getInstance(el)) new bootstrap.Tooltip(el);
+  });
+}
 
 fetch('/api/cameras').then(r => r.json()).then(cams => {
   if (Array.isArray(cams)) {
@@ -285,8 +293,8 @@ function renderTable(items) {
     tr.onclick = () => selectIncident(row.id);
     const conf = row.confidence_score != null ? Number(row.confidence_score) : 0;
     const detBadge = conf >= 0.5
-      ? '<span class="status-badge success"><i class="bi bi-cpu"></i> Detected</span>'
-      : '<span class="status-badge warning"><i class="bi bi-cpu"></i> Low conf</span>';
+      ? '<span class="status-badge success" data-bs-toggle="tooltip" data-bs-placement="top" title="The system is fairly sure this is a real incident (accuracy: ' + (conf*100).toFixed(0) + '%)."><i class="bi bi-cpu"></i> Detected</span>'
+      : '<span class="status-badge warning" data-bs-toggle="tooltip" data-bs-placement="top" title="The system is not very sure about this one (accuracy: ' + (conf*100).toFixed(0) + '%). Please review it carefully."><i class="bi bi-cpu"></i> Less certain</span>';
     tr.innerHTML = `
       <td style="font-weight:600;color:var(--text-secondary);">${row.id}</td>
       <td><strong>${row.label || 'Vehicle'}</strong><br><span style="font-size:0.68rem;color:var(--text-secondary);">${camName(row.camera)}</span></td>
@@ -297,6 +305,7 @@ function renderTable(items) {
     `;
     tbody.appendChild(tr);
   });
+  reinitTooltips();
 }
 
 function selectIncident(id) {
@@ -324,7 +333,7 @@ function selectIncident(id) {
 
   let plateHtml = '';
   if (row.plate_number) {
-    const pconf = row.plate_confidence ? ' (' + (Number(row.plate_confidence) * 100).toFixed(0) + '%)' : '';
+    const pconf = row.plate_confidence ? ' (accuracy: ' + (Number(row.plate_confidence) * 100).toFixed(0) + '%)' : '';
     plateHtml = `<div class="dp-field" style="grid-column:1/-1;"><div class="dp-field-label">Plate Number</div><div class="dp-field-value" style="font-size:1.1rem;font-weight:700;letter-spacing:2px;color:var(--primary);">${row.plate_number}${pconf}</div></div>`;
   }
 
@@ -339,8 +348,8 @@ function selectIncident(id) {
       ${plateHtml}
     </div>
 
-    <div class="ai-badge ${conf >= 0.5 ? 'detected' : 'low-conf'}">
-      <i class="bi bi-cpu"></i> AI Detection: ${conf >= 0.5 ? 'Confirmed' : 'Low Confidence'} (${(conf*100).toFixed(1)}%)
+    <div class="ai-badge ${conf >= 0.5 ? 'detected' : 'low-conf'}" data-bs-toggle="tooltip" data-bs-placement="top" title="This shows how sure the system is about this detection. A higher percentage means the system is more certain this is a real incident.">
+      <i class="bi bi-cpu"></i> System Detection: ${conf >= 0.5 ? 'Confirmed' : 'Not fully sure'} (accuracy: ${(conf*100).toFixed(1)}%)
     </div>
 
     <div class="dp-image-wrap">
@@ -370,24 +379,25 @@ function selectIncident(id) {
         <span class="status-badge ${step2Done ? 'success' : 'info'}">${step2Done ? 'Reviewed' : 'In progress'}</span>
       </div>
       <div class="review-progress">
-        <div class="rp-step"><div class="rp-circle done"><i class="bi bi-check"></i></div><div class="rp-label">AI<br>Detected</div></div>
+        <div class="rp-step"><div class="rp-circle done"><i class="bi bi-check"></i></div><div class="rp-label">Automatically<br>Detected</div></div>
         <div class="rp-line ${step2Done ? 'done' : ''}"></div>
         <div class="rp-step"><div class="rp-circle ${step2Done ? 'done' : 'active'}">2</div><div class="rp-label">Admin<br>Review</div></div>
       </div>
 
       <div class="dp-review-title">Admin Decision</div>
       <div class="decision-btns">
-        <button class="decision-btn ${status==='approved'?'active approved':''}" id="btnApproved" onclick="setDecision('approved')" data-bs-toggle="tooltip" data-bs-placement="top" title="Confirm this is a real violation."><i class="bi bi-check-circle"></i> Approved</button>
-        <button class="decision-btn ${status==='rejected'?'active rejected':''}" id="btnRejected" onclick="setDecision('rejected')" data-bs-toggle="tooltip" data-bs-placement="top" title="Mark as false detection — not a real violation."><i class="bi bi-x-circle"></i> Rejected</button>
-        <button class="decision-btn ${status==='needs_investigation'?'active investigate':''}" id="btnInvestigate" onclick="setDecision('needs_investigation')" data-bs-toggle="tooltip" data-bs-placement="top" title="Flag for further review — you're not sure yet."><i class="bi bi-search"></i> Investigate</button>
+        <button class="decision-btn ${status==='approved'?'active approved':''}" id="btnApproved" onclick="setDecision('approved')" data-bs-toggle="tooltip" data-bs-placement="top" title="Choose this if you looked at the photo or video and you are sure this is a real violation. This confirms the incident is valid."><i class="bi bi-check-circle"></i> Approved</button>
+        <button class="decision-btn ${status==='rejected'?'active rejected':''}" id="btnRejected" onclick="setDecision('rejected')" data-bs-toggle="tooltip" data-bs-placement="top" title="Choose this if you looked at the photo or video and this is NOT a real violation. The system made a mistake and this should be dismissed."><i class="bi bi-x-circle"></i> Rejected</button>
+        <button class="decision-btn ${status==='needs_investigation'?'active investigate':''}" id="btnInvestigate" onclick="setDecision('needs_investigation')" data-bs-toggle="tooltip" data-bs-placement="top" title="Choose this if you are not sure yet. This flags the incident so someone can look at it more carefully later."><i class="bi bi-search"></i> Investigate</button>
       </div>
 
-      <button class="save-decision-btn" id="saveDecisionBtn" onclick="saveDecision()" data-bs-toggle="tooltip" data-bs-placement="top" title="Save your chosen decision. This action is logged."><i class="bi bi-floppy"></i> Save decision</button>
+      <button class="save-decision-btn" id="saveDecisionBtn" onclick="saveDecision()" data-bs-toggle="tooltip" data-bs-placement="top" title="Press this button to save your decision after you have chosen Approved, Rejected, or Investigate above. Your choice will be recorded permanently."><i class="bi bi-floppy"></i> Save decision</button>
       <div class="dp-audit-note">All actions are logged for audit.</div>
       <div id="decisionMsg" style="margin-top:0.5rem;"></div>
     </div>
   `;
   selectedDecision = status !== 'for_review' ? status : null;
+  reinitTooltips();
 }
 
 function setDecision(d) {

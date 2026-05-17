@@ -120,9 +120,9 @@
         </div>
       </div>
       <div class="cal-nav">
-        <button class="cal-nav-btn" onclick="changeMonth(-1)" title="Previous"><i class="bi bi-chevron-left"></i></button>
-        <button class="cal-today-btn" onclick="goToday()"><i class="bi bi-calendar-check"></i> Today</button>
-        <button class="cal-nav-btn" onclick="changeMonth(1)" title="Next"><i class="bi bi-chevron-right"></i></button>
+        <button class="cal-nav-btn" onclick="changeMonth(-1)" title="Previous" data-bs-toggle="tooltip" data-bs-placement="top" title="Go to previous month"><i class="bi bi-chevron-left"></i></button>
+        <button class="cal-today-btn" onclick="goToday()" data-bs-toggle="tooltip" data-bs-placement="top" title="Jump to today's date"><i class="bi bi-calendar-check"></i> Today</button>
+        <button class="cal-nav-btn" onclick="changeMonth(1)" title="Next" data-bs-toggle="tooltip" data-bs-placement="top" title="Go to next month"><i class="bi bi-chevron-right"></i></button>
       </div>
     </div>
     <div class="cal-grid" id="calGrid"></div>
@@ -131,7 +131,7 @@
   <!-- Side Panel -->
   <div class="cal-card side-panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;padding:1rem 1.25rem 0;">
-      <h3>Incident Overview <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="left" title="Click a date on the calendar to view its incidents here. Green=0, Yellow=1-3, Red=4+ incidents.">?</span></h3>
+      <h3>Incident Overview <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="left" title="Click any date on the calendar to see its violation details here. Green days have no violations, yellow days have 1 to 3, and red days have 4 or more.">?</span></h3>
       <span class="live-badge">Live view</span>
     </div>
     <p class="sp-subtitle" style="padding:0 1.25rem;">Click a date to view incident reports.</p>
@@ -149,7 +149,7 @@
         <div class="sp-info-title"><i class="bi bi-search"></i> Plate Number Search</div>
         <p style="font-size:0.7rem;color:var(--text-secondary);margin:0 0 0.3rem;">Enter a plate number to find all incidents for that vehicle.</p>
         <div style="display:flex;gap:0.4rem;">
-          <input type="text" class="form-control" id="plateSearchInput" placeholder="e.g. ABC-1234" style="font-size:0.8rem;">
+          <input type="text" class="form-control" id="plateSearchInput" placeholder="e.g. ABC-1234" style="font-size:0.8rem;" data-bs-toggle="tooltip" data-bs-placement="top" title="Type a license plate number (full or partial) to find all violations for that vehicle">
           <button class="btn btn-accent btn-sm" onclick="searchPlate()" style="white-space:nowrap;" data-bs-toggle="tooltip" data-bs-placement="top" title="Search all records for this plate number."><i class="bi bi-search"></i></button>
         </div>
         <div id="plateResults" style="margin-top:0.5rem;"></div>

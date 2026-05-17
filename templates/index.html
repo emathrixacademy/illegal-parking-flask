@@ -231,7 +231,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 {% block content %}
 <!-- Camera Feeds -->
-<div style="display:flex;align-items:center;gap:6px;margin-bottom:0.3rem;"><span style="font-weight:700;font-size:0.9rem;"><i class="bi bi-camera-video-fill"></i> Live Camera Feeds</span><span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Real-time CCTV footage. Use +/- to zoom. Stream reconnects automatically if disconnected.">?</span></div>
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:0.3rem;"><span style="font-weight:700;font-size:0.9rem;"><i class="bi bi-camera-video-fill"></i> Live Camera Feeds</span><span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Live camera video. Press + to zoom in, - to zoom out. If the video stops, it will try to reconnect by itself.">?</span></div>
 <div class="cam-grid">
   <!-- CCTV 1: Primary (full-width, large) -->
   <div class="cam-card primary-cam">
@@ -343,8 +343,8 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 <!-- Health + Legend + Bell -->
 <div class="status-bar">
-  <span><span id="healthIndicator" style="font-size:1rem;">&#9679;</span> <span id="healthText" class="text-muted">Checking...</span></span>
-  <span class="ms-3"><span id="piStatusIndicator" style="font-size:0.7rem;">&#9679;</span> <span id="piStatusText" class="text-muted" style="font-size:0.78rem;">Pi: Checking...</span></span>
+  <span><span id="healthIndicator" style="font-size:1rem;">&#9679;</span> <span id="healthText" class="text-muted">Checking...</span> <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows whether the detection system is running. Green = working, Yellow = slow, Red = problem.">?</span></span>
+  <span class="ms-3"><span id="piStatusIndicator" style="font-size:0.7rem;">&#9679;</span> <span id="piStatusText" class="text-muted" style="font-size:0.78rem;">Pi: Checking...</span> <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows whether the camera computer (Pi) is connected. If offline, cameras may not be recording.">?</span></span>
   <span class="ms-auto d-flex align-items-center gap-2">
     <span id="clock" class="text-muted" style="font-size:0.78rem;"></span>
   </span>
@@ -358,13 +358,14 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 <!-- ==================== INTELLIGENT ANALYTICS ==================== -->
 
 <!-- Summary Metric Cards -->
+<div style="display:flex;align-items:center;gap:6px;margin:0.5rem 0.5rem 0.2rem;"><span style="font-weight:700;font-size:0.82rem;">Summary</span><span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Quick overview of violation numbers. Click any card to see the full list.">?</span></div>
 <div id="summary-cards" style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.5rem; margin:0.5rem;">
   <!-- Populated by JS -->
 </div>
 
 <!-- Quick Stats (Pie + Counts) -->
 <div class="content-card">
-  <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Real-time violation statistics. Metrics update automatically every 5 seconds.">?</span></h2>
+  <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Violation counts and charts. These numbers update automatically every few seconds.">?</span></h2>
   <div class="analytics-2col">
     <div class="stat-card chart-wrap">
       <canvas id="analyticsChart" width="200" height="200"></canvas>
@@ -387,18 +388,18 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 <!-- Heatmap -->
 <div class="content-card">
-  <h2><i class="bi bi-grid-3x3-gap"></i> Hourly Violation Heatmap <small class="small-muted">(30-day pattern)</small> <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows when violations happen most. Darker cells = more violations at that hour/day combination over 30 days.">?</span></h2>
+  <h2><i class="bi bi-grid-3x3-gap"></i> Hourly Violation Heatmap <small class="small-muted">(30-day pattern)</small> <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows what times and days have the most violations. Darker squares mean more violations happened at that time. Covers the last 30 days.">?</span></h2>
   <div id="heatmap-container" style="overflow-x:auto;"></div>
 </div>
 
 <!-- Trend + Hourly Charts -->
 <div style="display:grid; grid-template-columns:1fr; gap:0;">
   <div class="content-card">
-    <h2><i class="bi bi-graph-up"></i> Daily Trend <small class="small-muted">(30 days)</small></h2>
+    <h2><i class="bi bi-graph-up"></i> Daily Trend <small class="small-muted">(30 days)</small> <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows how many violations happened each day over the past 30 days. Click a point to see that day's violations.">?</span></h2>
     <div style="position:relative; height:220px;"><canvas id="trendChart"></canvas></div>
   </div>
   <div class="content-card">
-    <h2><i class="bi bi-clock-history"></i> Violations by Hour</h2>
+    <h2><i class="bi bi-clock-history"></i> Violations by Hour <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows which hours of the day have the most violations. Click a bar to filter by that time.">?</span></h2>
     <div style="position:relative; height:220px;"><canvas id="hourlyChart"></canvas></div>
   </div>
 </div>
@@ -406,18 +407,18 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 <!-- Camera Comparison + Duration -->
 <div style="display:grid; grid-template-columns:1fr; gap:0;">
   <div class="content-card">
-    <h2><i class="bi bi-camera-video"></i> Camera Comparison</h2>
+    <h2><i class="bi bi-camera-video"></i> Camera Comparison <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Compares how many violations each camera recorded. Click a bar to filter by that camera.">?</span></h2>
     <div style="position:relative; height:200px;"><canvas id="cameraChart"></canvas></div>
   </div>
   <div class="content-card">
-    <h2><i class="bi bi-hourglass-split"></i> Duration Distribution</h2>
+    <h2><i class="bi bi-hourglass-split"></i> Duration Distribution <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows how long vehicles stayed parked illegally. Click a bar to see violations sorted by duration.">?</span></h2>
     <div style="position:relative; height:200px;"><canvas id="durationChart"></canvas></div>
   </div>
 </div>
 
 <!-- Model Performance -->
 <div class="content-card">
-  <h2><i class="bi bi-cpu"></i> Model Performance <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="AI detection accuracy stats. YOLOv8 detects vehicles, EasyOCR reads license plates. Higher confidence = more reliable detection.">?</span></h2>
+  <h2><i class="bi bi-cpu"></i> Model Performance <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="How well the system detects vehicles and reads license plates. Higher percentage means more accurate detection.">?</span></h2>
   <p class="small-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Detection and recognition model evaluation metrics.</p>
   <div class="model-perf-grid">
     <!-- YOLOv8 -->
@@ -459,7 +460,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 <!-- Detailed Stats -->
 <div class="content-card">
-  <h2><i class="bi bi-clipboard-data"></i> Detailed Statistics</h2>
+  <h2><i class="bi bi-clipboard-data"></i> Detailed Statistics <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Summary numbers for the entire system.">?</span></h2>
   <div class="detail-grid">
     <a href="/violations?view=all" class="detail-item clickable-metric"><div class="dl">Total Violations</div><div id="stat-total-violations" class="dv">0</div></a>
     <a href="/violations?view=all" class="detail-item clickable-metric"><div class="dl">Active Cameras</div><div id="stat-active-cameras" class="dv">0</div></a>

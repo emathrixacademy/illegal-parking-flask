@@ -306,7 +306,7 @@
         <label style="font-weight:600;">To</label>
         <input type="date" id="filterDateEnd" class="form-control" style="max-width:150px;">
       </div>
-      <select id="filterLabel" class="form-select">
+      <select id="filterLabel" class="form-select" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter violations by the type of vehicle detected">
         <option value="">All Types</option>
         <option value="CAR">Car</option>
         <option value="MOTORCYCLE">Motorcycle</option>
@@ -322,14 +322,14 @@
         <option value="TRASH">Trash</option>
         <option value="TREE">Tree</option>
       </select>
-      <select id="filterHour" class="form-select">
+      <select id="filterHour" class="form-select" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter violations by the time of day they happened">
         <option value="">All Hours</option>
         <option value="0-6">12 AM - 6 AM</option>
         <option value="6-12">6 AM - 12 PM</option>
         <option value="12-18">12 PM - 6 PM</option>
         <option value="18-24">6 PM - 12 AM</option>
       </select>
-      <select id="filterDay" class="form-select">
+      <select id="filterDay" class="form-select" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter violations by the day of the week">
         <option value="">All Days</option>
         <option value="Monday">Monday</option>
         <option value="Tuesday">Tuesday</option>
@@ -339,11 +339,11 @@
         <option value="Saturday">Saturday</option>
         <option value="Sunday">Sunday</option>
       </select>
-      <select id="filterCamera" class="form-select">
+      <select id="filterCamera" class="form-select" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter violations by which camera recorded them">
         <option value="">All Cameras</option>
       </select>
       <label class="d-flex align-items-center gap-1" style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">
-        <input type="checkbox" id="filterToday" class="form-check-input" style="margin:0;">
+        <input type="checkbox" id="filterToday" class="form-check-input" style="margin:0;" data-bs-toggle="tooltip" data-bs-placement="top" title="Check this to see only today's violations">
         Today Only
       </label>
       <button class="btn btn-accent" onclick="applyFilters()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Apply the selected filters to narrow down the violations list."><i class="bi bi-funnel"></i> Filter</button>
@@ -362,14 +362,14 @@
       <table class="violation-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Camera</th>
-            <th>Vehicle</th>
-            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Unique tracking number assigned by the AI to each detected vehicle.">Tracker ID</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Row number">#</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Which camera recorded this violation">Camera</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Type of vehicle detected (car, motorcycle, truck, etc.)">Vehicle</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="A tracking number the system assigns to each detected vehicle so you can identify it.">Tracker ID</th>
             <th data-bs-toggle="tooltip" data-bs-placement="top" title="How long the vehicle was detected as stationary in the parking zone.">Duration</th>
-            <th data-bs-toggle="tooltip" data-bs-placement="top" title="How confident the AI is that this is a real violation. Higher % = more accurate.">Confidence</th>
-            <th>Timestamp</th>
-            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Review status set by an admin: For Review, Approved, or Rejected.">Status</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="How sure the system is that this is a real violation. Higher percentage means more certain.">Confidence</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Date and time when the violation was recorded">Timestamp</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="The review decision made by an administrator: For Review (not yet checked), Approved (confirmed violation), or Rejected (not a real violation).">Status</th>
           </tr>
         </thead>
         <tbody id="violationsBody">
@@ -405,7 +405,7 @@
     <div id="violationEvents" class="violation-timeline"></div>
   </div>
 
-  <a href="/dashboard" class="btn btn-secondary mt-3"><i class="bi bi-arrow-left"></i> Back to Home</a>
+  <a href="/dashboard" class="btn btn-secondary mt-3" data-bs-toggle="tooltip" data-bs-placement="top" title="Go back to the main dashboard"><i class="bi bi-arrow-left"></i> Back to Home</a>
 </div>
 
 <!-- Detail Modal -->
