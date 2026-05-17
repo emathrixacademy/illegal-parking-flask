@@ -33,8 +33,8 @@ Pass: admin123
 CAM1 (MAIN — TP-Link VIGI, 192.168.1.x subnet):
   IP:   192.168.1.3  (DHCP — may change after power loss, was 192.168.1.14 before)
   User: admin
-  Pass: @Project001
-  RTSP: rtsp://admin:%40Project001@192.168.1.3:554/stream1
+  Pass: @Dm1n001
+  RTSP: rtsp://admin:%40Dm1n001@192.168.1.3:554/stream1
   Web:  https://192.168.1.3
 
 CAM2 (ONVIF, 192.168.8.x subnet — no auth):
@@ -81,7 +81,7 @@ If pi-deploy services are NOT yet installed:
   curl -X POST "https://web-production-dbb23.up.railway.app/api/db_settings" \
     -H "X-API-Key: dcgl-pi-secret-2026" \
     -H "Content-Type: application/json" \
-    -d '{"CAM1_URL":"rtsp://admin:%40Project001@192.168.1.3:554/stream1","CAM2_URL":"rtsp://192.168.8.2:554/stream","CAM3_URL":"rtsp://192.168.8.199:554/stream"}'
+    -d '{"CAM1_URL":"rtsp://admin:%40Dm1n001@192.168.1.3:554/stream1","CAM2_URL":"rtsp://192.168.8.2:554/stream","CAM3_URL":"rtsp://192.168.8.199:554/stream"}'
   ```
 - Manually editing `config.py` on Pi is temporary — it gets overwritten within 30 seconds
 - Cloudflare tunnel URL changes on every service restart — Pi re-posts it to Railway automatically
