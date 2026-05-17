@@ -175,7 +175,7 @@
   <a href="/dashboard" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Dashboard</a>
 
   <h3><i class="bi bi-camera-video-fill"></i> Live Camera Feeds</h3>
-  <p>View real-time footage from all connected CCTV cameras. The primary camera is displayed larger at the top.</p>
+  <p>View real-time footage from all connected CCTV cameras. The primary camera (Camera 1) is displayed larger at the top, with the secondary cameras shown side-by-side below.</p>
   <!-- Camera mockup -->
   <div class="mock">
     <div class="mock-label">Live camera layout</div>
@@ -193,7 +193,14 @@
       <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-arrow-clockwise"></i> Reconnect</span>
     </div>
   </div>
-  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> Use <strong>+/-</strong> buttons below each feed to zoom in or out. If a stream freezes, click <strong>Reconnect</strong>.</div>
+  <h3><i class="bi bi-hand-index-fill"></i> Camera Feed Controls</h3>
+  <p>Each camera feed has controls below it:</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;font-size:0.82rem;margin:0.4rem 0;">
+    <div class="mock-card" style="text-align:center;"><span class="mock-btn outline" style="font-size:0.72rem;"><i class="bi bi-zoom-in"></i> +</span><div style="font-size:0.68rem;color:#888;margin-top:0.2rem;">Zoom into the feed to see more detail</div></div>
+    <div class="mock-card" style="text-align:center;"><span class="mock-btn outline" style="font-size:0.72rem;"><i class="bi bi-zoom-out"></i> -</span><div style="font-size:0.68rem;color:#888;margin-top:0.2rem;">Zoom back out to see the full view</div></div>
+    <div class="mock-card" style="text-align:center;"><span class="mock-btn outline" style="font-size:0.72rem;"><i class="bi bi-arrow-clockwise"></i></span><div style="font-size:0.68rem;color:#888;margin-top:0.2rem;">Reconnect if the stream freezes or drops</div></div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> If all camera feeds show a black screen or "Connecting...", the system's Raspberry Pi may be offline. Check the Health Status Bar below the feeds.</div>
 
   <h3><i class="bi bi-heart-pulse-fill"></i> Health Status Bar</h3>
   <div class="mock">
@@ -203,10 +210,27 @@
       <span style="font-size:0.72rem;"><i class="bi bi-clock"></i> 7:45:00 PM PHT</span>
     </div>
   </div>
-  <p><strong>Healthy</strong> = everything OK. <strong>Warning</strong> = Pi hasn't sent data recently. <strong>Critical</strong> = Pi is disconnected. The clock always shows Philippine Standard Time (PHT).</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin:0.4rem 0;">
+    <div class="mock-card" style="text-align:center;background:#d1fae5;border:2px solid #059669;">
+      <i class="bi bi-heart-pulse-fill" style="font-size:1rem;color:#059669;"></i>
+      <div style="font-weight:700;font-size:0.78rem;color:#065f46;">Healthy</div>
+      <div style="font-size:0.65rem;color:#065f46;">Everything is working normally. Pi is connected and detecting.</div>
+    </div>
+    <div class="mock-card" style="text-align:center;background:#fef3c7;border:2px solid #d97706;">
+      <i class="bi bi-exclamation-triangle-fill" style="font-size:1rem;color:#d97706;"></i>
+      <div style="font-weight:700;font-size:0.78rem;color:#92400e;">Warning</div>
+      <div style="font-size:0.65rem;color:#92400e;">Pi hasn't sent data recently. May need attention soon.</div>
+    </div>
+    <div class="mock-card" style="text-align:center;background:#fee2e2;border:2px solid #ef4444;">
+      <i class="bi bi-x-circle-fill" style="font-size:1rem;color:#ef4444;"></i>
+      <div style="font-weight:700;font-size:0.78rem;color:#991b1b;">Critical</div>
+      <div style="font-size:0.65rem;color:#991b1b;">Pi is disconnected. No live detection. Contact admin.</div>
+    </div>
+  </div>
+  <p style="font-size:0.82rem;">The clock always shows <strong>Philippine Standard Time (PHT)</strong>. The "Last heartbeat" shows how recently the Pi sent data to the server.</p>
 
   <h3><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h3>
-  <p>Below the camera feeds, you'll see real-time charts and metrics that update automatically:</p>
+  <p>Below the camera feeds, you'll see real-time charts and metrics. These update automatically every few seconds &mdash; no need to refresh the page.</p>
   <div class="mock">
     <div class="mock-label">Analytics overview</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;margin-bottom:0.5rem;">
@@ -223,13 +247,34 @@
     </div>
   </div>
 
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:0.3rem 0.7rem;font-size:0.82rem;margin:0.4rem 0;">
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-123"></i></span>
+    <span><strong>Summary Cards</strong> &mdash; Quick metrics at a glance: total violations recorded, average duration a vehicle was parked, the busiest hour, and the busiest day of the week.</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-pie-chart-fill"></i></span>
+    <span><strong>Vehicle Type Chart</strong> &mdash; Pie chart showing the breakdown of vehicle types (Car, Truck, Motorcycle, etc.). Tells you which type causes the most violations.</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-graph-up"></i></span>
+    <span><strong>Daily Trend</strong> &mdash; Line chart showing violation counts per day over the last 30 days. Use this to spot trends or spikes.</span>
+    <span style="font-weight:700;color:#d97706;"><i class="bi bi-grid-3x3-gap-fill"></i></span>
+    <span><strong>Hourly Heatmap</strong> &mdash; A grid with hours (rows) and days (columns). Darker cells mean more violations at that hour/day. Helps identify problematic time periods.</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-bar-chart-line-fill"></i></span>
+    <span><strong>Camera Comparison</strong> &mdash; Bar chart comparing how many violations each camera has detected. Tells you which location has the most problems.</span>
+  </div>
+
   <h3><i class="bi bi-cpu-fill"></i> AI Model Performance</h3>
+  <p>At the bottom of the dashboard, two cards show how well the AI models are performing:</p>
   <div class="mock">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-      <div class="mock-card"><div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-cpu" style="color:#2d1b69;"></i> YOLOv8 &mdash; Vehicle Detection</div><div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">Total detections, average confidence, vehicles per camera</div></div>
-      <div class="mock-card"><div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-upc-scan" style="color:#2d1b69;"></i> EasyOCR &mdash; Plate Recognition</div><div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">Plates read, success rate, unique plates found</div></div>
+      <div class="mock-card">
+        <div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-cpu" style="color:#2d1b69;"></i> YOLOv8 &mdash; Vehicle Detection</div>
+        <div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">This AI model identifies vehicles in the camera feed. Shows total vehicles detected, average confidence score, and detections per camera.</div>
+      </div>
+      <div class="mock-card">
+        <div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-upc-scan" style="color:#2d1b69;"></i> EasyOCR &mdash; Plate Recognition</div>
+        <div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">This AI reads license plate numbers from the camera images. Shows plates read, success rate (how often it could read a plate), and unique plates found.</div>
+      </div>
     </div>
   </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> The dashboard is <strong>read-only</strong> &mdash; there are no settings to change here. It automatically updates in real-time. Just open it and monitor.</div>
 </div>
 
 <!-- ==================== VIOLATIONS ==================== -->
