@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}System Guide{% endblock %}
+{% block header_title %}<i class="bi bi-question-circle-fill"></i> System Guide{% endblock %}
+
+{% block styles %}
+<style>
+.help-wrap{max-width:960px;margin:0 auto;padding:1rem;}
+.help-section{background:var(--glass-bg,#fff);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border,#e0e0e0);}
+.help-section h2{color:var(--primary,#2d1b69);font-size:1.2rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem;}
+.help-section h3{font-size:0.95rem;color:var(--primary,#2d1b69);margin:1rem 0 0.4rem;padding-top:0.8rem;border-top:1px solid var(--border,#eee);}
+.help-section h3:first-of-type{border-top:none;padding-top:0;}
+.help-section p,.help-section li{font-size:0.85rem;line-height:1.6;color:var(--text-primary,#333);}
+.help-section ul{padding-left:1.2rem;margin:0.3rem 0;}
+.help-toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.6rem;margin-top:0.8rem;}
+.help-toc a{display:flex;align-items:center;gap:0.5rem;padding:0.7rem 1rem;border-radius:8px;background:var(--glass-bg,#f8f6ff);border:1px solid var(--border,#e0e0e0);text-decoration:none;color:var(--primary,#2d1b69);font-size:0.85rem;font-weight:600;transition:all 0.2s;}
+.help-toc a:hover{background:var(--primary,#2d1b69);color:#fff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(45,27,105,0.2);}
+.help-toc a i{font-size:1.1rem;}
+.go-link{display:inline-flex;align-items:center;gap:0.3rem;color:var(--accent,#5b3fbc);font-size:0.8rem;font-weight:600;text-decoration:none;margin-top:0.3rem;}
+.go-link:hover{text-decoration:underline;}
+.role-badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;vertical-align:middle;}
+.role-admin{background:#2d1b69;color:#fff;}
+.role-operator{background:#d97706;color:#fff;}
+.role-viewer{background:#6b7280;color:#fff;}
+.help-tip{background:#f0edff;border-left:3px solid var(--primary,#2d1b69);padding:0.6rem 0.8rem;border-radius:0 6px 6px 0;margin:0.5rem 0;font-size:0.82rem;}
+.help-shortcut{display:inline-block;padding:0.1rem 0.4rem;background:#e8e3f5;border-radius:4px;font-family:monospace;font-size:0.78rem;}
+.tooltip-toggle{position:fixed;bottom:80px;right:20px;z-index:1050;background:var(--primary,#2d1b69);color:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:1.2rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.2s;}
+.tooltip-toggle:hover{transform:scale(1.1);}
+@media(max-width:768px){.help-wrap{padding:0.5rem;}.help-section{padding:1rem;}.help-toc{grid-template-columns:1fr 1fr;}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="help-wrap">
+
+<div class="help-section">
+  <h2><i class="bi bi-book"></i> Welcome to DECONGESTILAGUNA</h2>
+  <p>This system monitors roads in Brgy. Kanluran, Taguig using AI-powered CCTV cameras to detect illegal parking and road-blocking violations. Below is a complete guide to help you navigate every feature.</p>
+  <div class="help-tip"><strong>Tip:</strong> Click the <i class="bi bi-question-circle"></i> icons throughout the system for quick explanations of each feature.</div>
+
+  <h3>Quick Navigation</h3>
+  <div class="help-toc">
+    <a href="/dashboard"><i class="bi bi-house-door-fill"></i> Dashboard</a>
+    <a href="/violations"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
+    <a href="/calendar"><i class="bi bi-calendar3"></i> Calendar</a>
+    {% if user and user.role in ['admin','operator'] %}
+    <a href="/settings"><i class="bi bi-gear-fill"></i> Settings</a>
+    {% endif %}
+    {% if user and user.role == 'admin' %}
+    <a href="/8f3c9a2d71b4e6c0f9d2a8b7c4e1"><i class="bi bi-shield-lock-fill"></i> Admin Panel</a>
+    <a href="/user-management"><i class="bi bi-people-fill"></i> User Management</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="help-section" id="help-roles">
+  <h2><i class="bi bi-people"></i> User Roles</h2>
+  <p>The system has three access levels:</p>
+  <ul>
+    <li><span class="role-badge role-admin">Admin</span> &mdash; Full system control: manage users, review incidents, configure cameras, AI settings, generate reports, and manage cloud media.</li>
+    <li><span class="role-badge role-operator">Operator</span> &mdash; Monitor and respond: view live feeds, review/approve incidents, configure alerts, and access settings.</li>
+    <li><span class="role-badge role-viewer">Viewer</span> &mdash; Read-only access: view the dashboard, violations list, and calendar. Cannot modify settings or review incidents.</li>
+  </ul>
+</div>
+
+<div class="help-section" id="help-dashboard">
+  <h2><i class="bi bi-house-door-fill"></i> Dashboard</h2>
+  <p>The main monitoring hub showing live camera feeds and real-time analytics.</p>
+  <a href="/dashboard" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Dashboard</a>
+
+  <h3>Live Camera Feeds</h3>
+  <p>View real-time footage from all connected CCTV cameras. Each feed has zoom controls (+/-) and a reconnect button if the stream drops. The primary camera (Camera 1) is displayed larger at the top.</p>
+
+  <h3>Health Status Bar</h3>
+  <p>Shows the system health (Healthy/Warning/Critical), Pi connection status with last heartbeat time, and a real-time clock in Philippine Standard Time.</p>
+
+  <h3>Analytics Dashboard</h3>
+  <ul>
+    <li><strong>Summary Cards</strong> &mdash; Key metrics: total violations, average duration, peak hour, and worst day of the week.</li>
+    <li><strong>Vehicle Type Chart</strong> &mdash; Pie chart showing the breakdown of violation types (Car, Truck, Motorcycle, etc.).</li>
+    <li><strong>Hourly Heatmap</strong> &mdash; 30-day grid showing when violations are most frequent by hour and day.</li>
+    <li><strong>Daily Trend</strong> &mdash; Line chart tracking daily violation counts over 30 days.</li>
+    <li><strong>Camera Comparison</strong> &mdash; Bar chart comparing violation counts across cameras.</li>
+  </ul>
+
+  <h3>AI Model Performance</h3>
+  <p>Displays YOLOv8 vehicle detection stats (total detections, confidence levels) and EasyOCR plate recognition stats (plates read, success rate, unique plates).</p>
+</div>
+
+<div class="help-section" id="help-violations">
+  <h2><i class="bi bi-exclamation-triangle-fill"></i> Violations</h2>
+  <p>Browse, search, and filter all recorded parking violations.</p>
+  <a href="/violations" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Violations</a>
+
+  <h3>Database Records Tab</h3>
+  <p>The main table shows all violations with camera, vehicle type, timestamp, confidence score, and review status. Click any row to see full details including the captured image and video clip.</p>
+
+  <h3>Filtering</h3>
+  <ul>
+    <li><strong>Date Range</strong> &mdash; Filter violations between specific dates.</li>
+    <li><strong>Vehicle Type</strong> &mdash; Show only specific vehicle types (Car, Motorcycle, Truck, etc.).</li>
+    <li><strong>Time of Day</strong> &mdash; Filter by hour range (morning, afternoon, evening, night).</li>
+    <li><strong>Day of Week</strong> &mdash; Show violations for a specific day (e.g., only Fridays).</li>
+    <li><strong>Camera</strong> &mdash; Filter by specific camera location.</li>
+    <li><strong>Today Only</strong> &mdash; Quick filter showing only today's violations.</li>
+  </ul>
+  <p>Active filters appear as removable tags above the table. Click the X on any tag to remove that filter.</p>
+
+  <h3>Capture Images Tab</h3>
+  <p>Browse violation images organized by date. Use the plate number search to find specific vehicles across all records.</p>
+</div>
+
+<div class="help-section" id="help-calendar">
+  <h2><i class="bi bi-calendar3"></i> Calendar</h2>
+  <p>Visual timeline of incidents organized by date with color-coded severity indicators.</p>
+  <a href="/calendar" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Calendar</a>
+
+  <h3>Calendar Grid</h3>
+  <p>Each date cell shows the incident count with color coding: <span style="color:green;">green</span> (0 incidents), <span style="color:#d97706;">yellow</span> (1-3), <span style="color:red;">red</span> (4+). Click any date to view its incidents in the side panel.</p>
+
+  <h3>Incident Overview Panel</h3>
+  <p>When a date is selected, the right panel shows: date, total incident count, cameras involved, and a scrollable list of all incidents with images and video clips.</p>
+
+  <h3>Plate Number Search</h3>
+  <p>Search for a specific license plate number (e.g., ABC-1234) to find all recorded incidents involving that vehicle.</p>
+</div>
+
+{% if user and user.role in ['admin','operator'] %}
+<div class="help-section" id="help-settings">
+  <h2><i class="bi bi-gear-fill"></i> Settings</h2>
+  <p>Configure system behavior, alerts, cameras, and AI detection.</p>
+  <a href="/settings" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Settings</a>
+
+  <h3>General Settings</h3>
+  <p>Set the violation time threshold (how long a vehicle must be stationary before it's flagged) and repeat capture interval (minimum time between re-detections of the same vehicle).</p>
+
+  <h3>Alert Configuration</h3>
+  <ul>
+    <li><strong>Email Alerts</strong> &mdash; Enable Gmail-based email notifications. Requires a Gmail address and App Password (not your regular password). Add recipient emails separated by commas.</li>
+    <li><strong>SMS Alerts</strong> &mdash; Enable text message alerts via UniSMS or TextBee providers. Requires provider API credentials.</li>
+    <li><strong>Cooldown</strong> &mdash; Minimum time between consecutive alerts to prevent spam.</li>
+  </ul>
+  <div class="help-tip"><strong>Tip:</strong> Use the "Test SMTP" button to verify your email configuration before relying on it for live alerts.</div>
+
+  <h3>Camera Management</h3>
+  <p>View, add, edit, or remove cameras. Each camera has an ID, display name, location, RTSP stream URL, and status (active/inactive).</p>
+
+  <h3>AI Detection Controls</h3>
+  <ul>
+    <li><strong>Detection Engine</strong> &mdash; Toggle the AI detection on or off.</li>
+    <li><strong>Cloud Uploads</strong> &mdash; Pause/resume Cloudinary uploads to save cloud storage credits.</li>
+    <li><strong>Confidence Threshold</strong> &mdash; Adjust how confident the AI must be before recording a violation (lower = more detections but more false positives).</li>
+  </ul>
+
+  <h3>Cloud Media Management</h3>
+  <p>Browse and selectively delete uploaded violation images and videos from Cloudinary to manage storage. Filter by age (7/14/30 days) and delete in bulk.</p>
+</div>
+{% endif %}
+
+{% if user and user.role == 'admin' %}
+<div class="help-section" id="help-admin">
+  <h2><i class="bi bi-shield-lock-fill"></i> Admin Panel (Incident Review)</h2>
+  <p>Review, approve, or reject AI-detected violations.</p>
+  <a href="/8f3c9a2d71b4e6c0f9d2a8b7c4e1" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Admin Panel</a>
+
+  <h3>Incident List</h3>
+  <p>Browse all detected road-blocking incidents. Filter by date and review status (For Review, Approved, Rejected, Needs Investigation). The total count updates as you filter.</p>
+
+  <h3>Reviewing an Incident</h3>
+  <ol style="font-size:0.85rem;padding-left:1.2rem;">
+    <li>Click an incident row in the table to load its details on the right panel.</li>
+    <li>Review the captured image, video clip, vehicle type, confidence score, and plate number.</li>
+    <li>Choose a decision: <strong style="color:green;">Approved</strong> (confirmed violation), <strong style="color:red;">Rejected</strong> (false detection), or <strong style="color:orange;">Investigate</strong> (needs further review).</li>
+    <li>Click "Save Decision" to record your review.</li>
+  </ol>
+
+  <h3>Generate PDF Report</h3>
+  <p>Download a professional PDF report of violations for a specific period (Day, Week, Month, or Custom Range). Filter by vehicle type, camera, and review status. Reports include summary statistics, violation type breakdown, daily counts, and a detailed incident log.</p>
+  <div class="help-tip"><strong>Tip:</strong> For weekly reports, select the start date of the week. The report automatically covers 7 days from that date.</div>
+</div>
+
+<div class="help-section" id="help-users">
+  <h2><i class="bi bi-people-fill"></i> User Management</h2>
+  <p>Manage system users and monitor activity.</p>
+  <a href="/user-management" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to User Management</a>
+
+  <h3>Users Table</h3>
+  <p>View all registered users with their username, display name, email, role, status, and last login time. Use the edit button to change roles or the delete button to remove users.</p>
+
+  <h3>Adding Users</h3>
+  <p>Click "Add User" to create a new account. Assign a username, display name, email, password, and role (Admin, Operator, or Viewer).</p>
+
+  <h3>Activity Log</h3>
+  <p>Tracks all system actions: logins, incident reviews, user creation/deletion, and settings changes. Shows timestamp (PHT), user, action, and details.</p>
+</div>
+{% endif %}
+
+<div class="help-section" id="help-notifications">
+  <h2><i class="bi bi-bell-fill"></i> Notifications</h2>
+  <p>The bell icon in the top-right corner shows the count of unreviewed incidents. Click it to see recent violations with quick details. Clicking a notification takes you to the Admin Panel for review.</p>
+</div>
+
+<div class="help-section">
+  <h2><i class="bi bi-info-circle"></i> Need More Help?</h2>
+  <p>If you encounter issues or need assistance, contact the system administrator at <strong>emathrixacademy@gmail.com</strong>.</p>
+</div>
+
+</div>
+{% endblock %}

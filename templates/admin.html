@@ -111,7 +111,7 @@
   <!-- Left: Incident List -->
   <div class="admin-card">
     <div class="card-topbar">
-      <h2><i class="bi bi-exclamation-octagon-fill"></i> Road Blocking Incidents</h2>
+      <h2><i class="bi bi-exclamation-octagon-fill"></i> Road Blocking Incidents <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="AI-detected road blocking violations. Filter by date or status, then click a row to review the incident details and make a decision.">?</span></h2>
       <span class="badge-count" id="totalBadge"><i class="bi bi-collection"></i> Total Incidents: <span id="totalInfo">0</span></span>
     </div>
     <div class="filter-bar">
@@ -155,7 +155,7 @@
     <!-- PDF Report Panel (collapsible) -->
     <div id="reportPanel" style="display:none;padding:1rem 1.25rem;border-top:1px solid var(--border);background:var(--bg);">
       <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.35rem;">
-        <i class="bi bi-file-earmark-pdf" style="color:var(--danger);"></i> Generate PDF Report
+        <i class="bi bi-file-earmark-pdf" style="color:var(--danger);"></i> Generate PDF Report <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Download a professional PDF report. Choose Day/Week/Month/Custom period, filter by vehicle type, camera, or review status.">?</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;">
         <div>
@@ -226,7 +226,7 @@
   <!-- Right: Detail Panel -->
   <div class="admin-card detail-panel">
     <div class="dp-header">
-      <h3>Incident Details</h3>
+      <h3>Incident Details <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Click an incident on the left to load its details here. Review the image/video and choose Approved, Rejected, or Investigate.">?</span></h3>
       <div class="dp-sub">Review the detected incident and record your decision.</div>
     </div>
     <div class="dp-body" id="detailBody">

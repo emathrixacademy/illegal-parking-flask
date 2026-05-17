@@ -35,7 +35,7 @@
 
 <!-- Section 1: General Settings -->
 <div class="content-card">
-  <h2><i class="bi bi-sliders"></i> General Settings</h2>
+  <h2><i class="bi bi-sliders"></i> General Settings <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Set how long a vehicle must be stationary to trigger a violation, and the minimum interval between re-detections.">?</span></h2>
   <form id="settingsForm">
     <div class="mb-3">
       <label for="violation_time" class="form-label">Violation Time Threshold (seconds)</label>
@@ -55,7 +55,7 @@
 
 <!-- Section 2: Alert Configuration -->
 <div class="content-card">
-  <h2><i class="bi bi-bell-fill"></i> Alert Configuration</h2>
+  <h2><i class="bi bi-bell-fill"></i> Alert Configuration <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Set up email and SMS notifications for new violations. Requires Gmail App Password for email alerts.">?</span></h2>
   <form id="alertForm">
     <div class="alert-columns mb-3">
       <!-- Email Alerts -->
@@ -145,7 +145,7 @@
 
 <!-- Section 4: Camera Management -->
 <div class="content-card">
-  <h2><i class="bi bi-camera-video-fill"></i> Camera Management</h2>
+  <h2><i class="bi bi-camera-video-fill"></i> Camera Management <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Add, edit, or remove CCTV cameras. Each camera needs an ID, name, RTSP stream URL, and location.">?</span></h2>
   <div id="cameraList" style="margin-bottom:1rem;"></div>
   <div style="padding:1rem;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
     <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.75rem;">Add New Camera</div>
@@ -230,7 +230,7 @@
 
 <!-- Section 5: AI Detection Controls -->
 <div class="content-card">
-  <h2><i class="bi bi-cpu"></i> AI Detection Controls</h2>
+  <h2><i class="bi bi-cpu"></i> AI Detection Controls <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Toggle AI detection on/off, pause cloud uploads to save credits, and adjust confidence threshold. Lower threshold = more detections but more false positives.">?</span></h2>
 
   <!-- ON/OFF Toggle -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
@@ -290,7 +290,7 @@
 
 <!-- Section 6: Cloud Media Management -->
 <div class="content-card">
-  <h2><i class="bi bi-cloud-fill"></i> Cloud Media Management</h2>
+  <h2><i class="bi bi-cloud-fill"></i> Cloud Media Management <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Browse and delete uploaded violation images/videos from Cloudinary. Filter by age to clean up old media and save storage.">?</span></h2>
   <div class="small-muted mb-3">Browse and selectively delete violation images/videos from Cloudinary to free up credits. Auto-cleanup removes media older than 14 days.</div>
 
   <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">

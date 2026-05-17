@@ -412,6 +412,12 @@
     }
 
     {% block extra_css %}{% endblock %}
+    .help-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary,#2d1b69);color:#fff;font-size:0.6rem;cursor:help;margin-left:4px;vertical-align:middle;opacity:0;transition:opacity 0.2s;pointer-events:none;}
+    body.show-help .help-icon{opacity:0.8;pointer-events:auto;}
+    body.show-help .help-icon:hover{opacity:1;transform:scale(1.15);}
+    .help-fab{position:fixed;bottom:80px;right:20px;z-index:1050;background:var(--primary,#2d1b69);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.2s;}
+    .help-fab:hover{transform:scale(1.1);}
+    body.show-help .help-fab{background:#059669;}
   </style>
 </head>
 <body>
@@ -429,6 +435,7 @@
     <a href="/8f3c9a2d71b4e6c0f9d2a8b7c4e1" class="{% if active_page == 'admin' %}active{% endif %}"><i class="bi bi-shield-lock-fill"></i> Admin</a>
     <a href="/user-management" class="{% if active_page == 'users' %}active{% endif %}"><i class="bi bi-people-fill"></i> Users</a>
     {% endif %}
+    <a href="/help" class="{% if active_page == 'help' %}active{% endif %}"><i class="bi bi-question-circle-fill"></i> Help</a>
   </div>
   <div class="sb-footer">
     {% if user %}
@@ -507,6 +514,8 @@
   <a href="/user-management"><i class="bi bi-people-fill"></i> User Management</a>
   <div class="divider"></div>
   {% endif %}
+  <a href="/help"><i class="bi bi-question-circle-fill"></i> Help & Guide</a>
+  <div class="divider"></div>
   <a href="/logout" class="danger-link"><i class="bi bi-box-arrow-right"></i> Logout</a>
 </div>
 
@@ -703,6 +712,18 @@ async function pollNewViolations() {
 loadNotificationIncidents();
 pollNewViolations();
 setInterval(() => { pollNewViolations(); }, 5000);
+</script>
+<button class="help-fab" onclick="toggleHelpMode()" title="Toggle help tooltips"><i class="bi bi-question-lg"></i></button>
+<script>
+function toggleHelpMode(){
+  document.body.classList.toggle('show-help');
+  localStorage.setItem('dcgl_help', document.body.classList.contains('show-help') ? '1' : '0');
+}
+if(localStorage.getItem('dcgl_help')==='1') document.body.classList.add('show-help');
+document.addEventListener('DOMContentLoaded', function(){
+  var tl = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tl.forEach(function(el){ new bootstrap.Tooltip(el); });
+});
 </script>
 {% block scripts %}{% endblock %}
 </body>

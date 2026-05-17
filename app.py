@@ -519,6 +519,11 @@ def admin_page():
 def violations_page():
     return render_template('violations.html', user=session.get('user'), active_page='violations')
 
+@app.route('/help')
+@login_required
+def help_page():
+    return render_template('help.html', user=session.get('user'), active_page='help')
+
 @app.route('/playback')
 @login_required
 def playback_page():

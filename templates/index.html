@@ -231,6 +231,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 {% block content %}
 <!-- Camera Feeds -->
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:0.3rem;"><span style="font-weight:700;font-size:0.9rem;"><i class="bi bi-camera-video-fill"></i> Live Camera Feeds</span><span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Real-time CCTV footage. Use +/- to zoom. Stream reconnects automatically if disconnected.">?</span></div>
 <div class="cam-grid">
   <!-- CCTV 1: Primary (full-width, large) -->
   <div class="cam-card primary-cam">
@@ -363,7 +364,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 <!-- Quick Stats (Pie + Counts) -->
 <div class="content-card">
-  <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h2>
+  <h2><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Real-time violation statistics. Metrics update automatically every 5 seconds.">?</span></h2>
   <div class="analytics-2col">
     <div class="stat-card chart-wrap">
       <canvas id="analyticsChart" width="200" height="200"></canvas>
@@ -386,7 +387,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 <!-- Heatmap -->
 <div class="content-card">
-  <h2><i class="bi bi-grid-3x3-gap"></i> Hourly Violation Heatmap <small class="small-muted">(30-day pattern)</small></h2>
+  <h2><i class="bi bi-grid-3x3-gap"></i> Hourly Violation Heatmap <small class="small-muted">(30-day pattern)</small> <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Shows when violations happen most. Darker cells = more violations at that hour/day combination over 30 days.">?</span></h2>
   <div id="heatmap-container" style="overflow-x:auto;"></div>
 </div>
 
@@ -416,7 +417,7 @@ a.clickable-metric:hover { background: var(--primary-lighter); box-shadow: 0 2px
 
 <!-- Model Performance -->
 <div class="content-card">
-  <h2><i class="bi bi-cpu"></i> Model Performance</h2>
+  <h2><i class="bi bi-cpu"></i> Model Performance <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="AI detection accuracy stats. YOLOv8 detects vehicles, EasyOCR reads license plates. Higher confidence = more reliable detection.">?</span></h2>
   <p class="small-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Detection and recognition model evaluation metrics.</p>
   <div class="model-perf-grid">
     <!-- YOLOv8 -->
