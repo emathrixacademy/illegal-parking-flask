@@ -34,7 +34,7 @@ CAM1 (MAIN — TP-Link VIGI, 192.168.1.x subnet):
   IP:   192.168.1.3  (DHCP — may change after power loss, was 192.168.1.14 before)
   User: admin
   Pass: @Dm1n2026
-  RTSP: rtsp://admin:%40Dm1n001@192.168.1.3:554/stream1
+  RTSP: rtsp://admin:%40Dm1n2026@192.168.1.3:554/stream1
   Web:  https://192.168.1.3
 
 CAM2 (ONVIF, 192.168.8.x subnet — no auth):
@@ -50,15 +50,15 @@ ONVIF login (CAM2 & CAM3 admin panels only, NOT for RTSP):
   Pass: admin123
 ```
 
-## Pi Network Reliability (pi-deploy/)
-Deploy files in `pi-deploy/` to automate post-reboot recovery:
-- `camera-subnet.service` — oneshot systemd unit, adds 192.168.8.100/24 on boot
-- `network-watchdog.sh` + `.service` — pings every 60s, restarts networking after 3 failures
-- `dhcpcd-static.conf` — static IP 192.168.1.15 for Pi
-- See `pi-deploy/DEPLOY.md` for full SSH deploy instructions
+## Pi Network Reliability (pi-deploy/) — DEPLOYED May 17, 2026
+Services are **active and enabled** on the Pi. Files in `pi-deploy/` are the source of truth:
+- `camera-subnet.service` — oneshot systemd unit, adds 192.168.8.100/24 on boot ✓
+- `network-watchdog.sh` + `.service` — pings every 60s, restarts networking after 3 failures ✓
+- `dhcpcd-static.conf` — static IP 192.168.1.15 for Pi ✓
+- See `pi-deploy/DEPLOY.md` for full SSH deploy instructions (already done)
 
 ## After Pi Reboot Checklist
-If pi-deploy services are NOT yet installed:
+With pi-deploy services installed, recovery is automatic. Manual steps only needed if services fail:
 1. Camera subnet is lost — re-add: `sudo ip addr add 192.168.8.100/24 dev eth0`
 2. Verify cameras: `ping -c1 192.168.8.2 && ping -c1 192.168.8.199`
 3. Verify VIGI cam: `ping -c1 192.168.1.3` (if unreachable, IP may have changed — scan: `for i in $(seq 1 254); do ping -c1 -W1 192.168.1.$i &>/dev/null && echo "192.168.1.$i UP"; done`)
@@ -81,7 +81,7 @@ If pi-deploy services are NOT yet installed:
   curl -X POST "https://web-production-dbb23.up.railway.app/api/db_settings" \
     -H "X-API-Key: dcgl-pi-secret-2026" \
     -H "Content-Type: application/json" \
-    -d '{"CAM1_URL":"rtsp://admin:%40Dm1n001@192.168.1.3:554/stream1","CAM2_URL":"rtsp://192.168.8.2:554/stream","CAM3_URL":"rtsp://192.168.8.199:554/stream"}'
+    -d '{"CAM1_URL":"rtsp://admin:%40Dm1n2026@192.168.1.3:554/stream1","CAM2_URL":"rtsp://192.168.8.2:554/stream","CAM3_URL":"rtsp://192.168.8.199:554/stream"}'
   ```
 - Manually editing `config.py` on Pi is temporary — it gets overwritten within 30 seconds
 - Cloudflare tunnel URL changes on every service restart — Pi re-posts it to Railway automatically
