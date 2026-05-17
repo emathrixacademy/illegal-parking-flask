@@ -5,7 +5,7 @@ import psycopg2
 from datetime import datetime, timedelta
 import io
 from auth import login_required
-from db import get_connection, return_connection
+from db import get_connection, return_connection, get_config_value
 
 analytics_bp = Blueprint('analytics', __name__)
 
@@ -692,6 +692,16 @@ def api_generate_report():
     finally:
         return_connection(conn)
 
+    # Build camera name map
+    cameras = get_config_value("CAMERAS", [])
+    cam_name_map = {}
+    if isinstance(cameras, list):
+        for cam in cameras:
+            cam_name_map[cam.get('id', '')] = cam.get('name', cam.get('id', ''))
+
+    def cam_name(cid):
+        return cam_name_map.get(cid, (cid or '').replace('_', ' '))
+
     # Generate PDF using reportlab
     try:
         from reportlab.lib.pagesizes import letter, A4
@@ -951,7 +961,7 @@ def api_generate_report():
                 ev_str = ', '.join(evidence) if evidence else 'None'
 
                 detail_table_data.append([
-                    str(v_id), v_cam or '', v_label or '', ts_str,
+                    str(v_id), cam_name(v_cam), v_label or '', ts_str,
                     v_plate or '—', conf_str, dur_str, st, ev_str
                 ])
 

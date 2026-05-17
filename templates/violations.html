@@ -341,8 +341,6 @@
       </select>
       <select id="filterCamera" class="form-select">
         <option value="">All Cameras</option>
-        <option value="Camera_1">Camera 1</option>
-        <option value="Camera_2">Camera 2</option>
       </select>
       <label class="d-flex align-items-center gap-1" style="font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;">
         <input type="checkbox" id="filterToday" class="form-check-input" style="margin:0;">
@@ -454,6 +452,24 @@ let _imagesLoaded = false;
 // ========== DATABASE VIEW ==========
 let currentPage = 1;
 let currentFilters = {};
+let cameraNameMap = {};
+
+fetch('/api/cameras').then(r => r.json()).then(cams => {
+  if (Array.isArray(cams)) {
+    cams.forEach(c => { cameraNameMap[c.id] = c.name || c.id; });
+    const sel = document.getElementById('filterCamera');
+    if (sel) {
+      cams.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name || c.id;
+        sel.appendChild(opt);
+      });
+    }
+  }
+}).catch(() => {});
+
+function camName(id) { return cameraNameMap[id] || (id || '').replace('_', ' '); }
 
 function initDateInputs() {
   const today = new Date().toISOString().split('T')[0];
@@ -560,7 +576,7 @@ function renderFilterTags() {
   if (currentFilters.label) tags.push({ key: 'label', display: `Vehicle: ${currentFilters.label}` });
   if (currentFilters.hour_start !== undefined) tags.push({ key: 'hour', display: `Hour: ${currentFilters.hour_start}:00 - ${currentFilters.hour_end}:00` });
   if (currentFilters.day_of_week) tags.push({ key: 'day', display: `Day: ${currentFilters.day_of_week}` });
-  if (currentFilters.camera) tags.push({ key: 'camera', display: `Camera: ${currentFilters.camera.replace('_', ' ')}` });
+  if (currentFilters.camera) tags.push({ key: 'camera', display: `Camera: ${camName(currentFilters.camera)}` });
   if (currentFilters.today === '1') tags.push({ key: 'today', display: 'Today Only' });
   if (currentFilters.duration_sort === '1') tags.push({ key: 'duration_sort', display: 'Sorted by Duration' });
 
@@ -636,7 +652,7 @@ async function loadViolations() {
 
       return `<tr data-idx="${i}" style="cursor:pointer;">
         <td>${idx}</td>
-        <td>${(v.camera || '').replace('_', ' ')}</td>
+        <td>${camName(v.camera)}</td>
         <td><span class="vt-label-badge ${labelClass}">${v.label || '—'}</span></td>
         <td>#${v.tracker_id != null ? v.tracker_id : '—'}</td>
         <td>${dur}</td>
@@ -700,7 +716,7 @@ function showDetail(v) {
 
   document.getElementById('detailModalBody').innerHTML = `
     <div class="detail-grid">
-      <div><div class="detail-label">Camera</div><div class="detail-value">${(v.camera || '—').replace('_', ' ')}</div></div>
+      <div><div class="detail-label">Camera</div><div class="detail-value">${camName(v.camera)}</div></div>
       <div><div class="detail-label">Vehicle Type</div><div class="detail-value">${v.label || '—'}</div></div>
       <div><div class="detail-label">Tracker ID</div><div class="detail-value">#${v.tracker_id != null ? v.tracker_id : '—'}</div></div>
       <div><div class="detail-label">Duration</div><div class="detail-value">${dur}</div></div>

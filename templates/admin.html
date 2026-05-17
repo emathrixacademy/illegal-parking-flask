@@ -202,8 +202,6 @@
           <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Camera</label>
           <select class="form-select" id="reportCamera" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
             <option value="all">All Cameras</option>
-            <option value="Camera_1">Camera 1</option>
-            <option value="Camera_2">Camera 2</option>
           </select>
         </div>
         <div>
@@ -245,6 +243,22 @@
 <script>
 let currentPage = 1, totalPages = 1, allItems = [], selectedId = null, selectedDecision = null;
 const PER_PAGE = 15;
+let cameraNameMap = {};
+
+fetch('/api/cameras').then(r => r.json()).then(cams => {
+  if (Array.isArray(cams)) {
+    cams.forEach(c => { cameraNameMap[c.id] = c.name || c.id; });
+    const sel = document.getElementById('reportCamera');
+    if (sel) {
+      sel.innerHTML = '<option value="all">All Cameras</option>';
+      cams.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.name || c.id}</option>`;
+      });
+    }
+  }
+}).catch(() => {});
+
+function camName(id) { return cameraNameMap[id] || (id || '').replace('_', ' '); }
 
 function formatDate(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleDateString(); } catch(e) { return ts; } }
 function formatTime(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; } }
@@ -274,7 +288,7 @@ function renderTable(items) {
       : '<span class="status-badge warning"><i class="bi bi-cpu"></i> Low conf</span>';
     tr.innerHTML = `
       <td style="font-weight:600;color:var(--text-secondary);">${row.id}</td>
-      <td><strong>${row.label || 'Vehicle'}</strong><br><span style="font-size:0.68rem;color:var(--text-secondary);">${row.camera || ''}</span></td>
+      <td><strong>${row.label || 'Vehicle'}</strong><br><span style="font-size:0.68rem;color:var(--text-secondary);">${camName(row.camera)}</span></td>
       <td>${formatDate(row.timestamp)}</td>
       <td>${formatTime(row.timestamp)}</td>
       <td>${detBadge}</td>
@@ -317,7 +331,7 @@ function selectIncident(id) {
     <div class="dp-fields">
       <div class="dp-field"><div class="dp-field-label">Incident ID</div><div class="dp-field-value">${row.id}</div></div>
       <div class="dp-field"><div class="dp-field-label">Date</div><div class="dp-field-value">${formatDate(row.timestamp)}</div></div>
-      <div class="dp-field"><div class="dp-field-label">Camera</div><div class="dp-field-value">${row.camera || 'N/A'}</div></div>
+      <div class="dp-field"><div class="dp-field-label">Camera</div><div class="dp-field-value">${camName(row.camera)}</div></div>
       <div class="dp-field"><div class="dp-field-label">Time</div><div class="dp-field-value">${formatTime(row.timestamp)}</div></div>
       <div class="dp-field"><div class="dp-field-label">Vehicle</div><div class="dp-field-value">${row.label || 'Unknown'}</div></div>
       <div class="dp-field"><div class="dp-field-label">Duration</div><div class="dp-field-value">${dur} min</div></div>
