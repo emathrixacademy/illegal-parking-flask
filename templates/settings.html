@@ -132,11 +132,11 @@
 
 <!-- Section 3: Alert History -->
 <div class="content-card">
-  <h2><i class="bi bi-clock-history"></i> Alert History</h2>
+  <h2><i class="bi bi-clock-history"></i> Alert History <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="A log of all email and SMS alerts the system has sent. Shows when each alert was sent, who received it, and whether it was delivered successfully.">?</span></h2>
   <div class="table-responsive">
     <table class="table table-sm table-hover">
       <thead>
-        <tr><th>Time</th><th>Type</th><th>Camera</th><th>Vehicle</th><th>Status</th></tr>
+        <tr><th data-bs-toggle="tooltip" title="When the alert was sent">Time</th><th data-bs-toggle="tooltip" title="Email or SMS">Type</th><th data-bs-toggle="tooltip" title="Which camera detected the violation">Camera</th><th data-bs-toggle="tooltip" title="Type of vehicle that triggered the alert">Vehicle</th><th data-bs-toggle="tooltip" title="Whether the alert was sent successfully or failed">Status</th></tr>
       </thead>
       <tbody id="alertLogBody"></tbody>
     </table>
