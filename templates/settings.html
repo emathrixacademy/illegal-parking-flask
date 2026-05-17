@@ -243,6 +243,18 @@
     </div>
   </div>
 
+  <!-- Cloudinary Upload Toggle -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
+    <div>
+      <div style="font-weight:600;">Cloud Media Uploads</div>
+      <div class="small-muted">Pause image/video uploads to Cloudinary to save credits</div>
+    </div>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="cloudinaryToggle" checked style="width:50px;height:26px;">
+    </div>
+  </div>
+  <div id="cloudinaryStatus" style="margin-bottom:12px;"></div>
+
   <!-- Confidence Slider -->
   <div style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
     <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
@@ -612,6 +624,39 @@
             status.innerHTML = '<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error saving settings: ' + (err.message || err) + '</div>';
         });
     });
+
+    // ===== Cloudinary Upload Toggle =====
+    async function loadCloudinaryState() {
+        try {
+            const r = await fetch('/api/cloudinary_toggle');
+            const d = await r.json();
+            document.getElementById('cloudinaryToggle').checked = !d.paused;
+        } catch(e) {
+            document.getElementById('cloudinaryStatus').innerHTML = '<div class="alert alert-warning">Could not load Cloudinary state</div>';
+        }
+    }
+
+    document.getElementById('cloudinaryToggle').addEventListener('change', async function() {
+        const status = document.getElementById('cloudinaryStatus');
+        const paused = !this.checked;
+        try {
+            const r = await fetch('/api/cloudinary_toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ paused })
+            });
+            const d = await r.json();
+            if (d.success) {
+                status.innerHTML = '<div class="alert alert-' + (paused ? 'warning' : 'success') + '">' +
+                    (paused ? '<i class="bi bi-pause-circle"></i> Uploads paused — no credits will be used' : '<i class="bi bi-cloud-upload"></i> Uploads resumed') + '</div>';
+                setTimeout(() => status.innerHTML = '', 3000);
+            }
+        } catch(e) {
+            status.innerHTML = '<div class="alert alert-danger">Failed to update</div>';
+        }
+    });
+
+    loadCloudinaryState();
 
     // ===== AI Detection Controls =====
     async function loadDetectionState() {

@@ -1,0 +1,12 @@
+[Unit]
+Description=Network watchdog - restarts networking on connectivity loss
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/home/admin/network_watchdog.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

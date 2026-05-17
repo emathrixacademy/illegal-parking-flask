@@ -26,10 +26,23 @@ def _get_reader():
     return _reader
 
 
-# Philippine plate patterns: ABC 1234, ABC-1234, 1234-AB, etc.
-PH_PLATE_PATTERN = re.compile(
-    r'^[A-Z]{2,3}[\s\-]?\d{3,4}$|^\d{3,4}[\s\-]?[A-Z]{2,3}$'
-)
+PH_PLATE_PATTERN = re.compile(r'^([A-Z]{2,3})\s*[\-]?\s*(\d{3,4})$')
+
+
+def format_ph_plate(raw_text):
+    """Validate and format as Philippine plate (e.g., 'NAZ 312'). Returns None if invalid."""
+    cleaned = raw_text.upper().strip()
+    cleaned = re.sub(r'[^A-Z0-9]', '', cleaned)
+    m = PH_PLATE_PATTERN.match(cleaned)
+    if m:
+        return f"{m.group(1)} {m.group(2)}"
+    if len(cleaned) >= 5:
+        for i in range(2, 4):
+            letters = cleaned[:i]
+            digits = cleaned[i:]
+            if letters.isalpha() and digits.isdigit() and 2 <= len(letters) <= 3 and 3 <= len(digits) <= 4:
+                return f"{letters} {digits}"
+    return None
 
 
 def extract_plate(frame, bbox=None):
@@ -52,20 +65,22 @@ def extract_plate(frame, bbox=None):
         if crop.size == 0:
             return None, 0.0
 
-        # Preprocess for better OCR
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
         gray = cv2.bilateralFilter(gray, 11, 17, 17)
 
         results = reader.readtext(gray)
 
-        for (box, text, conf) in results:
-            cleaned = text.upper().replace(' ', '').replace('-', '')
-            # Re-add dash for standard format
-            if len(cleaned) >= 6:
-                plate = cleaned[:3] + '-' + cleaned[3:] if cleaned[:3].isalpha() else cleaned
-                if conf > 0.4:
-                    return plate, conf
+        best_plate = None
+        best_conf = 0.0
 
+        for (box, text, conf) in results:
+            plate = format_ph_plate(text)
+            if plate and conf > 0.4 and conf > best_conf:
+                best_plate = plate
+                best_conf = conf
+
+        if best_plate:
+            return best_plate, best_conf
         return None, 0.0
 
     except Exception as e:

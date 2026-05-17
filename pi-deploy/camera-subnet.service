@@ -1,0 +1,12 @@
+[Unit]
+Description=Add secondary camera subnet (192.168.8.x)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/ip addr add 192.168.8.100/24 dev eth0
+
+[Install]
+WantedBy=multi-user.target

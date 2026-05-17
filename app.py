@@ -30,6 +30,7 @@ from alerts import (
 )
 import cloudinary
 import cloudinary.uploader
+import cloudinary.api
 
 cloudinary.config(
     cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
@@ -43,6 +44,82 @@ cloudinary.config(
 # --------------------------------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ParkingApp")
+
+# --------------------------------------------------
+# Cloudinary Auto-Cleanup (14-day retention)
+# --------------------------------------------------
+CLOUDINARY_RETENTION_DAYS = 14
+
+def is_cloudinary_paused():
+    return get_config_value("CLOUDINARY_UPLOADS_PAUSED", "false").lower() == "true"
+
+def cloudinary_cleanup():
+    """Delete Cloudinary assets and clear DB URLs for violations older than 14 days."""
+    while True:
+        time.sleep(6 * 3600)  # Run every 6 hours
+        try:
+            cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
+            if not cloud_name:
+                continue
+            cutoff = datetime.utcnow() - timedelta(days=CLOUDINARY_RETENTION_DAYS)
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT id, image_url, video_url FROM violations
+                    WHERE timestamp < %s
+                      AND (image_url != '' OR video_url != '')
+                """, (cutoff,))
+                rows = cur.fetchall()
+                if not rows:
+                    cur.close()
+                    continue
+                deleted_count = 0
+                for vid_id, image_url, video_url in rows:
+                    for url, res_type in [(image_url, "image"), (video_url, "video")]:
+                        if not url or 'cloudinary' not in url:
+                            continue
+                        try:
+                            public_id = _extract_cloudinary_public_id(url, res_type)
+                            if public_id:
+                                cloudinary.uploader.destroy(public_id, resource_type=res_type)
+                        except Exception as e:
+                            logger.warning(f"Cloudinary delete failed for {url}: {e}")
+                cur.execute("""
+                    UPDATE violations SET image_url = '', video_url = ''
+                    WHERE timestamp < %s
+                      AND (image_url != '' OR video_url != '')
+                """, (cutoff,))
+                deleted_count = cur.rowcount
+                conn.commit()
+                cur.close()
+                logger.info(f"Cloudinary cleanup: cleared media for {deleted_count} violations older than {CLOUDINARY_RETENTION_DAYS} days")
+            finally:
+                return_connection(conn)
+        except Exception as e:
+            logger.error(f"Cloudinary cleanup error: {e}")
+
+def _extract_cloudinary_public_id(url, resource_type):
+    """Extract the public_id from a Cloudinary URL."""
+    try:
+        path = urllib.parse.urlparse(url).path
+        if resource_type == "video":
+            marker = "/video/upload/"
+        else:
+            marker = "/image/upload/"
+        idx = path.find(marker)
+        if idx == -1:
+            return None
+        after = path[idx + len(marker):]
+        parts = after.split("/", 1)
+        if len(parts) == 2 and parts[0].startswith("v"):
+            after = parts[1]
+        public_id = os.path.splitext(after)[0]
+        return public_id
+    except Exception:
+        return None
+
+threading.Thread(target=cloudinary_cleanup, daemon=True, name="cloudinary-cleanup").start()
 
 # --------------------------------------------------
 # Flask App
@@ -652,6 +729,71 @@ def api_resolve_tamper(event_id):
         return_connection(conn)
     return jsonify({"success": True})
 
+@app.route('/api/cloudinary_toggle', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def api_cloudinary_toggle():
+    if request.method == 'GET':
+        paused = is_cloudinary_paused()
+        return jsonify({"paused": paused})
+    data = request.get_json(force=True)
+    paused = bool(data.get("paused", False))
+    set_config_value("CLOUDINARY_UPLOADS_PAUSED", str(paused).lower())
+    logger.info(f"Cloudinary uploads {'PAUSED' if paused else 'RESUMED'}")
+    return jsonify({"success": True, "paused": paused})
+
+@app.route('/api/cloudinary_cleanup', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_cloudinary_cleanup():
+    """Manually trigger Cloudinary cleanup for assets older than 14 days."""
+    try:
+        cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
+        if not cloud_name:
+            return jsonify({"ok": False, "error": "Cloudinary not configured"}), 400
+        cutoff = datetime.utcnow() - timedelta(days=CLOUDINARY_RETENTION_DAYS)
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, image_url, video_url FROM violations
+                WHERE timestamp < %s
+                  AND (image_url != '' OR video_url != '')
+            """, (cutoff,))
+            rows = cur.fetchall()
+            assets_deleted = 0
+            for vid_id, image_url, video_url in rows:
+                for url, res_type in [(image_url, "image"), (video_url, "video")]:
+                    if not url or 'cloudinary' not in url:
+                        continue
+                    try:
+                        public_id = _extract_cloudinary_public_id(url, res_type)
+                        if public_id:
+                            cloudinary.uploader.destroy(public_id, resource_type=res_type)
+                            assets_deleted += 1
+                    except Exception as e:
+                        logger.warning(f"Cloudinary delete failed for {url}: {e}")
+            cur.execute("""
+                UPDATE violations SET image_url = '', video_url = ''
+                WHERE timestamp < %s
+                  AND (image_url != '' OR video_url != '')
+            """, (cutoff,))
+            violations_cleared = cur.rowcount
+            conn.commit()
+            cur.close()
+        finally:
+            return_connection(conn)
+        return jsonify({
+            "ok": True,
+            "violations_cleared": violations_cleared,
+            "assets_deleted": assets_deleted,
+            "retention_days": CLOUDINARY_RETENTION_DAYS,
+            "cutoff_date": cutoff.isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Manual cloudinary cleanup error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 # ==================================================
 # Routes – System Health Proxy (Feature 16)
 # ==================================================
@@ -895,7 +1037,7 @@ def upload_event():
             image_bytes = base64.b64decode(image_b64)
             try:
                 cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
-                if cloud_name:
+                if cloud_name and not is_cloudinary_paused():
                     result = cloudinary.uploader.upload(
                         f"data:image/jpeg;base64,{image_b64}",
                         folder="violations",
@@ -905,6 +1047,8 @@ def upload_event():
                     )
                     image_url = result.get("secure_url", "")
                     logger.info(f"Uploaded violation image to Cloudinary: {image_url}")
+                elif is_cloudinary_paused():
+                    logger.info("Cloudinary uploads paused — skipping image upload")
                 else:
                     logger.warning("Cloudinary not configured, saving image locally")
             except Exception as e:
@@ -934,7 +1078,7 @@ def upload_event():
                     tmp_path = tmp.name
 
                 cloud_name = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
-                if cloud_name:
+                if cloud_name and not is_cloudinary_paused():
                     result = cloudinary.uploader.upload_large(
                         tmp_path,
                         folder="violations/videos",
@@ -948,6 +1092,8 @@ def upload_event():
                     )
                     video_url = result.get("secure_url", "")
                     logger.info(f"Uploaded violation video to Cloudinary: {video_url}")
+                elif is_cloudinary_paused():
+                    logger.info("Cloudinary uploads paused — skipping video upload")
                 else:
                     logger.warning("Cloudinary not configured, saving video locally")
 
@@ -976,6 +1122,17 @@ def upload_event():
         plate_number = data.get('plate_number')
         plate_confidence = data.get('plate_confidence', 0.0)
         bbox = data.get('bbox')
+
+        if plate_number:
+            from ocr_module import format_ph_plate
+            validated = format_ph_plate(plate_number)
+            if not validated:
+                logger.info(f"Rejected invalid plate from Pi: '{plate_number}'")
+                plate_number = None
+                plate_confidence = 0.0
+            else:
+                plate_number = validated
+
         if not plate_number and image_bytes and bbox:
             try:
                 import cv2
