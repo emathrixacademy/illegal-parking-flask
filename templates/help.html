@@ -95,16 +95,18 @@
 
   <h3>Quick Navigation</h3>
   <div class="help-toc">
-    <a href="/dashboard"><i class="bi bi-house-door-fill"></i> Dashboard</a>
-    <a href="/violations"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
-    <a href="/calendar"><i class="bi bi-calendar3"></i> Calendar</a>
+    <a href="#help-dashboard"><i class="bi bi-house-door-fill"></i> Dashboard</a>
+    <a href="#help-violations"><i class="bi bi-exclamation-triangle-fill"></i> Violations</a>
+    <a href="#help-calendar"><i class="bi bi-calendar3"></i> Calendar</a>
     {% if user and user.role in ['admin','operator'] %}
-    <a href="/settings"><i class="bi bi-gear-fill"></i> Settings</a>
+    <a href="#help-settings"><i class="bi bi-gear-fill"></i> Settings</a>
     {% endif %}
     {% if user and user.role == 'admin' %}
-    <a href="/8f3c9a2d71b4e6c0f9d2a8b7c4e1"><i class="bi bi-shield-lock-fill"></i> Admin Panel</a>
-    <a href="/user-management"><i class="bi bi-people-fill"></i> User Management</a>
+    <a href="#help-admin"><i class="bi bi-shield-lock-fill"></i> Admin Panel</a>
+    <a href="#help-users"><i class="bi bi-people-fill"></i> User Management</a>
     {% endif %}
+    <a href="#help-notifications"><i class="bi bi-bell-fill"></i> Notifications</a>
+    <a href="#help-roles"><i class="bi bi-people"></i> User Roles</a>
   </div>
 </div>
 
