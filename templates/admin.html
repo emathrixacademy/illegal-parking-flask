@@ -123,10 +123,11 @@
         <option value="rejected">Rejected</option>
         <option value="needs_investigation">Needs Investigation</option>
       </select>
-      <button class="btn btn-accent filter-btn" onclick="applyFilter()"><i class="bi bi-funnel-fill"></i> Filter</button>
-      <button class="btn btn-outline-secondary filter-btn" onclick="clearFilter()"><i class="bi bi-x-lg"></i> Clear</button>
-      <button class="btn btn-outline-secondary filter-btn" onclick="goToday()">Today</button>
+      <button class="btn btn-accent filter-btn" onclick="applyFilter()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Apply date and status filters to the incident list."><i class="bi bi-funnel-fill"></i> Filter</button>
+      <button class="btn btn-outline-secondary filter-btn" onclick="clearFilter()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Remove all filters and show all incidents."><i class="bi bi-x-lg"></i> Clear</button>
+      <button class="btn btn-outline-secondary filter-btn" onclick="goToday()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Jump to today's incidents only.">Today</button>
     </div>
+    <div style="font-size:0.72rem;color:var(--text-secondary);padding:0 1.25rem 0.2rem;"><i class="bi bi-hand-index"></i> Click any row to review its details, image, video, and set your admin decision.</div>
     <div class="table-scroll">
       <table class="table table-sm table-hover admin-table" id="violationsTable">
         <thead>
@@ -135,8 +136,8 @@
             <th>Vehicle</th>
             <th>Date</th>
             <th>Time</th>
-            <th>Detection</th>
-            <th>Admin Status</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="AI confidence level. 'Detected' means high confidence, 'Low conf' means the AI is less certain.">Detection</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Admin review decision: For Review (pending), Approved (confirmed violation), Rejected (false detection), or Investigate (needs more info).">Admin Status</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -148,8 +149,8 @@
         <span id="pageInfo" class="small-muted">Page 1 / 1</span>
         <button id="nextPage" class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-right"></i></button>
       </div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-      <button class="btn btn-sm btn-outline-primary" onclick="toggleReportPanel()"><i class="bi bi-file-earmark-pdf"></i> Download Report</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()" data-bs-toggle="tooltip" data-bs-placement="top" title="Reload the incident list with latest data."><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button class="btn btn-sm btn-outline-primary" onclick="toggleReportPanel()" data-bs-toggle="tooltip" data-bs-placement="top" title="Generate and download a PDF report of violations for a specific period."><i class="bi bi-file-earmark-pdf"></i> Download Report</button>
     </div>
 
     <!-- PDF Report Panel (collapsible) -->
@@ -376,12 +377,12 @@ function selectIncident(id) {
 
       <div class="dp-review-title">Admin Decision</div>
       <div class="decision-btns">
-        <button class="decision-btn ${status==='approved'?'active approved':''}" id="btnApproved" onclick="setDecision('approved')"><i class="bi bi-check-circle"></i> Approved</button>
-        <button class="decision-btn ${status==='rejected'?'active rejected':''}" id="btnRejected" onclick="setDecision('rejected')"><i class="bi bi-x-circle"></i> Rejected</button>
-        <button class="decision-btn ${status==='needs_investigation'?'active investigate':''}" id="btnInvestigate" onclick="setDecision('needs_investigation')"><i class="bi bi-search"></i> Investigate</button>
+        <button class="decision-btn ${status==='approved'?'active approved':''}" id="btnApproved" onclick="setDecision('approved')" data-bs-toggle="tooltip" data-bs-placement="top" title="Confirm this is a real violation."><i class="bi bi-check-circle"></i> Approved</button>
+        <button class="decision-btn ${status==='rejected'?'active rejected':''}" id="btnRejected" onclick="setDecision('rejected')" data-bs-toggle="tooltip" data-bs-placement="top" title="Mark as false detection — not a real violation."><i class="bi bi-x-circle"></i> Rejected</button>
+        <button class="decision-btn ${status==='needs_investigation'?'active investigate':''}" id="btnInvestigate" onclick="setDecision('needs_investigation')" data-bs-toggle="tooltip" data-bs-placement="top" title="Flag for further review — you're not sure yet."><i class="bi bi-search"></i> Investigate</button>
       </div>
 
-      <button class="save-decision-btn" id="saveDecisionBtn" onclick="saveDecision()"><i class="bi bi-floppy"></i> Save decision</button>
+      <button class="save-decision-btn" id="saveDecisionBtn" onclick="saveDecision()" data-bs-toggle="tooltip" data-bs-placement="top" title="Save your chosen decision. This action is logged."><i class="bi bi-floppy"></i> Save decision</button>
       <div class="dp-audit-note">All actions are logged for audit.</div>
       <div id="decisionMsg" style="margin-top:0.5rem;"></div>
     </div>

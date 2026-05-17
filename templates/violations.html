@@ -346,8 +346,8 @@
         <input type="checkbox" id="filterToday" class="form-check-input" style="margin:0;">
         Today Only
       </label>
-      <button class="btn btn-accent" onclick="applyFilters()"><i class="bi bi-funnel"></i> Filter</button>
-      <button class="btn btn-outline-secondary" onclick="clearFilters()"><i class="bi bi-x-lg"></i> Clear</button>
+      <button class="btn btn-accent" onclick="applyFilters()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Apply the selected filters to narrow down the violations list."><i class="bi bi-funnel"></i> Filter</button>
+      <button class="btn btn-outline-secondary" onclick="clearFilters()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Remove all active filters and show all violations."><i class="bi bi-x-lg"></i> Clear</button>
     </div>
 
     <!-- Active filter tags -->
@@ -357,6 +357,7 @@
     <div id="resultsSummary" class="results-summary"></div>
 
     <!-- Violations Table -->
+    <div style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:0.3rem;"><i class="bi bi-hand-index"></i> Click any row to view full details, captured image, and video clip.</div>
     <div class="violation-table-wrap">
       <table class="violation-table">
         <thead>
@@ -364,11 +365,11 @@
             <th>#</th>
             <th>Camera</th>
             <th>Vehicle</th>
-            <th>Tracker ID</th>
-            <th>Duration</th>
-            <th>Confidence</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Unique tracking number assigned by the AI to each detected vehicle.">Tracker ID</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="How long the vehicle was detected as stationary in the parking zone.">Duration</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="How confident the AI is that this is a real violation. Higher % = more accurate.">Confidence</th>
             <th>Timestamp</th>
-            <th>Status</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Review status set by an admin: For Review, Approved, or Rejected.">Status</th>
           </tr>
         </thead>
         <tbody id="violationsBody">
@@ -389,9 +390,10 @@
     <!-- Plate Number Search -->
     <div class="search-section">
       <h6><i class="bi bi-search"></i> Search by Plate Number</h6>
+      <p style="font-size:0.75rem;color:var(--text-secondary);margin:0 0 0.4rem;">Type a full or partial plate number to find all incidents involving that vehicle.</p>
       <div class="input-group">
         <input type="text" id="plateSearchInput" class="form-control" placeholder="Enter plate number (e.g. ABC-1234)">
-        <button class="btn btn-accent" onclick="searchPlates()"><i class="bi bi-search"></i> Search</button>
+        <button class="btn btn-accent" onclick="searchPlates()" data-bs-toggle="tooltip" data-bs-placement="top" title="Search all records for this plate number."><i class="bi bi-search"></i> Search</button>
       </div>
       <div id="plateSearchResults" class="mt-2"></div>
     </div>

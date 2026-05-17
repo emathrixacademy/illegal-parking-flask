@@ -13,8 +13,8 @@
   <!-- Users Table -->
   <div class="content-card mb-3">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="mb-0"><i class="bi bi-person-lines-fill"></i> Users</h2>
-      <button class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
+      <h2 class="mb-0"><i class="bi bi-person-lines-fill"></i> Users <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage system users. Add new users, change roles, or remove accounts. Only admins can access this page.">?</span></h2>
+      <button class="btn btn-accent btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal" data-bs-toggle="tooltip" title="Create a new user account with a username, email, password, and role.">
         <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">Add User</span>
       </button>
     </div>
@@ -26,10 +26,10 @@
             <th>Username</th>
             <th class="d-none d-md-table-cell">Display Name</th>
             <th class="d-none d-md-table-cell">Email</th>
-            <th>Role</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Admin = full access, Operator = monitor & review, Viewer = read-only.">Role</th>
             <th>Active</th>
             <th class="d-none d-lg-table-cell">Last Login</th>
-            <th>Actions</th>
+            <th data-bs-toggle="tooltip" data-bs-placement="top" title="Edit a user's role or details, or delete their account.">Actions</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -40,7 +40,7 @@
 
   <!-- Activity Log -->
   <div class="content-card">
-    <h2><i class="bi bi-clock-history"></i> Activity Log</h2>
+    <h2><i class="bi bi-clock-history"></i> Activity Log <span class="help-icon" data-bs-toggle="tooltip" data-bs-placement="right" title="Tracks all system actions: logins, reviews, user changes, and settings updates. Useful for auditing.">?</span></h2>
     <div class="table-responsive">
       <table id="activityTable" class="table table-sm table-hover">
         <thead>

@@ -143,9 +143,10 @@
       <!-- Plate Search -->
       <div class="sp-info">
         <div class="sp-info-title"><i class="bi bi-search"></i> Plate Number Search</div>
+        <p style="font-size:0.7rem;color:var(--text-secondary);margin:0 0 0.3rem;">Enter a plate number to find all incidents for that vehicle.</p>
         <div style="display:flex;gap:0.4rem;">
           <input type="text" class="form-control" id="plateSearchInput" placeholder="e.g. ABC-1234" style="font-size:0.8rem;">
-          <button class="btn btn-accent btn-sm" onclick="searchPlate()" style="white-space:nowrap;"><i class="bi bi-search"></i></button>
+          <button class="btn btn-accent btn-sm" onclick="searchPlate()" style="white-space:nowrap;" data-bs-toggle="tooltip" data-bs-placement="top" title="Search all records for this plate number."><i class="bi bi-search"></i></button>
         </div>
         <div id="plateResults" style="margin-top:0.5rem;"></div>
       </div>

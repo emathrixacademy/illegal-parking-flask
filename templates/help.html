@@ -9,7 +9,7 @@
 .help-section h3{font-size:0.95rem;color:var(--primary,#2d1b69);margin:1rem 0 0.4rem;padding-top:0.8rem;border-top:1px solid var(--border,#eee);}
 .help-section h3:first-of-type{border-top:none;padding-top:0;}
 .help-section p,.help-section li{font-size:0.85rem;line-height:1.6;color:var(--text-primary,#333);}
-.help-section ul{padding-left:1.2rem;margin:0.3rem 0;}
+.help-section ul,.help-section ol{padding-left:1.2rem;margin:0.3rem 0;}
 .help-toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.6rem;margin-top:0.8rem;}
 .help-toc a{display:flex;align-items:center;gap:0.5rem;padding:0.7rem 1rem;border-radius:8px;background:var(--glass-bg,#f8f6ff);border:1px solid var(--border,#e0e0e0);text-decoration:none;color:var(--primary,#2d1b69);font-size:0.85rem;font-weight:600;transition:all 0.2s;}
 .help-toc a:hover{background:var(--primary,#2d1b69);color:#fff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(45,27,105,0.2);}
@@ -20,20 +20,78 @@
 .role-admin{background:#2d1b69;color:#fff;}
 .role-operator{background:#d97706;color:#fff;}
 .role-viewer{background:#6b7280;color:#fff;}
-.help-tip{background:#f0edff;border-left:3px solid var(--primary,#2d1b69);padding:0.6rem 0.8rem;border-radius:0 6px 6px 0;margin:0.5rem 0;font-size:0.82rem;}
-.help-shortcut{display:inline-block;padding:0.1rem 0.4rem;background:#e8e3f5;border-radius:4px;font-family:monospace;font-size:0.78rem;}
-.tooltip-toggle{position:fixed;bottom:80px;right:20px;z-index:1050;background:var(--primary,#2d1b69);color:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:1.2rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.2s;}
-.tooltip-toggle:hover{transform:scale(1.1);}
-@media(max-width:768px){.help-wrap{padding:0.5rem;}.help-section{padding:1rem;}.help-toc{grid-template-columns:1fr 1fr;}}
+.help-tip{background:#fff8e1;border-left:3px solid #f59e0b;padding:0.6rem 0.8rem;border-radius:0 6px 6px 0;margin:0.5rem 0;font-size:0.82rem;color:#333;}
+.help-warning{background:#fef2f2;border-left:3px solid #ef4444;padding:0.6rem 0.8rem;border-radius:0 6px 6px 0;margin:0.5rem 0;font-size:0.82rem;color:#333;}
+
+/* Visual mockup styles */
+.mock{background:#f8f7fc;border:1px solid #e0dce8;border-radius:10px;padding:0.8rem;margin:0.7rem 0;font-size:0.78rem;overflow:hidden;}
+.mock-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;color:#8b7fc7;font-weight:700;margin-bottom:0.4rem;}
+.mock-row{display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.6rem;border-radius:6px;margin:0.15rem 0;cursor:default;}
+.mock-row:hover{background:#ece8f7;}
+.mock-row.active{background:#2d1b69;color:#fff;}
+.mock-header{display:flex;gap:0.5rem;padding:0.3rem 0.6rem;font-weight:700;color:#6b5fa0;font-size:0.7rem;border-bottom:1px solid #e0dce8;margin-bottom:0.2rem;}
+.mock-btn{display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;border-radius:6px;font-size:0.72rem;font-weight:600;border:none;cursor:default;}
+.mock-btn.primary{background:#2d1b69;color:#fff;}
+.mock-btn.outline{background:#fff;color:#2d1b69;border:1px solid #2d1b69;}
+.mock-btn.success{background:#059669;color:#fff;}
+.mock-btn.danger{background:#ef4444;color:#fff;}
+.mock-btn.warning{background:#f59e0b;color:#fff;}
+.mock-input{padding:0.25rem 0.5rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.72rem;background:#fff;color:#333;min-width:0;}
+.mock-select{padding:0.25rem 0.5rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.72rem;background:#fff;color:#333;}
+.mock-badge{display:inline-block;padding:0.1rem 0.4rem;border-radius:4px;font-size:0.65rem;font-weight:700;}
+.mock-card{background:#fff;border:1px solid #e0dce8;border-radius:8px;padding:0.6rem;margin:0.3rem 0;}
+.mock-filter-bar{display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center;padding:0.5rem;background:#faf9ff;border-radius:8px;margin:0.4rem 0;}
+.mock-tag{display:inline-flex;align-items:center;gap:0.2rem;padding:0.15rem 0.5rem;background:#ece8f7;border-radius:12px;font-size:0.68rem;color:#2d1b69;font-weight:600;}
+.mock-tag .x{color:#ef4444;font-weight:700;cursor:default;}
+.mock-table{width:100%;border-collapse:collapse;font-size:0.72rem;}
+.mock-table th{background:#f3f1fa;color:#6b5fa0;padding:0.3rem 0.5rem;text-align:left;font-weight:700;font-size:0.68rem;text-transform:uppercase;}
+.mock-table td{padding:0.3rem 0.5rem;border-bottom:1px solid #f0eef5;}
+.mock-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:0.4rem 0;}
+.mock-cal-head{text-align:center;font-size:0.6rem;font-weight:700;color:#6b5fa0;padding:0.2rem;}
+.mock-cal-day{text-align:center;padding:0.3rem 0.15rem;border-radius:4px;font-size:0.68rem;border:1px solid transparent;}
+.mock-cal-day.green{background:#d1fae5;color:#065f46;}
+.mock-cal-day.yellow{background:#fef3c7;color:#92400e;}
+.mock-cal-day.red{background:#fee2e2;color:#991b1b;}
+.mock-cal-day.today{border:2px solid #2d1b69;font-weight:700;}
+.mock-cal-day.selected{background:#2d1b69;color:#fff;}
+.mock-cam{background:#1a1a2e;border-radius:8px;padding:0.5rem;color:#fff;text-align:center;font-size:0.7rem;min-height:50px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.2rem;}
+.mock-cam i{font-size:1.2rem;opacity:0.6;}
+.mock-status{display:inline-flex;align-items:center;gap:0.2rem;font-size:0.68rem;font-weight:600;}
+.mock-status.review{color:#d97706;}
+.mock-status.approved{color:#059669;}
+.mock-status.rejected{color:#ef4444;}
+
+/* Step indicators */
+.help-steps{counter-reset:step;margin:0.5rem 0;}
+.help-step{display:flex;gap:0.7rem;margin:0.5rem 0;align-items:flex-start;}
+.help-step::before{counter-increment:step;content:counter(step);display:flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:50%;background:#2d1b69;color:#fff;font-size:0.75rem;font-weight:700;margin-top:0.1rem;}
+.help-step-content{flex:1;font-size:0.85rem;line-height:1.5;}
+
+/* Animated pulse for click hints */
+@keyframes clickPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.4);}50%{box-shadow:0 0 0 6px rgba(245,158,11,0);}}
+.click-hint{animation:clickPulse 2s infinite;border:2px solid #f59e0b;border-radius:6px;padding:0.15rem 0.3rem;}
+.pointer-arrow{color:#f59e0b;font-size:0.9rem;animation:bounceRight 1s infinite;}
+@keyframes bounceRight{0%,100%{transform:translateX(0);}50%{transform:translateX(4px);}}
+
+/* Feature comparison grid */
+.role-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:1px;background:#e0dce8;border-radius:8px;overflow:hidden;margin:0.5rem 0;font-size:0.78rem;}
+.role-grid div{background:#fff;padding:0.4rem 0.6rem;}
+.role-grid .rg-head{background:#f3f1fa;font-weight:700;color:#6b5fa0;font-size:0.72rem;text-transform:uppercase;}
+.role-grid .rg-feat{font-weight:600;color:#333;}
+.role-grid .check{color:#059669;text-align:center;font-weight:700;}
+.role-grid .dash{color:#d1d5db;text-align:center;}
+
+@media(max-width:768px){.help-wrap{padding:0.5rem;}.help-section{padding:1rem;}.help-toc{grid-template-columns:1fr 1fr;}.role-grid{font-size:0.7rem;}.mock-filter-bar{flex-direction:column;}}
 {% endblock %}
 
 {% block content %}
 <div class="help-wrap">
 
+<!-- ==================== WELCOME ==================== -->
 <div class="help-section">
   <h2><i class="bi bi-book"></i> Welcome to DECONGESTILAGUNA</h2>
-  <p>This system monitors roads in Brgy. Kanluran, Taguig using AI-powered CCTV cameras to detect illegal parking and road-blocking violations. Below is a complete guide to help you navigate every feature.</p>
-  <div class="help-tip"><strong>Tip:</strong> Click the <i class="bi bi-question-circle"></i> icons throughout the system for quick explanations of each feature.</div>
+  <p>This system monitors roads in Brgy. Kanluran, Taguig using AI-powered CCTV cameras to detect illegal parking and road-blocking violations. Below is a complete visual guide to help you navigate every feature.</p>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Tip:</strong> Look for the <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#f59e0b;color:#fff;font-size:0.6rem;font-weight:700;vertical-align:middle;">?</span> icons throughout the system. Click them to get quick explanations of each feature. Toggle them on/off using the <i class="bi bi-question-lg"></i> button in the bottom-right corner.</div>
 
   <h3>Quick Navigation</h3>
   <div class="help-toc">
@@ -50,156 +108,522 @@
   </div>
 </div>
 
+<!-- ==================== ROLES ==================== -->
 <div class="help-section" id="help-roles">
-  <h2><i class="bi bi-people"></i> User Roles</h2>
-  <p>The system has three access levels:</p>
-  <ul>
-    <li><span class="role-badge role-admin">Admin</span> &mdash; Full system control: manage users, review incidents, configure cameras, AI settings, generate reports, and manage cloud media.</li>
-    <li><span class="role-badge role-operator">Operator</span> &mdash; Monitor and respond: view live feeds, review/approve incidents, configure alerts, and access settings.</li>
-    <li><span class="role-badge role-viewer">Viewer</span> &mdash; Read-only access: view the dashboard, violations list, and calendar. Cannot modify settings or review incidents.</li>
-  </ul>
+  <h2><i class="bi bi-people"></i> User Roles &amp; Permissions</h2>
+  <p>The system has three access levels. Each role determines what you can see and do:</p>
+
+  <div class="role-grid">
+    <div class="rg-head">Feature</div>
+    <div class="rg-head" style="text-align:center;"><span class="role-badge role-admin">Admin</span></div>
+    <div class="rg-head" style="text-align:center;"><span class="role-badge role-operator">Operator</span></div>
+    <div class="rg-head" style="text-align:center;"><span class="role-badge role-viewer">Viewer</span></div>
+
+    <div class="rg-feat"><i class="bi bi-house-door"></i> Dashboard &amp; Live Feeds</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+
+    <div class="rg-feat"><i class="bi bi-exclamation-triangle"></i> Violations List</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+
+    <div class="rg-feat"><i class="bi bi-calendar3"></i> Calendar</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+
+    <div class="rg-feat"><i class="bi bi-gear"></i> Settings &amp; Alerts</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="dash">&mdash;</div>
+
+    <div class="rg-feat"><i class="bi bi-shield-lock"></i> Review Incidents</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="dash">&mdash;</div>
+
+    <div class="rg-feat"><i class="bi bi-file-earmark-pdf"></i> Generate Reports</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="dash">&mdash;</div>
+
+    <div class="rg-feat"><i class="bi bi-people"></i> Manage Users</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="dash">&mdash;</div>
+    <div class="dash">&mdash;</div>
+
+    <div class="rg-feat"><i class="bi bi-camera-video"></i> Manage Cameras</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="dash">&mdash;</div>
+    <div class="dash">&mdash;</div>
+
+    <div class="rg-feat"><i class="bi bi-cloud"></i> Manage Cloud Media</div>
+    <div class="check"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="dash">&mdash;</div>
+    <div class="dash">&mdash;</div>
+  </div>
 </div>
 
+<!-- ==================== DASHBOARD ==================== -->
 <div class="help-section" id="help-dashboard">
   <h2><i class="bi bi-house-door-fill"></i> Dashboard</h2>
-  <p>The main monitoring hub showing live camera feeds and real-time analytics.</p>
+  <p>The main monitoring hub showing live camera feeds, system health, and real-time analytics.</p>
   <a href="/dashboard" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Dashboard</a>
 
-  <h3>Live Camera Feeds</h3>
-  <p>View real-time footage from all connected CCTV cameras. Each feed has zoom controls (+/-) and a reconnect button if the stream drops. The primary camera (Camera 1) is displayed larger at the top.</p>
+  <h3><i class="bi bi-camera-video-fill"></i> Live Camera Feeds</h3>
+  <p>View real-time footage from all connected CCTV cameras. The primary camera is displayed larger at the top.</p>
+  <!-- Camera mockup -->
+  <div class="mock">
+    <div class="mock-label">Live camera layout</div>
+    <div class="mock-cam" style="margin-bottom:4px;min-height:60px;">
+      <i class="bi bi-camera-video-fill"></i>
+      <span>Camera 1 &mdash; Zavalla East Road (Primary, full-width)</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+      <div class="mock-cam"><i class="bi bi-camera-video"></i><span>Camera 2 &mdash; Zavalla West</span></div>
+      <div class="mock-cam"><i class="bi bi-camera-video"></i><span>Camera 3 &mdash; Anonuevo North</span></div>
+    </div>
+    <div style="display:flex;gap:0.3rem;margin-top:0.4rem;justify-content:center;">
+      <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-zoom-in"></i> Zoom In</span>
+      <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-zoom-out"></i> Zoom Out</span>
+      <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-arrow-clockwise"></i> Reconnect</span>
+    </div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> Use <strong>+/-</strong> buttons below each feed to zoom in or out. If a stream freezes, click <strong>Reconnect</strong>.</div>
 
-  <h3>Health Status Bar</h3>
-  <p>Shows the system health (Healthy/Warning/Critical), Pi connection status with last heartbeat time, and a real-time clock in Philippine Standard Time.</p>
+  <h3><i class="bi bi-heart-pulse-fill"></i> Health Status Bar</h3>
+  <div class="mock">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;">
+      <span class="mock-badge" style="background:#059669;color:#fff;"><i class="bi bi-heart-pulse-fill"></i> System: Healthy</span>
+      <span style="font-size:0.72rem;"><i class="bi bi-hdd-network" style="color:#059669;"></i> Pi: Connected &mdash; Last heartbeat: 2 min ago</span>
+      <span style="font-size:0.72rem;"><i class="bi bi-clock"></i> 7:45:00 PM PHT</span>
+    </div>
+  </div>
+  <p><strong>Healthy</strong> = everything OK. <strong>Warning</strong> = Pi hasn't sent data recently. <strong>Critical</strong> = Pi is disconnected. The clock always shows Philippine Standard Time (PHT).</p>
 
-  <h3>Analytics Dashboard</h3>
-  <ul>
-    <li><strong>Summary Cards</strong> &mdash; Key metrics: total violations, average duration, peak hour, and worst day of the week.</li>
-    <li><strong>Vehicle Type Chart</strong> &mdash; Pie chart showing the breakdown of violation types (Car, Truck, Motorcycle, etc.).</li>
-    <li><strong>Hourly Heatmap</strong> &mdash; 30-day grid showing when violations are most frequent by hour and day.</li>
-    <li><strong>Daily Trend</strong> &mdash; Line chart tracking daily violation counts over 30 days.</li>
-    <li><strong>Camera Comparison</strong> &mdash; Bar chart comparing violation counts across cameras.</li>
-  </ul>
+  <h3><i class="bi bi-bar-chart-fill"></i> Analytics Dashboard</h3>
+  <p>Below the camera feeds, you'll see real-time charts and metrics that update automatically:</p>
+  <div class="mock">
+    <div class="mock-label">Analytics overview</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;margin-bottom:0.5rem;">
+      <div class="mock-card" style="text-align:center;"><div style="font-size:0.65rem;color:#888;">TOTAL VIOLATIONS</div><div style="font-size:1.1rem;font-weight:700;color:#2d1b69;">727</div></div>
+      <div class="mock-card" style="text-align:center;"><div style="font-size:0.65rem;color:#888;">AVG DURATION</div><div style="font-size:1.1rem;font-weight:700;color:#2d1b69;">5.2 min</div></div>
+      <div class="mock-card" style="text-align:center;"><div style="font-size:0.65rem;color:#888;">PEAK HOUR</div><div style="font-size:1.1rem;font-weight:700;color:#2d1b69;">5 PM</div></div>
+      <div class="mock-card" style="text-align:center;"><div style="font-size:0.65rem;color:#888;">WORST DAY</div><div style="font-size:1.1rem;font-weight:700;color:#2d1b69;">Monday</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+      <div class="mock-card" style="text-align:center;padding:1rem;"><i class="bi bi-pie-chart-fill" style="font-size:1.5rem;color:#2d1b69;"></i><div style="font-size:0.7rem;margin-top:0.2rem;">Vehicle Type Breakdown</div></div>
+      <div class="mock-card" style="text-align:center;padding:1rem;"><i class="bi bi-graph-up" style="font-size:1.5rem;color:#2d1b69;"></i><div style="font-size:0.7rem;margin-top:0.2rem;">Daily Trend (30 days)</div></div>
+      <div class="mock-card" style="text-align:center;padding:1rem;"><i class="bi bi-grid-3x3-gap-fill" style="font-size:1.5rem;color:#d97706;"></i><div style="font-size:0.7rem;margin-top:0.2rem;">Hourly Heatmap</div></div>
+      <div class="mock-card" style="text-align:center;padding:1rem;"><i class="bi bi-bar-chart-line-fill" style="font-size:1.5rem;color:#2d1b69;"></i><div style="font-size:0.7rem;margin-top:0.2rem;">Camera Comparison</div></div>
+    </div>
+  </div>
 
-  <h3>AI Model Performance</h3>
-  <p>Displays YOLOv8 vehicle detection stats (total detections, confidence levels) and EasyOCR plate recognition stats (plates read, success rate, unique plates).</p>
+  <h3><i class="bi bi-cpu-fill"></i> AI Model Performance</h3>
+  <div class="mock">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <div class="mock-card"><div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-cpu" style="color:#2d1b69;"></i> YOLOv8 &mdash; Vehicle Detection</div><div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">Total detections, average confidence, vehicles per camera</div></div>
+      <div class="mock-card"><div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-upc-scan" style="color:#2d1b69;"></i> EasyOCR &mdash; Plate Recognition</div><div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">Plates read, success rate, unique plates found</div></div>
+    </div>
+  </div>
 </div>
 
+<!-- ==================== VIOLATIONS ==================== -->
 <div class="help-section" id="help-violations">
   <h2><i class="bi bi-exclamation-triangle-fill"></i> Violations</h2>
-  <p>Browse, search, and filter all recorded parking violations.</p>
+  <p>Browse, search, and filter all recorded parking violations. This page has two tabs.</p>
   <a href="/violations" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Violations</a>
 
-  <h3>Database Records Tab</h3>
-  <p>The main table shows all violations with camera, vehicle type, timestamp, confidence score, and review status. Click any row to see full details including the captured image and video clip.</p>
+  <h3><i class="bi bi-table"></i> Database Records Tab</h3>
+  <p>The main table shows all violations. <strong>Click any row</strong> to open a detail panel with the captured image, video clip, and full information.</p>
 
-  <h3>Filtering</h3>
-  <ul>
-    <li><strong>Date Range</strong> &mdash; Filter violations between specific dates.</li>
-    <li><strong>Vehicle Type</strong> &mdash; Show only specific vehicle types (Car, Motorcycle, Truck, etc.).</li>
-    <li><strong>Time of Day</strong> &mdash; Filter by hour range (morning, afternoon, evening, night).</li>
-    <li><strong>Day of Week</strong> &mdash; Show violations for a specific day (e.g., only Fridays).</li>
-    <li><strong>Camera</strong> &mdash; Filter by specific camera location.</li>
-    <li><strong>Today Only</strong> &mdash; Quick filter showing only today's violations.</li>
-  </ul>
-  <p>Active filters appear as removable tags above the table. Click the X on any tag to remove that filter.</p>
+  <!-- Table mockup -->
+  <div class="mock">
+    <div class="mock-label"><i class="bi bi-hand-index-fill" style="color:#f59e0b;"></i> Click a row to see details</div>
+    <table class="mock-table">
+      <tr><th>#</th><th>Camera</th><th>Vehicle</th><th>Confidence</th><th>Timestamp</th><th>Status</th></tr>
+      <tr style="cursor:pointer;"><td>1</td><td>Zavalla East Road</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">CAR</span></td><td>77.6%</td><td>5/13, 7:12 PM</td><td><span class="mock-status review"><i class="bi bi-clock"></i> For Review</span></td></tr>
+      <tr class="active" style="cursor:pointer;border-radius:6px;"><td style="color:#fff;">2</td><td>Zavalla West Road</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">TRUCK</span></td><td>89.2%</td><td>5/13, 6:30 PM</td><td><span style="color:#a7f3d0;"><i class="bi bi-check-circle-fill"></i> Approved</span></td></tr>
+      <tr style="cursor:pointer;"><td>3</td><td>Anonuevo North Road</td><td><span class="mock-badge" style="background:#fce7f3;color:#9d174d;">MOTORCYCLE</span></td><td>45.1%</td><td>5/13, 5:15 PM</td><td><span class="mock-status review"><i class="bi bi-clock"></i> For Review</span></td></tr>
+    </table>
+    <div style="margin-top:0.4rem;font-size:0.68rem;color:#f59e0b;font-weight:600;"><span class="pointer-arrow"><i class="bi bi-arrow-up"></i></span> Click any row above to open its details!</div>
+  </div>
 
-  <h3>Capture Images Tab</h3>
-  <p>Browse violation images organized by date. Use the plate number search to find specific vehicles across all records.</p>
+  <!-- Detail popup mockup -->
+  <div class="mock" style="border:2px solid #2d1b69;">
+    <div class="mock-label">Violation detail panel (opens when you click a row)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:0.4rem;">
+      <div><span style="font-size:0.65rem;color:#888;text-transform:uppercase;">Camera</span><br><strong>Zavalla West Road</strong></div>
+      <div><span style="font-size:0.65rem;color:#888;text-transform:uppercase;">Vehicle Type</span><br><strong>TRUCK</strong></div>
+      <div><span style="font-size:0.65rem;color:#888;text-transform:uppercase;">Confidence</span><br><strong>89.2%</strong></div>
+      <div><span style="font-size:0.65rem;color:#888;text-transform:uppercase;">Status</span><br><strong style="color:#059669;">Approved</strong></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+      <div class="mock-cam" style="min-height:40px;"><i class="bi bi-image"></i> Captured Image</div>
+      <div class="mock-cam" style="min-height:40px;"><i class="bi bi-film"></i> Video Clip</div>
+    </div>
+  </div>
+
+  <h3><i class="bi bi-funnel-fill"></i> How to Filter Violations</h3>
+  <p>Use the filter bar at the top to narrow down results. Here's how each filter works:</p>
+
+  <!-- Filter bar mockup -->
+  <div class="mock">
+    <div class="mock-label">Filter bar</div>
+    <div class="mock-filter-bar">
+      <div style="display:flex;align-items:center;gap:0.3rem;">
+        <span style="font-size:0.68rem;font-weight:600;">From</span>
+        <span class="mock-input click-hint"><i class="bi bi-calendar3"></i> 05/01/2026</span>
+        <span style="font-size:0.68rem;font-weight:600;">To</span>
+        <span class="mock-input click-hint"><i class="bi bi-calendar3"></i> 05/17/2026</span>
+      </div>
+      <span class="mock-select">All Types &#9662;</span>
+      <span class="mock-select">All Hours &#9662;</span>
+      <span class="mock-select">All Days &#9662;</span>
+      <span class="mock-select">All Cameras &#9662;</span>
+      <label style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><input type="checkbox" disabled> Today Only</label>
+      <span class="mock-btn primary"><i class="bi bi-funnel"></i> Filter</span>
+      <span class="mock-btn outline"><i class="bi bi-x-lg"></i> Clear</span>
+    </div>
+  </div>
+
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content"><strong>Choose a date range</strong> &mdash; Click the <i class="bi bi-calendar3"></i> "From" and "To" date fields. A calendar picker will appear. Select the start and end dates to define your range.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Pick optional filters</strong> &mdash; Use the dropdowns to filter by vehicle type (Car, Truck, Motorcycle...), time of day (morning, afternoon...), day of week, or specific camera.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Click <span class="mock-btn primary" style="font-size:0.7rem;"><i class="bi bi-funnel"></i> Filter</span></strong> &mdash; The table updates to show only matching violations.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>See active filters</strong> &mdash; Applied filters appear as tags above the table. Click the <strong style="color:#ef4444;">&times;</strong> on any tag to remove that filter.</div></div>
+  </div>
+
+  <!-- Active tags mockup -->
+  <div class="mock">
+    <div class="mock-label">Active filter tags (appear above the table)</div>
+    <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+      <span class="mock-tag">Date: 5/1 - 5/17 <span class="x">&times;</span></span>
+      <span class="mock-tag">Type: CAR <span class="x">&times;</span></span>
+      <span class="mock-tag">Camera: Zavalla East Road <span class="x">&times;</span></span>
+    </div>
+    <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;"><i class="bi bi-info-circle"></i> Click the <strong style="color:#ef4444;">&times;</strong> on any tag to remove that filter.</div>
+  </div>
+
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Quick shortcut:</strong> Check "Today Only" to instantly see only today's violations without setting dates.</div>
+
+  <h3><i class="bi bi-images"></i> Capture Images Tab</h3>
+  <p>Switch to this tab to browse violation images organized by date. Use the plate number search to find a specific vehicle across all records.</p>
+  <div class="mock">
+    <div class="mock-label">Plate number search</div>
+    <div style="display:flex;gap:0.3rem;align-items:center;">
+      <span class="mock-input" style="flex:1;">ABC-1234</span>
+      <span class="mock-btn primary"><i class="bi bi-search"></i> Search</span>
+    </div>
+    <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;"><i class="bi bi-info-circle"></i> Enter a full or partial plate number (e.g., ABC-1234 or just ABC).</div>
+  </div>
 </div>
 
+<!-- ==================== CALENDAR ==================== -->
 <div class="help-section" id="help-calendar">
   <h2><i class="bi bi-calendar3"></i> Calendar</h2>
   <p>Visual timeline of incidents organized by date with color-coded severity indicators.</p>
   <a href="/calendar" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Calendar</a>
 
-  <h3>Calendar Grid</h3>
-  <p>Each date cell shows the incident count with color coding: <span style="color:green;">green</span> (0 incidents), <span style="color:#d97706;">yellow</span> (1-3), <span style="color:red;">red</span> (4+). Click any date to view its incidents in the side panel.</p>
+  <h3><i class="bi bi-calendar2-week-fill"></i> Calendar Grid</h3>
+  <p>Each date cell shows the incident count. Colors tell you the severity at a glance:</p>
 
-  <h3>Incident Overview Panel</h3>
-  <p>When a date is selected, the right panel shows: date, total incident count, cameras involved, and a scrollable list of all incidents with images and video clips.</p>
+  <!-- Calendar mockup -->
+  <div class="mock">
+    <div class="mock-label">Calendar view</div>
+    <div style="display:flex;gap:0.6rem;margin-bottom:0.4rem;flex-wrap:wrap;">
+      <span style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><span style="width:10px;height:10px;border-radius:50%;background:#059669;display:inline-block;"></span> No incidents</span>
+      <span style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><span style="width:10px;height:10px;border-radius:50%;background:#d97706;display:inline-block;"></span> 1-3 incidents</span>
+      <span style="font-size:0.68rem;display:flex;align-items:center;gap:0.2rem;"><span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span> 4+ incidents</span>
+    </div>
+    <div class="mock-cal">
+      <div class="mock-cal-head">SUN</div><div class="mock-cal-head">MON</div><div class="mock-cal-head">TUE</div><div class="mock-cal-head">WED</div><div class="mock-cal-head">THU</div><div class="mock-cal-head">FRI</div><div class="mock-cal-head">SAT</div>
+      <div class="mock-cal-day green">10<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day red">11<br><span style="font-size:0.55rem;color:#991b1b;">265</span></div>
+      <div class="mock-cal-day red">12<br><span style="font-size:0.55rem;color:#991b1b;">317</span></div>
+      <div class="mock-cal-day yellow selected">13<br><span style="font-size:0.55rem;">10</span></div>
+      <div class="mock-cal-day green">14<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">15<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
+      <div class="mock-cal-day green">16<br><span style="font-size:0.55rem;color:#059669;">0</span></div>
+    </div>
+    <div style="font-size:0.68rem;color:#f59e0b;font-weight:600;margin-top:0.3rem;"><span class="pointer-arrow"><i class="bi bi-hand-index-fill"></i></span> Click any date to view its incidents in the side panel!</div>
+  </div>
 
-  <h3>Plate Number Search</h3>
-  <p>Search for a specific license plate number (e.g., ABC-1234) to find all recorded incidents involving that vehicle.</p>
+  <h3><i class="bi bi-layout-sidebar-inset-reverse"></i> Incident Overview Panel</h3>
+  <p>When you click a date, the right-side panel shows all incidents for that day:</p>
+
+  <div class="mock">
+    <div class="mock-label">Side panel (after clicking a date)</div>
+    <div class="mock-card">
+      <div style="font-weight:700;font-size:0.8rem;margin-bottom:0.3rem;">May 13, 2026</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.3rem;font-size:0.72rem;">
+        <div><span style="color:#888;">Incidents:</span> <strong>10</strong></div>
+        <div><span style="color:#888;">Cameras:</span> <strong>2</strong></div>
+      </div>
+    </div>
+    <div class="mock-card" style="border-left:3px solid #2d1b69;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:600;font-size:0.75rem;"><i class="bi bi-camera-video"></i> Zavalla East Road</span>
+        <span style="font-size:0.68rem;color:#888;">7:12 PM</span>
+      </div>
+      <div style="font-size:0.7rem;color:#666;">CAR &mdash; 77.6% confidence</div>
+      <div style="display:flex;gap:0.3rem;margin-top:0.3rem;">
+        <span class="mock-btn outline" style="font-size:0.6rem;"><i class="bi bi-image"></i> View Image</span>
+        <span class="mock-btn outline" style="font-size:0.6rem;"><i class="bi bi-play-circle"></i> View Video</span>
+      </div>
+    </div>
+  </div>
+
+  <h3><i class="bi bi-search"></i> Plate Number Search</h3>
+  <p>Search for a specific license plate number to find all recorded incidents involving that vehicle across all dates.</p>
+  <div class="mock">
+    <div class="mock-label">How plate search works</div>
+    <div class="help-steps" style="margin:0;">
+      <div class="help-step"><div class="help-step-content">Type the plate number in the search box (e.g., <strong>ABC-1234</strong> or just <strong>ABC</strong> for partial match)</div></div>
+      <div class="help-step"><div class="help-step-content">Click <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-search"></i></span> &mdash; results show all matching incidents with dates, cameras, and images</div></div>
+    </div>
+  </div>
 </div>
 
+<!-- ==================== SETTINGS ==================== -->
 {% if user and user.role in ['admin','operator'] %}
 <div class="help-section" id="help-settings">
   <h2><i class="bi bi-gear-fill"></i> Settings</h2>
   <p>Configure system behavior, alerts, cameras, and AI detection.</p>
   <a href="/settings" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Settings</a>
 
-  <h3>General Settings</h3>
-  <p>Set the violation time threshold (how long a vehicle must be stationary before it's flagged) and repeat capture interval (minimum time between re-detections of the same vehicle).</p>
+  <h3><i class="bi bi-sliders"></i> General Settings</h3>
+  <div class="mock">
+    <div class="mock-label">Detection timing controls</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <div class="mock-card">
+        <div style="font-weight:700;font-size:0.75rem;">Violation Time Threshold</div>
+        <div class="mock-input" style="width:100%;margin-top:0.3rem;">300 seconds</div>
+        <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;">How long a vehicle must be stationary before the AI flags it as a violation. Default: 300s (5 minutes).</div>
+      </div>
+      <div class="mock-card">
+        <div style="font-weight:700;font-size:0.75rem;">Repeat Capture Interval</div>
+        <div class="mock-input" style="width:100%;margin-top:0.3rem;">300 seconds</div>
+        <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;">Minimum time between re-detections of the same vehicle. Prevents duplicate entries.</div>
+      </div>
+    </div>
+  </div>
 
-  <h3>Alert Configuration</h3>
-  <ul>
-    <li><strong>Email Alerts</strong> &mdash; Enable Gmail-based email notifications. Requires a Gmail address and App Password (not your regular password). Add recipient emails separated by commas.</li>
-    <li><strong>SMS Alerts</strong> &mdash; Enable text message alerts via UniSMS or TextBee providers. Requires provider API credentials.</li>
-    <li><strong>Cooldown</strong> &mdash; Minimum time between consecutive alerts to prevent spam.</li>
-  </ul>
-  <div class="help-tip"><strong>Tip:</strong> Use the "Test SMTP" button to verify your email configuration before relying on it for live alerts.</div>
+  <h3><i class="bi bi-bell-fill"></i> Alert Configuration</h3>
+  <div class="mock">
+    <div class="mock-label">Email &amp; SMS alert setup</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <div class="mock-card">
+        <div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-envelope-fill" style="color:#2d1b69;"></i> Email Alerts</div>
+        <ul style="font-size:0.7rem;padding-left:1rem;margin:0.3rem 0;">
+          <li><strong>SMTP Email</strong> &mdash; Your Gmail address</li>
+          <li><strong>App Password</strong> &mdash; A special password from Google (not your regular password!)</li>
+          <li><strong>Recipients</strong> &mdash; Email addresses to notify, separated by commas</li>
+        </ul>
+      </div>
+      <div class="mock-card">
+        <div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-phone-fill" style="color:#d97706;"></i> SMS Alerts</div>
+        <ul style="font-size:0.7rem;padding-left:1rem;margin:0.3rem 0;">
+          <li><strong>Provider</strong> &mdash; Choose UniSMS or TextBee</li>
+          <li><strong>API Key</strong> &mdash; Your provider's API key</li>
+          <li><strong>Recipients</strong> &mdash; Phone numbers to notify</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> Use the <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-send"></i> Test SMTP</span> button to verify your email works before relying on it.</div>
+  <div class="help-warning"><i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;"></i> <strong>Important:</strong> The "App Password" is NOT your Gmail login password. You must generate one from <strong>Google Account &gt; Security &gt; App passwords</strong>.</div>
 
-  <h3>Camera Management</h3>
-  <p>View, add, edit, or remove cameras. Each camera has an ID, display name, location, RTSP stream URL, and status (active/inactive).</p>
+  <h3><i class="bi bi-camera-video-fill"></i> Camera Management</h3>
+  <div class="mock">
+    <div class="mock-label">Camera list</div>
+    <table class="mock-table">
+      <tr><th>ID</th><th>Name</th><th>Location</th><th>Status</th><th>Actions</th></tr>
+      <tr><td>Camera_1</td><td>Zavalla East Road</td><td>Brgy. Kanluran</td><td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">active</span></td><td><span class="mock-btn outline" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-pencil"></i></span> <span class="mock-btn danger" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-trash"></i></span></td></tr>
+    </table>
+    <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;"><i class="bi bi-pencil"></i> = Edit camera details &nbsp; <i class="bi bi-trash" style="color:#ef4444;"></i> = Delete camera</div>
+  </div>
 
-  <h3>AI Detection Controls</h3>
-  <ul>
-    <li><strong>Detection Engine</strong> &mdash; Toggle the AI detection on or off.</li>
-    <li><strong>Cloud Uploads</strong> &mdash; Pause/resume Cloudinary uploads to save cloud storage credits.</li>
-    <li><strong>Confidence Threshold</strong> &mdash; Adjust how confident the AI must be before recording a violation (lower = more detections but more false positives).</li>
-  </ul>
+  <h3><i class="bi bi-cpu-fill"></i> AI Detection Controls</h3>
+  <div class="mock">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
+      <div class="mock-card" style="text-align:center;">
+        <i class="bi bi-toggle-on" style="font-size:1.2rem;color:#059669;"></i>
+        <div style="font-weight:700;font-size:0.72rem;">Detection Engine</div>
+        <div style="font-size:0.65rem;color:#888;">Turn AI detection ON or OFF</div>
+      </div>
+      <div class="mock-card" style="text-align:center;">
+        <i class="bi bi-cloud-arrow-up" style="font-size:1.2rem;color:#2d1b69;"></i>
+        <div style="font-weight:700;font-size:0.72rem;">Cloud Uploads</div>
+        <div style="font-size:0.65rem;color:#888;">Pause/resume to save storage credits</div>
+      </div>
+      <div class="mock-card" style="text-align:center;">
+        <i class="bi bi-speedometer2" style="font-size:1.2rem;color:#d97706;"></i>
+        <div style="font-weight:700;font-size:0.72rem;">Confidence Threshold</div>
+        <div style="font-size:0.65rem;color:#888;">Higher = fewer but more accurate detections</div>
+      </div>
+    </div>
+  </div>
 
-  <h3>Cloud Media Management</h3>
-  <p>Browse and selectively delete uploaded violation images and videos from Cloudinary to manage storage. Filter by age (7/14/30 days) and delete in bulk.</p>
+  <h3><i class="bi bi-cloud-fill"></i> Cloud Media Management</h3>
+  <p>Browse and selectively delete uploaded violation images and videos from cloud storage. Filter by age (7/14/30 days) and delete in bulk to free up space.</p>
 </div>
 {% endif %}
 
+<!-- ==================== ADMIN PANEL ==================== -->
 {% if user and user.role == 'admin' %}
 <div class="help-section" id="help-admin">
   <h2><i class="bi bi-shield-lock-fill"></i> Admin Panel (Incident Review)</h2>
-  <p>Review, approve, or reject AI-detected violations.</p>
+  <p>Review, approve, or reject AI-detected violations. This is where you make official decisions on each incident.</p>
   <a href="/8f3c9a2d71b4e6c0f9d2a8b7c4e1" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Admin Panel</a>
 
-  <h3>Incident List</h3>
-  <p>Browse all detected road-blocking incidents. Filter by date and review status (For Review, Approved, Rejected, Needs Investigation). The total count updates as you filter.</p>
+  <h3><i class="bi bi-list-check"></i> How to Review an Incident</h3>
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content"><strong>Click an incident row</strong> in the table on the left. The right panel loads its details: image, video, vehicle type, confidence, and plate number.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Review the evidence</strong> &mdash; Look at the captured image and video clip. Check if the vehicle is actually blocking the road.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Choose a decision</strong> by clicking one of the three buttons below:</div></div>
+  </div>
 
-  <h3>Reviewing an Incident</h3>
-  <ol style="font-size:0.85rem;padding-left:1.2rem;">
-    <li>Click an incident row in the table to load its details on the right panel.</li>
-    <li>Review the captured image, video clip, vehicle type, confidence score, and plate number.</li>
-    <li>Choose a decision: <strong style="color:green;">Approved</strong> (confirmed violation), <strong style="color:red;">Rejected</strong> (false detection), or <strong style="color:orange;">Investigate</strong> (needs further review).</li>
-    <li>Click "Save Decision" to record your review.</li>
-  </ol>
+  <!-- Decision buttons mockup -->
+  <div class="mock">
+    <div class="mock-label">Admin decision buttons</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.4rem;">
+      <div class="mock-card" style="text-align:center;border:2px solid #059669;">
+        <i class="bi bi-check-circle-fill" style="font-size:1.1rem;color:#059669;"></i>
+        <div style="font-weight:700;font-size:0.78rem;color:#059669;">Approved</div>
+        <div style="font-size:0.65rem;color:#666;">Yes, this is a real violation. Confirm it.</div>
+      </div>
+      <div class="mock-card" style="text-align:center;border:2px solid #ef4444;">
+        <i class="bi bi-x-circle-fill" style="font-size:1.1rem;color:#ef4444;"></i>
+        <div style="font-weight:700;font-size:0.78rem;color:#ef4444;">Rejected</div>
+        <div style="font-size:0.65rem;color:#666;">False detection. The AI made a mistake.</div>
+      </div>
+      <div class="mock-card" style="text-align:center;border:2px solid #d97706;">
+        <i class="bi bi-search" style="font-size:1.1rem;color:#d97706;"></i>
+        <div style="font-weight:700;font-size:0.78rem;color:#d97706;">Investigate</div>
+        <div style="font-size:0.65rem;color:#666;">Not sure yet. Flag for further review.</div>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <span class="mock-btn primary"><i class="bi bi-floppy"></i> Save Decision</span>
+    </div>
+    <div style="font-size:0.68rem;color:#666;text-align:center;margin-top:0.3rem;"><i class="bi bi-shield-check"></i> All decisions are logged for audit purposes.</div>
+  </div>
 
-  <h3>Generate PDF Report</h3>
-  <p>Download a professional PDF report of violations for a specific period (Day, Week, Month, or Custom Range). Filter by vehicle type, camera, and review status. Reports include summary statistics, violation type breakdown, daily counts, and a detailed incident log.</p>
-  <div class="help-tip"><strong>Tip:</strong> For weekly reports, select the start date of the week. The report automatically covers 7 days from that date.</div>
+  <h3><i class="bi bi-funnel-fill"></i> Filtering Incidents</h3>
+  <div class="mock">
+    <div class="mock-label">Filter by date and status</div>
+    <div class="mock-filter-bar">
+      <span class="mock-input click-hint"><i class="bi bi-calendar3"></i> mm/dd/yyyy</span>
+      <span class="mock-select">All Status &#9662;</span>
+      <span class="mock-btn primary"><i class="bi bi-funnel-fill"></i> Filter</span>
+      <span class="mock-btn outline"><i class="bi bi-x-lg"></i> Clear</span>
+      <span class="mock-btn outline">Today</span>
+    </div>
+    <div style="font-size:0.68rem;color:#666;margin-top:0.2rem;">Filter by: <strong>For Review</strong> (pending), <strong>Approved</strong>, <strong>Rejected</strong>, or <strong>Needs Investigation</strong></div>
+  </div>
+
+  <h3><i class="bi bi-file-earmark-pdf-fill"></i> Generate PDF Report</h3>
+  <p>Download a professional PDF report of violations for any time period. Click the <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-file-earmark-pdf"></i> Download Report</span> button at the bottom of the incident list to open the report panel.</p>
+
+  <div class="mock">
+    <div class="mock-label">Report configuration</div>
+    <div class="help-steps" style="margin:0;">
+      <div class="help-step"><div class="help-step-content"><strong>Choose Period</strong> &mdash; Day, Week, Month, or Custom Range</div></div>
+      <div class="help-step"><div class="help-step-content"><strong>Set the date</strong> &mdash; Pick the start date (for Week/Month, the report covers the full period from that date)</div></div>
+      <div class="help-step"><div class="help-step-content"><strong>Optional filters</strong> &mdash; Narrow by Vehicle Type, Camera, or Review Status</div></div>
+      <div class="help-step"><div class="help-step-content"><strong>Click <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-download"></i> Download PDF</span></strong> &mdash; The report file downloads automatically</div></div>
+    </div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Weekly reports:</strong> Select the start date (e.g., Monday). The report automatically covers 7 days from that date.</div>
 </div>
 
+<!-- ==================== USER MANAGEMENT ==================== -->
 <div class="help-section" id="help-users">
   <h2><i class="bi bi-people-fill"></i> User Management</h2>
-  <p>Manage system users and monitor activity.</p>
+  <p>Manage system users and monitor all activity. Only admins can access this page.</p>
   <a href="/user-management" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to User Management</a>
 
-  <h3>Users Table</h3>
-  <p>View all registered users with their username, display name, email, role, status, and last login time. Use the edit button to change roles or the delete button to remove users.</p>
+  <h3><i class="bi bi-person-lines-fill"></i> Users Table</h3>
+  <div class="mock">
+    <div class="mock-label">User list with actions</div>
+    <table class="mock-table">
+      <tr><th>Username</th><th>Role</th><th>Active</th><th>Actions</th></tr>
+      <tr><td><strong>admin</strong></td><td><span class="mock-badge" style="background:#2d1b69;color:#fff;">admin</span></td><td style="color:#059669;">Active</td><td>&mdash;</td></tr>
+      <tr><td><strong>may</strong></td><td><span class="mock-badge" style="background:#d97706;color:#fff;">operator</span></td><td style="color:#059669;">Active</td><td><span class="mock-btn outline" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-pencil"></i></span> <span class="mock-btn danger" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-trash"></i></span></td></tr>
+      <tr><td><strong>viewer</strong></td><td><span class="mock-badge" style="background:#6b7280;color:#fff;">viewer</span></td><td style="color:#059669;">Active</td><td><span class="mock-btn outline" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-pencil"></i></span> <span class="mock-btn danger" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-trash"></i></span></td></tr>
+    </table>
+    <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;"><i class="bi bi-pencil"></i> = Edit user role/details &nbsp; <i class="bi bi-trash" style="color:#ef4444;"></i> = Delete user &nbsp; (Admin account cannot be deleted)</div>
+  </div>
 
-  <h3>Adding Users</h3>
-  <p>Click "Add User" to create a new account. Assign a username, display name, email, password, and role (Admin, Operator, or Viewer).</p>
+  <h3><i class="bi bi-person-plus-fill"></i> Adding a New User</h3>
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content">Click the <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-person-plus"></i> Add User</span> button in the top-right corner</div></div>
+    <div class="help-step"><div class="help-step-content">Fill in: <strong>Username</strong>, <strong>Display Name</strong>, <strong>Email</strong>, <strong>Password</strong></div></div>
+    <div class="help-step"><div class="help-step-content">Choose a <strong>Role</strong>: Admin, Operator, or Viewer (see role permissions above)</div></div>
+    <div class="help-step"><div class="help-step-content">Click <strong>Create User</strong> to save. The new user can now log in immediately.</div></div>
+  </div>
 
-  <h3>Activity Log</h3>
-  <p>Tracks all system actions: logins, incident reviews, user creation/deletion, and settings changes. Shows timestamp (PHT), user, action, and details.</p>
+  <h3><i class="bi bi-clock-history"></i> Activity Log</h3>
+  <p>Located below the users table. Tracks every system action for security auditing:</p>
+  <div class="mock">
+    <div class="mock-label">Activity log entries</div>
+    <table class="mock-table">
+      <tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr>
+      <tr><td>5/17, 7:47 PM</td><td>admin</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">login</span></td><td>Logged in from 100.64.0.17</td></tr>
+      <tr><td>5/17, 7:30 PM</td><td>admin</td><td><span class="mock-badge" style="background:#fef3c7;color:#92400e;">review</span></td><td>Approved incident #6089</td></tr>
+      <tr><td>5/17, 7:15 PM</td><td>admin</td><td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">create_user</span></td><td>Created user "viewer"</td></tr>
+    </table>
+  </div>
 </div>
 {% endif %}
 
+<!-- ==================== NOTIFICATIONS ==================== -->
 <div class="help-section" id="help-notifications">
   <h2><i class="bi bi-bell-fill"></i> Notifications</h2>
-  <p>The bell icon in the top-right corner shows the count of unreviewed incidents. Click it to see recent violations with quick details. Clicking a notification takes you to the Admin Panel for review.</p>
+  <p>The notification bell keeps you updated on new incidents in real-time.</p>
+
+  <div class="mock">
+    <div class="mock-label">Notification bell (top-right corner of every page)</div>
+    <div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem;">
+      <div style="position:relative;display:inline-block;">
+        <i class="bi bi-bell-fill" style="font-size:1.3rem;color:#2d1b69;"></i>
+        <span style="position:absolute;top:-4px;right:-8px;background:#ef4444;color:#fff;font-size:0.55rem;font-weight:700;padding:0.1rem 0.3rem;border-radius:10px;">12</span>
+      </div>
+      <div style="font-size:0.75rem;">
+        <span style="font-weight:600;"><i class="bi bi-arrow-left"></i> The red number shows unreviewed incidents.</span><br>
+        <span style="color:#888;">Click the bell to see a dropdown of recent violations with quick details.</span>
+      </div>
+    </div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> Clicking a notification takes you directly to the Admin Panel to review that incident.</div>
 </div>
 
+<!-- ==================== HELP TOOLTIPS ==================== -->
+<div class="help-section">
+  <h2><i class="bi bi-question-circle-fill"></i> Help Tooltips</h2>
+  <p>The system has built-in help tooltips on every page. Here's how to use them:</p>
+  <div class="mock">
+    <div class="mock-label">How tooltips work</div>
+    <div class="help-steps" style="margin:0;">
+      <div class="help-step"><div class="help-step-content">Click the <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#2d1b69;color:#fff;font-size:0.85rem;vertical-align:middle;"><i class="bi bi-question-lg"></i></span> floating button in the bottom-right corner of any page</div></div>
+      <div class="help-step"><div class="help-step-content">Orange <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#f59e0b;color:#fff;font-size:0.6rem;font-weight:700;vertical-align:middle;">?</span> icons appear next to important features and sections</div></div>
+      <div class="help-step"><div class="help-step-content">Hover over any <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#f59e0b;color:#fff;font-size:0.6rem;font-weight:700;vertical-align:middle;">?</span> icon to see a yellow tooltip explaining that feature</div></div>
+      <div class="help-step"><div class="help-step-content">Click the <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#059669;color:#fff;font-size:0.85rem;vertical-align:middle;"><i class="bi bi-question-lg"></i></span> button again to hide all tooltip icons</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CONTACT ==================== -->
 <div class="help-section">
   <h2><i class="bi bi-info-circle"></i> Need More Help?</h2>
-  <p>If you encounter issues or need assistance, contact the system administrator at <strong>emathrixacademy@gmail.com</strong>.</p>
+  <p>If you encounter issues or need assistance, contact the system administrator:</p>
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem;">
+    <i class="bi bi-envelope-fill" style="font-size:1.1rem;color:#2d1b69;"></i>
+    <a href="mailto:brgykanluranstarosa@gmail.com" style="font-weight:700;color:var(--primary,#2d1b69);font-size:0.9rem;">brgykanluranstarosa@gmail.com</a>
+  </div>
 </div>
 
 </div>
