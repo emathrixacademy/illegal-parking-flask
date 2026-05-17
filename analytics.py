@@ -567,24 +567,24 @@ def api_generate_report():
             else:
                 date_obj = datetime.now().date()
             start_date = date_obj
-            end_date = date_obj
+            if period == 'week':
+                end_date = start_date + timedelta(days=6)
+            elif period == 'month':
+                next_month = (start_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+                end_date = next_month - timedelta(days=1)
+            else:
+                end_date = date_obj
     except Exception as e:
         return jsonify({"error": f"invalid date format: {str(e)}"}), 400
 
     # Build WHERE clause based on period
     where_clauses = []
     params = []
-    
+
     if period == 'day':
         where_clauses.append("(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = %s")
         params.append(start_date)
-    elif period == 'week':
-        where_clauses.append("date_trunc('week', timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = date_trunc('week', %s::date)::date")
-        params.append(start_date)
-    elif period == 'month':
-        where_clauses.append("date_trunc('month', timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = date_trunc('month', %s::date)::date")
-        params.append(start_date)
-    elif period == 'custom':
+    elif period in ('week', 'month', 'custom'):
         where_clauses.append("(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date BETWEEN %s AND %s")
         params.extend([start_date, end_date])
     else:
@@ -716,8 +716,7 @@ def api_generate_report():
         elif period == 'month':
             date_range_text = date_obj.strftime('%B %Y')
         elif period == 'week':
-            week_end = date_obj + timedelta(days=6)
-            date_range_text = f"Week of {date_obj.strftime('%B %d')} - {week_end.strftime('%B %d, %Y')}"
+            date_range_text = f"Week of {start_date.strftime('%B %d')} - {end_date.strftime('%B %d, %Y')}"
         else:  # day
             date_range_text = date_obj.strftime('%B %d, %Y')
         
