@@ -288,6 +288,28 @@
   <div id="detectionStatus" class="mt-2"></div>
 </div>
 
+<!-- Section 6: Cloud Media Management -->
+<div class="content-card">
+  <h2><i class="bi bi-cloud-fill"></i> Cloud Media Management</h2>
+  <div class="small-muted mb-3">Browse and selectively delete violation images/videos from Cloudinary to free up credits. Auto-cleanup removes media older than 14 days.</div>
+
+  <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+    <select class="form-select form-select-sm" id="mediaFilter" style="width:auto;">
+      <option value="all">All with media</option>
+      <option value="7">Older than 7 days</option>
+      <option value="14">Older than 14 days</option>
+      <option value="30">Older than 30 days</option>
+    </select>
+    <button class="btn btn-outline-primary btn-sm" id="loadMediaBtn"><i class="bi bi-arrow-clockwise"></i> Load</button>
+    <button class="btn btn-outline-danger btn-sm" id="deleteSelectedBtn" disabled><i class="bi bi-trash"></i> Delete Selected</button>
+    <button class="btn btn-outline-secondary btn-sm" id="selectAllMediaBtn">Select All</button>
+    <span class="small-muted" id="mediaCount"></span>
+  </div>
+
+  <div id="mediaList" style="max-height:500px;overflow-y:auto;"></div>
+  <div id="mediaStatus" class="mt-2"></div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -736,5 +758,109 @@
 
     // Load detection state on page load
     loadDetectionState();
+
+    // ===== Cloud Media Management =====
+    let mediaData = [];
+    const mediaList = document.getElementById('mediaList');
+    const mediaStatus = document.getElementById('mediaStatus');
+    const mediaCount = document.getElementById('mediaCount');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    let allSelected = false;
+
+    document.getElementById('loadMediaBtn').addEventListener('click', loadMedia);
+
+    async function loadMedia() {
+        mediaList.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
+        const filter = document.getElementById('mediaFilter').value;
+        try {
+            const r = await fetch('/api/cloudinary_media?filter=' + filter);
+            const d = await r.json();
+            mediaData = d.violations || [];
+            mediaCount.textContent = mediaData.length + ' items with media';
+            if (mediaData.length === 0) {
+                mediaList.innerHTML = '<div class="text-center p-3 text-muted">No violations with cloud media found</div>';
+                return;
+            }
+            renderMediaList();
+        } catch(e) {
+            mediaList.innerHTML = '<div class="alert alert-danger">Failed to load media</div>';
+        }
+    }
+
+    function renderMediaList() {
+        let html = '<table style="width:100%;font-size:13px;"><thead><tr style="border-bottom:2px solid var(--border);">' +
+            '<th style="padding:6px;width:30px;"><input type="checkbox" id="checkAllMedia"></th>' +
+            '<th style="padding:6px;">Camera</th><th style="padding:6px;">Date</th>' +
+            '<th style="padding:6px;">Label</th><th style="padding:6px;">Plate</th>' +
+            '<th style="padding:6px;">Media</th><th style="padding:6px;">Preview</th></tr></thead><tbody>';
+        mediaData.forEach((v, i) => {
+            const hasImg = v.image_url ? '<i class="bi bi-image text-success"></i>' : '';
+            const hasVid = v.video_url ? '<i class="bi bi-camera-video text-primary"></i>' : '';
+            const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '';
+            const thumb = v.image_url ? '<img src="' + v.image_url + '" style="width:60px;height:40px;object-fit:cover;border-radius:4px;">' : '';
+            html += '<tr style="border-bottom:1px solid var(--border);">' +
+                '<td style="padding:6px;"><input type="checkbox" class="media-check" data-idx="' + i + '"></td>' +
+                '<td style="padding:6px;">' + (v.camera || '') + '</td>' +
+                '<td style="padding:6px;">' + ts + '</td>' +
+                '<td style="padding:6px;">' + (v.label || '') + '</td>' +
+                '<td style="padding:6px;">' + (v.plate_number || '-') + '</td>' +
+                '<td style="padding:6px;">' + hasImg + ' ' + hasVid + '</td>' +
+                '<td style="padding:6px;">' + thumb + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        mediaList.innerHTML = html;
+        updateDeleteBtn();
+
+        document.getElementById('checkAllMedia').addEventListener('change', function() {
+            document.querySelectorAll('.media-check').forEach(cb => cb.checked = this.checked);
+            updateDeleteBtn();
+        });
+        document.querySelectorAll('.media-check').forEach(cb => {
+            cb.addEventListener('change', updateDeleteBtn);
+        });
+    }
+
+    function updateDeleteBtn() {
+        const checked = document.querySelectorAll('.media-check:checked').length;
+        deleteBtn.disabled = checked === 0;
+        deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Delete Selected' + (checked > 0 ? ' (' + checked + ')' : '');
+    }
+
+    document.getElementById('selectAllMediaBtn').addEventListener('click', () => {
+        allSelected = !allSelected;
+        document.querySelectorAll('.media-check').forEach(cb => cb.checked = allSelected);
+        const checkAll = document.getElementById('checkAllMedia');
+        if (checkAll) checkAll.checked = allSelected;
+        updateDeleteBtn();
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+        const checked = document.querySelectorAll('.media-check:checked');
+        const ids = [];
+        checked.forEach(cb => ids.push(mediaData[parseInt(cb.dataset.idx)].id));
+        if (ids.length === 0) return;
+        if (!confirm('Delete cloud media for ' + ids.length + ' violation(s)? Violation records will be kept but images/videos will be permanently removed from Cloudinary.')) return;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Deleting...';
+        try {
+            const r = await fetch('/api/cloudinary_delete_selected', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ violation_ids: ids })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                mediaStatus.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Deleted ' + d.assets_deleted + ' assets from ' + d.violations_cleared + ' violations</div>';
+                setTimeout(() => mediaStatus.innerHTML = '', 3000);
+                loadMedia();
+            } else {
+                mediaStatus.innerHTML = '<div class="alert alert-danger">' + (d.error || 'Failed') + '</div>';
+            }
+        } catch(e) {
+            mediaStatus.innerHTML = '<div class="alert alert-danger">Delete failed</div>';
+        }
+        deleteBtn.disabled = false;
+        updateDeleteBtn();
+    });
 </script>
 {% endblock %}

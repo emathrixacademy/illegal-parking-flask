@@ -794,6 +794,102 @@ def api_cloudinary_cleanup():
         logger.error(f"Manual cloudinary cleanup error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route('/api/cloudinary_media')
+@login_required
+@role_required('admin')
+def api_cloudinary_media():
+    """List violations that have Cloudinary media, with optional age filter."""
+    try:
+        filter_val = request.args.get('filter', 'all')
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            if filter_val == 'all':
+                cur.execute("""
+                    SELECT v.id, v.camera, v.label, v.timestamp, v.image_url, v.video_url, p.plate_number
+                    FROM violations v
+                    LEFT JOIN plate_records p ON p.violation_id = v.id
+                    WHERE (v.image_url != '' AND v.image_url IS NOT NULL)
+                       OR (v.video_url != '' AND v.video_url IS NOT NULL)
+                    ORDER BY v.timestamp DESC LIMIT 500
+                """)
+            else:
+                days = int(filter_val)
+                cutoff = datetime.utcnow() - timedelta(days=days)
+                cur.execute("""
+                    SELECT v.id, v.camera, v.label, v.timestamp, v.image_url, v.video_url, p.plate_number
+                    FROM violations v
+                    LEFT JOIN plate_records p ON p.violation_id = v.id
+                    WHERE v.timestamp < %s
+                      AND ((v.image_url != '' AND v.image_url IS NOT NULL)
+                        OR (v.video_url != '' AND v.video_url IS NOT NULL))
+                    ORDER BY v.timestamp DESC LIMIT 500
+                """, (cutoff,))
+            rows = cur.fetchall()
+            cur.close()
+            violations = []
+            for r in rows:
+                violations.append({
+                    "id": r[0], "camera": r[1], "label": r[2],
+                    "timestamp": r[3].isoformat() if r[3] else None,
+                    "image_url": r[4] or '', "video_url": r[5] or '',
+                    "plate_number": r[6] or ''
+                })
+            return jsonify({"violations": violations})
+        finally:
+            return_connection(conn)
+    except Exception as e:
+        logger.error(f"Cloudinary media list error: {e}")
+        return jsonify({"violations": [], "error": str(e)}), 500
+
+@app.route('/api/cloudinary_delete_selected', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_cloudinary_delete_selected():
+    """Delete Cloudinary assets for specific violation IDs."""
+    try:
+        data = request.get_json(force=True)
+        violation_ids = data.get('violation_ids', [])
+        if not violation_ids:
+            return jsonify({"ok": False, "error": "No violations selected"}), 400
+
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, image_url, video_url FROM violations
+                WHERE id = ANY(%s)
+                  AND ((image_url != '' AND image_url IS NOT NULL)
+                    OR (video_url != '' AND video_url IS NOT NULL))
+            """, (violation_ids,))
+            rows = cur.fetchall()
+            assets_deleted = 0
+            for vid_id, image_url, video_url in rows:
+                for url, res_type in [(image_url, "image"), (video_url, "video")]:
+                    if not url or 'cloudinary' not in url:
+                        continue
+                    try:
+                        public_id = _extract_cloudinary_public_id(url, res_type)
+                        if public_id:
+                            cloudinary.uploader.destroy(public_id, resource_type=res_type)
+                            assets_deleted += 1
+                    except Exception as e:
+                        logger.warning(f"Cloudinary delete failed for {url}: {e}")
+            cur.execute("""
+                UPDATE violations SET image_url = '', video_url = ''
+                WHERE id = ANY(%s)
+            """, (violation_ids,))
+            violations_cleared = cur.rowcount
+            conn.commit()
+            cur.close()
+        finally:
+            return_connection(conn)
+        logger.info(f"Manual media delete: {assets_deleted} assets from {violations_cleared} violations")
+        return jsonify({"ok": True, "assets_deleted": assets_deleted, "violations_cleared": violations_cleared})
+    except Exception as e:
+        logger.error(f"Cloudinary delete selected error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 # ==================================================
 # Routes – System Health Proxy (Feature 16)
 # ==================================================
