@@ -168,7 +168,7 @@
           </select>
         </div>
         <div id="reportDateWrap">
-          <label class="form-label" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Date</label>
+          <label class="form-label" id="reportDateLabel" style="font-size:0.72rem;font-weight:600;margin-bottom:0.2rem;">Date</label>
           <input type="date" class="form-control" id="reportDate" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
         </div>
         <div id="reportStartWrap" style="display:none;">
@@ -478,10 +478,12 @@ function toggleReportPanel() {
 }
 
 function toggleCustomDates() {
-  const isCustom = document.getElementById('reportPeriod').value === 'custom';
+  const period = document.getElementById('reportPeriod').value;
+  const isCustom = period === 'custom';
   document.getElementById('reportDateWrap').style.display = isCustom ? 'none' : 'block';
   document.getElementById('reportStartWrap').style.display = isCustom ? 'block' : 'none';
   document.getElementById('reportEndWrap').style.display = isCustom ? 'block' : 'none';
+  document.getElementById('reportDateLabel').textContent = (period === 'day') ? 'Date' : 'Start Date';
 }
 
 function downloadReport() {
