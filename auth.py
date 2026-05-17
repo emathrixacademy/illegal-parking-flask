@@ -182,6 +182,7 @@ def delete_user(user_id):
     conn = get_connection()
     try:
         cur = conn.cursor()
+        cur.execute("UPDATE activity_log SET user_id = NULL WHERE user_id = %s", (user_id,))
         cur.execute("DELETE FROM users WHERE id = %s AND username != 'admin'", (user_id,))
         conn.commit()
         cur.close()

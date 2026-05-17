@@ -84,7 +84,7 @@ def api_violation_counts():
                     SELECT COUNT(DISTINCT (camera, tracker_id)) AS unique_today,
                            SUM(CASE WHEN tracker_id IS NULL THEN 1 ELSE 0 END) AS null_today
                     FROM violations
-                    WHERE (timestamp AT TIME ZONE 'Asia/Manila')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date;
+                    WHERE (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date;
                 """)
                 today_row = cur3.fetchone()
                 cur3.close()
@@ -174,8 +174,8 @@ def api_analytics_heatmap():
         cur = conn.cursor()
         cur.execute("""
             SELECT
-                EXTRACT(DOW FROM timestamp AT TIME ZONE 'Asia/Manila') AS dow,
-                EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+                EXTRACT(DOW FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS dow,
+                EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS hour,
                 COUNT(DISTINCT (camera, tracker_id)) AS violation_count
             FROM violations
             WHERE timestamp >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila' - make_interval(days => %s))
@@ -216,7 +216,7 @@ def api_analytics_daily_trend():
         cur = conn.cursor()
         cur.execute("""
             SELECT
-                (timestamp AT TIME ZONE 'Asia/Manila')::date AS violation_date,
+                (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date AS violation_date,
                 COUNT(DISTINCT (camera, tracker_id)) AS daily_count
             FROM violations
             WHERE timestamp >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila' - make_interval(days => %s))
@@ -249,7 +249,7 @@ def api_analytics_hourly():
         cur = conn.cursor()
         cur.execute("""
             SELECT
-                EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+                EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS hour,
                 COUNT(DISTINCT (camera, tracker_id)) AS hourly_count
             FROM violations
             WHERE timestamp >= (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila' - make_interval(days => %s))
@@ -362,8 +362,8 @@ def api_analytics_insights():
         cur.execute("""
             SELECT
                 CASE
-                    WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') >= 22
-                      OR EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') <= 5
+                    WHEN EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') >= 22
+                      OR EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') <= 5
                     THEN 'night' ELSE 'day'
                 END AS period,
                 COUNT(DISTINCT (camera, tracker_id)) AS count
@@ -428,7 +428,7 @@ def api_analytics_insights():
 
         # Peak hour identification
         cur.execute("""
-            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS hour,
+            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS hour,
                    COUNT(DISTINCT (camera, tracker_id)) AS count
             FROM violations WHERE timestamp >= (CURRENT_TIMESTAMP - INTERVAL '30 days')
             GROUP BY hour ORDER BY count DESC LIMIT 1;
@@ -443,7 +443,7 @@ def api_analytics_insights():
 
         # Worst day of week
         cur.execute("""
-            SELECT TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Day') AS day_name,
+            SELECT TO_CHAR(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila', 'Day') AS day_name,
                    COUNT(DISTINCT (camera, tracker_id)) AS count
             FROM violations WHERE timestamp >= (CURRENT_TIMESTAMP - INTERVAL '30 days')
             GROUP BY day_name ORDER BY count DESC LIMIT 1;
@@ -493,7 +493,7 @@ def api_analytics_summary():
         avg_dur = round(float(cur.fetchone()[0] or 0), 1)
 
         cur.execute("""
-            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') AS h, COUNT(*) AS c
+            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS h, COUNT(*) AS c
             FROM violations WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
             GROUP BY h ORDER BY c DESC LIMIT 1;
         """)
@@ -507,7 +507,7 @@ def api_analytics_summary():
         peak_note = "Overnight parking" if (peak_h >= 22 or peak_h <= 5) else "Active hours"
 
         cur.execute("""
-            SELECT TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Day') AS d,
+            SELECT TO_CHAR(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila', 'Day') AS d,
                    COUNT(DISTINCT (camera, tracker_id)) AS c
             FROM violations WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
             GROUP BY d ORDER BY c DESC LIMIT 1;
@@ -576,16 +576,16 @@ def api_generate_report():
     params = []
     
     if period == 'day':
-        where_clauses.append("timestamp::date = %s")
+        where_clauses.append("(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = %s")
         params.append(start_date)
     elif period == 'week':
-        where_clauses.append("date_trunc('week', timestamp)::date = date_trunc('week', %s::date)::date")
+        where_clauses.append("date_trunc('week', timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = date_trunc('week', %s::date)::date")
         params.append(start_date)
     elif period == 'month':
-        where_clauses.append("date_trunc('month', timestamp)::date = date_trunc('month', %s::date)::date")
+        where_clauses.append("date_trunc('month', timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = date_trunc('month', %s::date)::date")
         params.append(start_date)
     elif period == 'custom':
-        where_clauses.append("timestamp::date BETWEEN %s AND %s")
+        where_clauses.append("(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date BETWEEN %s AND %s")
         params.extend([start_date, end_date])
     else:
         return jsonify({"error": "invalid period, use day|week|month|custom"}), 400
@@ -639,13 +639,13 @@ def api_generate_report():
         if period in ['week', 'month', 'custom']:
             cur.execute(f"""
                 SELECT
-                    timestamp::date as date,
+                    (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date as date,
                     COUNT(DISTINCT (camera, tracker_id)) as unique_count,
                     COUNT(*) as total_count
                 FROM violations
                 WHERE {where_sql}
-                GROUP BY timestamp::date
-                ORDER BY timestamp::date;
+                GROUP BY (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date
+                ORDER BY (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date;
             """, params)
             daily_data = cur.fetchall()
 
@@ -1000,6 +1000,6 @@ def api_generate_report():
 
     resp = make_response(pdf_bytes)
     resp.headers['Content-Type'] = 'application/pdf'
-    filename = f"violations_{period}_{date_obj.isoformat()}.pdf"
+    filename = f"BRGYKANLURAN_VIOLATION_REPORT_{date_obj.strftime('%Y-%m-%d')}.pdf"
     resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
     return resp

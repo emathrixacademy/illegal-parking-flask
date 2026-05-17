@@ -38,43 +38,43 @@ def list_violations(page: int = 1, per_page: int = 30, filters: dict = None) -> 
 
         if filters.get('date_start') and filters.get('date_end'):
             where_clauses.append(
-                "(timestamp AT TIME ZONE 'Asia/Manila')::date BETWEEN %s::date AND %s::date"
+                "(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date BETWEEN %s::date AND %s::date"
             )
             params.append(filters['date_start'])
             params.append(filters['date_end'])
         elif filters.get('date_start'):
             where_clauses.append(
-                "(timestamp AT TIME ZONE 'Asia/Manila')::date >= %s::date"
+                "(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date >= %s::date"
             )
             params.append(filters['date_start'])
         elif filters.get('date_end'):
             where_clauses.append(
-                "(timestamp AT TIME ZONE 'Asia/Manila')::date <= %s::date"
+                "(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date <= %s::date"
             )
             params.append(filters['date_end'])
         elif filters.get('date'):
             where_clauses.append(
-                "(timestamp AT TIME ZONE 'Asia/Manila')::date = %s::date"
+                "(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = %s::date"
             )
             params.append(filters['date'])
 
         if filters.get('hour_start') is not None and filters.get('hour_end') is not None:
             where_clauses.append(
-                "EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') >= %s "
-                "AND EXTRACT(HOUR FROM timestamp AT TIME ZONE 'Asia/Manila') < %s"
+                "EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') >= %s "
+                "AND EXTRACT(HOUR FROM timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') < %s"
             )
             params.append(int(filters['hour_start']))
             params.append(int(filters['hour_end']))
 
         if filters.get('day_of_week'):
             where_clauses.append(
-                "TRIM(TO_CHAR(timestamp AT TIME ZONE 'Asia/Manila', 'Day')) = %s"
+                "TRIM(TO_CHAR(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila', 'Day')) = %s"
             )
             params.append(filters['day_of_week'])
 
         if filters.get('today') == '1':
             where_clauses.append(
-                "(timestamp AT TIME ZONE 'Asia/Manila')::date = "
+                "(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = "
                 "(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date"
             )
 

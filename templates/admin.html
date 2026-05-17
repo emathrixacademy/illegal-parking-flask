@@ -520,7 +520,7 @@ function downloadReport() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'violation_report_' + (document.getElementById('reportDate').value || 'custom') + '.pdf';
+      a.download = 'BRGYKANLURAN_VIOLATION_REPORT_' + (document.getElementById('reportDate').value || 'custom') + '.pdf';
       document.body.appendChild(a);
       a.click();
       a.remove();
