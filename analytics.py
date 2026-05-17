@@ -692,6 +692,7 @@ def api_generate_report():
     buf = io.BytesIO()
     try:
         c = canvas.Canvas(buf, pagesize=letter)
+        c.setTitle(f"BRGYKANLURAN_VIOLATION_REPORT_{date_obj.strftime('%Y-%m-%d')}")
         width, height = letter
 
         # Colors — purple theme matching website
@@ -743,36 +744,36 @@ def api_generate_report():
         y -= 30
         
         # Summary box
+        summary_box_h = 85
         c.setFillColor(dark_bg)
-        c.roundRect(72, y - 120, width - 144, 120, 10, fill=True, stroke=False)
-        
+        c.roundRect(72, y - summary_box_h, width - 144, summary_box_h, 10, fill=True, stroke=False)
+
         c.setFillColor(HexColor('#ffffff'))
         c.setFont("Helvetica-Bold", 14)
-        c.drawString(92, y - 25, "SUMMARY")
-        
+        c.drawString(92, y - 22, "SUMMARY")
+
         unique_violations = int(stats_row[0] or 0)
         total_records = int(stats_row[1] or 0)
         enforced_count = int(stats_row[2] or 0)
         avg_conf = float(stats_row[3] or 0.0)
         avg_dur = float(stats_row[4] or 0.0)
-        
+
         c.setFillColor(text_color)
         c.setFont("Helvetica", 10)
-        
+
         summary_lines = [
             f"Total Violations: {unique_violations}",
             f"Total Detection Records: {total_records}",
             f"Enforced: {enforced_count}"
         ]
-        
-        line_y = y - 50
+
+        line_y = y - 42
         col1_x = 92
-        
-        # Now we have only 3 items - display them in a single column
+
         for i, line in enumerate(summary_lines):
-            c.drawString(col1_x, line_y - (i * 20), line)
-        
-        y -= 150
+            c.drawString(col1_x, line_y - (i * 16), line)
+
+        y -= (summary_box_h + 20)
         
         # Total Violators section
         c.setFillColor(HexColor('#000000'))
@@ -782,7 +783,7 @@ def api_generate_report():
         c.setStrokeColor(primary_light)
         c.setLineWidth(2)
         c.line(72, y, width - 72, y)
-        y -= 20
+        y -= 15
         
         # Daily breakdown for week/month/custom
         if period in ['week', 'month', 'custom'] and daily_data:
@@ -845,11 +846,11 @@ def api_generate_report():
             c.setFillColor(HexColor('#000000'))
             c.drawString(92, y, f"Total Violators: {unique_violations}")
             y -= 20
-        
-        y -= 20
-        
+
+        y -= 10
+
         # Type of Violators section
-        if y < 200:
+        if y < 150:
             c.showPage()
             y = height - 72
         
@@ -896,10 +897,17 @@ def api_generate_report():
         
         # === DETAILED INCIDENTS TABLE ===
         if detail_rows:
-            c.showPage()
-            y = height - 72
-            page_num = 2
+            page_num = 1
+            if y < 150:
+                c.setFont("Helvetica", 8)
+                c.setFillColor(HexColor('#666666'))
+                c.drawString(72, 40, "Illegal Parking Detection System - Automated Violation Tracking")
+                c.drawRightString(width - 72, 40, f"Page {page_num}")
+                c.showPage()
+                page_num += 1
+                y = height - 72
 
+            y -= 10
             c.setFillColor(HexColor('#000000'))
             c.setFont("Helvetica-Bold", 12)
             c.drawString(72, y, "DETAILED INCIDENT LOG")
