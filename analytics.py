@@ -955,11 +955,31 @@ def api_generate_report():
                     v_plate or '—', conf_str, dur_str, st, ev_str
                 ])
 
-            rows_per_page = int((y - 80) / detail_row_height)
-            chunks = [detail_table_data[i:i+rows_per_page] for i in range(1, len(detail_table_data), rows_per_page)]
+            detail_style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2d1b69')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 7),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 7),
+                ('TEXTCOLOR', (0, 1), (-1, -1), HexColor('#000000')),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [HexColor('#ffffff'), HexColor('#f8f6ff')]),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('ALIGN', (3, 0), (3, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.4, HexColor('#cccccc')),
+                ('LINEBELOW', (0, 0), (-1, 0), 1.5, HexColor('#5b3fbc')),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ])
 
-            for chunk_idx, chunk in enumerate(chunks):
-                if chunk_idx > 0:
+            data_rows = detail_table_data[1:]
+            row_idx = 0
+            while row_idx < len(data_rows):
+                rows_available = int((y - 60) / detail_row_height) - 1
+                if rows_available < 1:
                     c.setFont("Helvetica", 8)
                     c.setFillColor(HexColor('#666666'))
                     c.drawString(72, 40, "Illegal Parking Detection System - Automated Violation Tracking")
@@ -967,32 +987,26 @@ def api_generate_report():
                     c.showPage()
                     page_num += 1
                     y = height - 72
+                    rows_available = int((y - 60) / detail_row_height) - 1
 
+                chunk = data_rows[row_idx:row_idx + rows_available]
+                row_idx += len(chunk)
                 page_data = [detail_headers] + chunk
                 tbl = Table(page_data, colWidths=detail_col_widths, rowHeights=[detail_row_height] * len(page_data))
-                tbl.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2d1b69')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), HexColor('#ffffff')),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 7),
-                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                    ('FONTSIZE', (0, 1), (-1, -1), 7),
-                    ('TEXTCOLOR', (0, 1), (-1, -1), HexColor('#000000')),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [HexColor('#ffffff'), HexColor('#f8f6ff')]),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('ALIGN', (3, 0), (3, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('GRID', (0, 0), (-1, -1), 0.4, HexColor('#cccccc')),
-                    ('LINEBELOW', (0, 0), (-1, 0), 1.5, HexColor('#5b3fbc')),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-                    ('TOPPADDING', (0, 0), (-1, -1), 2),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-                ]))
+                tbl.setStyle(detail_style)
                 tbl_h = len(page_data) * detail_row_height
                 tbl.wrapOn(c, sum(detail_col_widths), tbl_h)
                 tbl.drawOn(c, 72, y - tbl_h)
-                y = y - tbl_h - 10
+                y = y - tbl_h - 5
+
+                if row_idx < len(data_rows):
+                    c.setFont("Helvetica", 8)
+                    c.setFillColor(HexColor('#666666'))
+                    c.drawString(72, 40, "Illegal Parking Detection System - Automated Violation Tracking")
+                    c.drawRightString(width - 72, 40, f"Page {page_num}")
+                    c.showPage()
+                    page_num += 1
+                    y = height - 72
 
             c.setFont("Helvetica", 7)
             c.setFillColor(HexColor('#888888'))
