@@ -607,9 +607,20 @@ def api_generate_report():
 
     where_sql = " AND ".join(where_clauses)
 
+    logging.info(f"PDF Report: period={period}, start_date={start_date}, end_date={end_date}, where_sql={where_sql}, params={params}")
+
     conn = get_connection()
     try:
         cur = conn.cursor()
+
+        # Debug: check what dates exist in the range
+        cur.execute("""
+            SELECT (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date as d, COUNT(*)
+            FROM violations
+            GROUP BY d ORDER BY d DESC LIMIT 10
+        """)
+        recent_dates = cur.fetchall()
+        logging.info(f"PDF Report: recent violation dates in DB: {recent_dates}")
 
         # Per-label counts
         cur.execute(f"""
@@ -620,6 +631,7 @@ def api_generate_report():
             ORDER BY COUNT(*) DESC;
         """, params)
         label_rows = cur.fetchall()
+        logging.info(f"PDF Report: label_rows count={len(label_rows)}, data={label_rows[:5]}")
 
         # Summary stats
         cur.execute(f"""
@@ -633,6 +645,7 @@ def api_generate_report():
             WHERE {where_sql};
         """, params)
         stats_row = cur.fetchone()
+        logging.info(f"PDF Report: stats_row={stats_row}")
 
         # Daily breakdown for week/month/custom
         daily_data = []
