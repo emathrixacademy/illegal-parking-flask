@@ -868,9 +868,82 @@
 
   <div class="help-steps">
     <div class="help-step"><div class="help-step-content"><strong>To add a camera:</strong> Fill in the Camera ID, Name, Location, RTSP URL, and Status in the form below the camera list. Click <span class="mock-btn primary" style="font-size:0.65rem;"><i class="bi bi-plus-lg"></i> Add Camera</span>.</div></div>
-    <div class="help-step"><div class="help-step-content"><strong>To edit a camera:</strong> Click the <span class="mock-btn outline" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-pencil"></i></span> button on the camera's row. A popup will appear where you can change the name, location, URL, or status.</div></div>
-    <div class="help-step"><div class="help-step-content"><strong>To delete a camera:</strong> Click the <span class="mock-btn danger" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-trash"></i></span> button. You'll be asked to confirm before it's removed.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>To edit a camera:</strong> Click the <span class="mock-btn outline" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-pencil"></i></span> button on the camera's row (see edit popup below).</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>To delete a camera:</strong> Click the <span class="mock-btn danger" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-trash"></i></span> button (see delete confirmation below).</div></div>
   </div>
+
+  <!-- Edit Camera Popup -->
+  <h4 style="font-size:0.88rem;margin-top:1rem;"><i class="bi bi-pencil-square" style="color:#2d1b69;"></i> Edit Camera Popup</h4>
+  <p style="font-size:0.78rem;color:#666;">When you click the <span class="mock-btn outline" style="font-size:0.58rem;padding:0.1rem 0.25rem;"><i class="bi bi-pencil"></i></span> pencil icon on a camera row, this popup appears with the camera's current values pre-filled:</p>
+
+  <div class="mock" style="border:2px solid #2d1b69;">
+    <div class="mock-label" style="color:#2d1b69;"><i class="bi bi-pencil-square"></i> Edit Camera popup</div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e0dce8;overflow:hidden;max-width:360px;">
+      <!-- Modal header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1rem;border-bottom:1px solid #e0dce8;background:var(--bg);">
+        <div style="font-weight:700;font-size:0.85rem;color:#2d1b69;"><i class="bi bi-pencil-square"></i> Edit Camera</div>
+        <span style="font-size:1rem;color:#999;cursor:pointer;">&times;</span>
+      </div>
+      <!-- Modal body -->
+      <div style="padding:0.8rem 1rem;">
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Camera ID</div>
+          <div class="mock-input" style="width:100%;background:#f0f0f0;color:#999;">Camera_2</div>
+          <div style="font-size:0.58rem;color:#888;">Read-only. Camera ID cannot be changed after creation.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Name / Label</div>
+          <div class="mock-input" style="width:100%;">Zavalla West Road</div>
+          <div style="font-size:0.58rem;color:#888;">Change the display name shown throughout the system.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Location</div>
+          <div class="mock-input" style="width:100%;">Brgy. Kanluran</div>
+          <div style="font-size:0.58rem;color:#888;">Physical location description.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">RTSP URL</div>
+          <div class="mock-input" style="width:100%;font-size:0.65rem;">rtsp://192.168.8.2:554/stream</div>
+          <div style="font-size:0.58rem;color:#888;">The camera's video stream address. Change only if the camera IP changes.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Status</div>
+          <div class="mock-select" style="width:100%;">Active &#9662;</div>
+          <div style="font-size:0.58rem;color:#888;">
+            <strong>Active</strong> = camera is operational &bull;
+            <strong>Inactive</strong> = camera is off &bull;
+            <strong>Maintenance</strong> = camera is being serviced
+          </div>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div style="display:flex;justify-content:flex-end;gap:0.4rem;padding:0.6rem 1rem;border-top:1px solid #e0dce8;background:var(--bg);">
+        <span class="mock-btn outline" style="font-size:0.72rem;">Cancel</span>
+        <span class="mock-btn primary" style="font-size:0.72rem;"><i class="bi bi-check-lg"></i> Save Changes</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Camera Confirmation -->
+  <h4 style="font-size:0.88rem;margin-top:1rem;"><i class="bi bi-trash-fill" style="color:#ef4444;"></i> Delete Camera Confirmation</h4>
+  <p style="font-size:0.78rem;color:#666;">When you click the <span class="mock-btn danger" style="font-size:0.58rem;padding:0.1rem 0.25rem;"><i class="bi bi-trash"></i></span> trash icon on a camera row, a confirmation dialog appears:</p>
+
+  <div class="mock" style="border:2px solid #ef4444;">
+    <div class="mock-label" style="color:#ef4444;"><i class="bi bi-trash"></i> Delete camera confirmation dialog</div>
+    <div style="background:#fff;border-radius:10px;border:1px solid #e0dce8;overflow:hidden;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+      <div style="padding:1rem;text-align:center;">
+        <i class="bi bi-exclamation-triangle-fill" style="font-size:2rem;color:#ef4444;display:block;margin-bottom:0.5rem;"></i>
+        <div style="font-size:0.85rem;font-weight:600;color:#333;margin-bottom:0.3rem;">Remove camera Camera_2?</div>
+        <div style="font-size:0.7rem;color:#888;">This will remove the camera from the system. Existing violation records from this camera are preserved.</div>
+      </div>
+      <div style="display:flex;border-top:1px solid #e0dce8;">
+        <div style="flex:1;text-align:center;padding:0.6rem;font-size:0.78rem;font-weight:600;color:#666;border-right:1px solid #e0dce8;cursor:pointer;">Cancel</div>
+        <div style="flex:1;text-align:center;padding:0.6rem;font-size:0.78rem;font-weight:600;color:#ef4444;cursor:pointer;">OK &mdash; Remove</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="help-warning"><i class="bi bi-exclamation-triangle-fill" style="color:#d97706;"></i> <strong>Deleting a camera</strong> removes it from the list and stops any future detection from that camera. However, all past violation records from that camera are preserved in the database.</div>
 
   <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> The <strong>Name</strong> you set here is what appears everywhere in the system (violations table, calendar, admin panel, reports). Choose a clear, recognizable name like the street or location.</div>
 
@@ -1067,14 +1140,160 @@
     <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;"><i class="bi bi-pencil"></i> = Edit user role/details &nbsp; <i class="bi bi-trash" style="color:#ef4444;"></i> = Delete user &nbsp; (Admin account cannot be deleted)</div>
   </div>
 
+  <!-- ---- ADD USER ---- -->
   <h3><i class="bi bi-person-plus-fill"></i> Adding a New User</h3>
   <div class="help-steps">
-    <div class="help-step"><div class="help-step-content">Click the <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-person-plus"></i> Add User</span> button in the top-right corner</div></div>
-    <div class="help-step"><div class="help-step-content">Fill in: <strong>Username</strong>, <strong>Display Name</strong>, <strong>Email</strong>, <strong>Password</strong></div></div>
-    <div class="help-step"><div class="help-step-content">Choose a <strong>Role</strong>: Admin, Operator, or Viewer (see role permissions above)</div></div>
-    <div class="help-step"><div class="help-step-content">Click <strong>Create User</strong> to save. The new user can now log in immediately.</div></div>
+    <div class="help-step"><div class="help-step-content">Click the <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-person-plus"></i> Add User</span> button in the top-right corner of the Users table</div></div>
+    <div class="help-step"><div class="help-step-content">A popup form appears (shown below). Fill in all the required fields.</div></div>
+    <div class="help-step"><div class="help-step-content">Click <strong>Create User</strong> to save. The new user can log in immediately.</div></div>
   </div>
 
+  <div class="mock" style="border:2px solid #059669;">
+    <div class="mock-label" style="color:#059669;"><i class="bi bi-person-plus"></i> Add User popup</div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e0dce8;overflow:hidden;max-width:360px;">
+      <!-- Modal header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1rem;border-bottom:1px solid #e0dce8;background:var(--bg);">
+        <div style="font-weight:700;font-size:0.85rem;color:#2d1b69;"><i class="bi bi-person-plus"></i> Add User</div>
+        <span style="font-size:1rem;color:#999;cursor:pointer;">&times;</span>
+      </div>
+      <!-- Modal body -->
+      <div style="padding:0.8rem 1rem;">
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Username <span style="color:#ef4444;">*</span></div>
+          <div class="mock-input" style="width:100%;">e.g. juan_dela_cruz</div>
+          <div style="font-size:0.58rem;color:#888;">Must be unique. Used for login.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Password <span style="color:#ef4444;">*</span></div>
+          <div style="display:flex;gap:0.3rem;">
+            <div class="mock-input" style="width:100%;">••••••••</div>
+            <span class="mock-btn outline" style="font-size:0.6rem;padding:0.2rem 0.4rem;"><i class="bi bi-eye"></i></span>
+          </div>
+          <div style="font-size:0.58rem;color:#888;">Click the <i class="bi bi-eye"></i> eye icon to show/hide password.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Confirm Password <span style="color:#ef4444;">*</span></div>
+          <div style="display:flex;gap:0.3rem;">
+            <div class="mock-input" style="width:100%;">••••••••</div>
+            <span class="mock-btn outline" style="font-size:0.6rem;padding:0.2rem 0.4rem;"><i class="bi bi-eye"></i></span>
+          </div>
+          <div style="font-size:0.58rem;color:#ef4444;"><i class="bi bi-exclamation-circle"></i> If passwords don't match, a red warning appears here.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Display Name</div>
+          <div class="mock-input" style="width:100%;">Juan Dela Cruz</div>
+          <div style="font-size:0.58rem;color:#888;">Optional. Friendly name shown in the system.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Email</div>
+          <div class="mock-input" style="width:100%;">juan@example.com</div>
+          <div style="font-size:0.58rem;color:#888;">Optional. For notifications and account recovery.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Role</div>
+          <div class="mock-select" style="width:100%;">Viewer &#9662;</div>
+          <div style="font-size:0.58rem;color:#888;">
+            <strong>Viewer</strong> = read-only &bull;
+            <strong>Operator</strong> = monitor & review &bull;
+            <strong>Admin</strong> = full access
+          </div>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div style="display:flex;justify-content:flex-end;gap:0.4rem;padding:0.6rem 1rem;border-top:1px solid #e0dce8;background:var(--bg);">
+        <span class="mock-btn outline" style="font-size:0.72rem;">Cancel</span>
+        <span class="mock-btn primary" style="font-size:0.72rem;background:#059669;"><i class="bi bi-check-lg"></i> Create User</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- EDIT USER ---- -->
+  <h3><i class="bi bi-pencil-square"></i> Editing a User</h3>
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content">In the Users table, click the <span class="mock-btn outline" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-pencil"></i></span> button on the user's row</div></div>
+    <div class="help-step"><div class="help-step-content">An edit popup appears (shown below) with the user's current details pre-filled</div></div>
+    <div class="help-step"><div class="help-step-content">Change any fields you need &mdash; Display Name, Email, Role, Active status, or Password</div></div>
+    <div class="help-step"><div class="help-step-content">Click <strong>Save Changes</strong> to apply. Changes take effect immediately.</div></div>
+  </div>
+
+  <div class="mock" style="border:2px solid #2d1b69;">
+    <div class="mock-label" style="color:#2d1b69;"><i class="bi bi-pencil"></i> Edit User popup (appears when you click <i class="bi bi-pencil"></i> on a user)</div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e0dce8;overflow:hidden;max-width:360px;">
+      <!-- Modal header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1rem;border-bottom:1px solid #e0dce8;background:var(--bg);">
+        <div style="font-weight:700;font-size:0.85rem;color:#2d1b69;"><i class="bi bi-pencil"></i> Edit User</div>
+        <span style="font-size:1rem;color:#999;cursor:pointer;">&times;</span>
+      </div>
+      <!-- Modal body -->
+      <div style="padding:0.8rem 1rem;">
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Display Name</div>
+          <div class="mock-input" style="width:100%;">May Santos</div>
+          <div style="font-size:0.58rem;color:#888;">Change the user's friendly display name.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Email</div>
+          <div class="mock-input" style="width:100%;">may@example.com</div>
+          <div style="font-size:0.58rem;color:#888;">Update the user's email address.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">Role</div>
+          <div class="mock-select" style="width:100%;">Operator &#9662;</div>
+          <div style="font-size:0.58rem;color:#888;">Change the user's access level (Viewer, Operator, or Admin).</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;font-weight:600;color:#555;margin-bottom:0.2rem;">New Password <span style="font-weight:400;color:#888;">(leave blank to keep current)</span></div>
+          <div style="display:flex;gap:0.3rem;">
+            <div class="mock-input" style="width:100%;color:#ccc;">Leave blank to keep</div>
+            <span class="mock-btn outline" style="font-size:0.6rem;padding:0.2rem 0.4rem;"><i class="bi bi-eye"></i></span>
+          </div>
+          <div style="font-size:0.58rem;color:#888;">Only fill this if you want to reset the password. A "Confirm Password" field appears once you start typing.</div>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <div style="width:16px;height:16px;border-radius:3px;border:2px solid #2d1b69;background:#2d1b69;display:flex;align-items:center;justify-content:center;"><i class="bi bi-check" style="color:#fff;font-size:0.7rem;"></i></div>
+            <div style="font-size:0.7rem;font-weight:600;color:#555;">Active</div>
+          </div>
+          <div style="font-size:0.58rem;color:#888;margin-top:0.15rem;">Uncheck to deactivate the user. Deactivated users cannot log in but their data is preserved.</div>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div style="display:flex;justify-content:flex-end;gap:0.4rem;padding:0.6rem 1rem;border-top:1px solid #e0dce8;background:var(--bg);">
+        <span class="mock-btn outline" style="font-size:0.72rem;">Cancel</span>
+        <span class="mock-btn primary" style="font-size:0.72rem;"><i class="bi bi-check-lg"></i> Save Changes</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="help-warning"><i class="bi bi-exclamation-triangle-fill" style="color:#d97706;"></i> <strong>Important:</strong> Changing a user's role takes effect immediately. If you downgrade an admin to viewer while they are logged in, they will lose access on their next page load.</div>
+
+  <!-- ---- DELETE USER ---- -->
+  <h3><i class="bi bi-trash-fill" style="color:#ef4444;"></i> Deleting a User</h3>
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content">In the Users table, click the <span class="mock-btn danger" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-trash"></i></span> button on the user's row</div></div>
+    <div class="help-step"><div class="help-step-content">A browser confirmation dialog appears asking <em>"Delete user &laquo;username&raquo;?"</em></div></div>
+    <div class="help-step"><div class="help-step-content">Click <strong>OK</strong> to permanently delete, or <strong>Cancel</strong> to abort</div></div>
+  </div>
+
+  <div class="mock" style="border:2px solid #ef4444;">
+    <div class="mock-label" style="color:#ef4444;"><i class="bi bi-trash"></i> Delete confirmation dialog</div>
+    <div style="background:#fff;border-radius:10px;border:1px solid #e0dce8;overflow:hidden;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+      <div style="padding:1rem;text-align:center;">
+        <i class="bi bi-exclamation-triangle-fill" style="font-size:2rem;color:#ef4444;display:block;margin-bottom:0.5rem;"></i>
+        <div style="font-size:0.85rem;font-weight:600;color:#333;margin-bottom:0.3rem;">Delete user "may"?</div>
+        <div style="font-size:0.7rem;color:#888;">This action cannot be undone. The user will be permanently removed from the system.</div>
+      </div>
+      <div style="display:flex;border-top:1px solid #e0dce8;">
+        <div style="flex:1;text-align:center;padding:0.6rem;font-size:0.78rem;font-weight:600;color:#666;border-right:1px solid #e0dce8;cursor:pointer;">Cancel</div>
+        <div style="flex:1;text-align:center;padding:0.6rem;font-size:0.78rem;font-weight:600;color:#ef4444;cursor:pointer;">OK &mdash; Delete</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="help-warning"><i class="bi bi-shield-fill-exclamation" style="color:#ef4444;"></i> <strong>The admin account cannot be deleted.</strong> The trash icon does not appear next to the admin user &mdash; this is intentional to prevent locking yourself out.</div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Tip:</strong> Instead of deleting, consider deactivating the user (uncheck "Active" in Edit). This preserves their activity history while preventing login.</div>
+
+  <!-- ---- ACTIVITY LOG ---- -->
   <h3><i class="bi bi-clock-history"></i> Activity Log</h3>
   <p>Located below the users table. Tracks every system action for security auditing:</p>
   <div class="mock">
@@ -1086,6 +1305,7 @@
       <tr><td>5/17, 7:15 PM</td><td>admin</td><td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">create_user</span></td><td>Created user "viewer"</td></tr>
     </table>
   </div>
+  <p style="font-size:0.78rem;color:#666;">The log shows the most recent 50 actions. Types include: <strong>login</strong>, <strong>logout</strong>, <strong>review</strong> (approve/reject violations), <strong>create_user</strong>, <strong>delete_user</strong>, <strong>update_user</strong>, and <strong>settings_change</strong>.</p>
 </div>
 {% endif %}
 
