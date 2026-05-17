@@ -576,84 +576,363 @@
 {% if user and user.role in ['admin','operator'] %}
 <div class="help-section" id="help-settings">
   <h2><i class="bi bi-gear-fill"></i> Settings</h2>
-  <p>Configure system behavior, alerts, cameras, and AI detection.</p>
+  <p>The Settings page has 5 sections that control how the system detects violations, sends alerts, manages cameras, and handles cloud storage. Each section is explained in detail below.</p>
   <a href="/settings" class="go-link"><i class="bi bi-arrow-right-circle"></i> Go to Settings</a>
 
-  <h3><i class="bi bi-sliders"></i> General Settings</h3>
+  <!-- ---- GENERAL SETTINGS ---- -->
+  <h3><i class="bi bi-sliders"></i> 1. General Settings</h3>
+  <p>These two values control <strong>when</strong> the AI flags a parked vehicle as a violation and <strong>how often</strong> it re-captures the same vehicle.</p>
+
   <div class="mock">
-    <div class="mock-label">Detection timing controls</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-      <div class="mock-card">
-        <div style="font-weight:700;font-size:0.75rem;">Violation Time Threshold</div>
-        <div class="mock-input" style="width:100%;margin-top:0.3rem;">300 seconds</div>
-        <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;">How long a vehicle must be stationary before the AI flags it as a violation. Default: 300s (5 minutes).</div>
+    <div class="mock-label">General Settings panel</div>
+    <!-- Violation threshold -->
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="font-weight:700;font-size:0.78rem;">Violation Time Threshold (seconds)</div>
+      <div class="mock-input" style="width:100%;margin:0.3rem 0;">300</div>
+      <div style="font-size:0.68rem;color:#888;">Time before a parked vehicle is flagged as a violation</div>
+    </div>
+    <!-- Repeat interval -->
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="font-weight:700;font-size:0.78rem;">Repeat Capture Interval (seconds)</div>
+      <div class="mock-input" style="width:100%;margin:0.3rem 0;">300</div>
+      <div style="font-size:0.68rem;color:#888;">Cooldown between logging the same vehicle</div>
+    </div>
+    <span class="mock-btn primary"><i class="bi bi-check-lg"></i> Save Settings</span>
+    <div style="font-size:0.68rem;color:#059669;margin-top:0.3rem;"><i class="bi bi-database"></i> Database: Violation=300s, Repeat=300s</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:0.3rem 0.7rem;font-size:0.82rem;margin:0.5rem 0;">
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-clock-history"></i></span>
+    <span><strong>Violation Time Threshold</strong> &mdash; How many seconds a vehicle must stay parked in the detection zone before the AI records it as a violation. Example: if set to <strong>300</strong> (5 minutes), a car parked for only 3 minutes will NOT be flagged. Increase this to reduce false detections; decrease it to catch shorter violations.</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-arrow-repeat"></i></span>
+    <span><strong>Repeat Capture Interval</strong> &mdash; After a vehicle is recorded as a violation, the system waits this many seconds before capturing it again. Prevents duplicate entries. Example: at <strong>300</strong> seconds, the same car won't be logged twice within 5 minutes.</span>
+  </div>
+
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content">Change the number in either field (in seconds)</div></div>
+    <div class="help-step"><div class="help-step-content">Click <span class="mock-btn primary" style="font-size:0.68rem;"><i class="bi bi-check-lg"></i> Save Settings</span></div></div>
+    <div class="help-step"><div class="help-step-content">The green text below the button confirms the saved values: <span style="color:#059669;font-size:0.78rem;"><i class="bi bi-database"></i> Database: Violation=300s, Repeat=300s</span></div></div>
+  </div>
+
+  <!-- ---- ALERT CONFIGURATION ---- -->
+  <h3><i class="bi bi-bell-fill"></i> 2. Alert Configuration</h3>
+  <p>Set up <strong>email</strong> and <strong>SMS text message</strong> alerts so you get notified instantly when a new violation is detected. Both types can run simultaneously.</p>
+
+  <!-- Email alerts -->
+  <div class="mock" style="border:2px solid #2d1b69;">
+    <div class="mock-label" style="color:#2d1b69;"><i class="bi bi-envelope-fill"></i> Email Alerts (left side)</div>
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.4rem;">
+        <input type="checkbox" checked disabled style="accent-color:#2d1b69;">
+        <span style="font-weight:700;font-size:0.78rem;">Enable Email Alerts</span>
       </div>
-      <div class="mock-card">
-        <div style="font-weight:700;font-size:0.75rem;">Repeat Capture Interval</div>
-        <div class="mock-input" style="width:100%;margin-top:0.3rem;">300 seconds</div>
-        <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;">Minimum time between re-detections of the same vehicle. Prevents duplicate entries.</div>
+      <div style="margin-bottom:0.3rem;">
+        <div style="font-size:0.7rem;font-weight:600;color:#555;">SMTP Email (Gmail)</div>
+        <div class="mock-input" style="width:100%;">brgykanluranstarosa@gmail.com</div>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.1rem;">The Gmail address that will <strong>send</strong> the alert emails</div>
+      </div>
+      <div style="margin-bottom:0.3rem;">
+        <div style="font-size:0.7rem;font-weight:600;color:#555;">App Password</div>
+        <div class="mock-input" style="width:100;">&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;</div>
+        <div style="font-size:0.62rem;color:#ef4444;margin-top:0.1rem;"><i class="bi bi-exclamation-triangle-fill"></i> This is NOT your Gmail password! See instructions below.</div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:600;color:#555;">Recipients (comma separated)</div>
+        <div class="mock-input" style="width:100%;">jmschool752@gmail.com, acerhen12@gmail.com</div>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.1rem;">Email addresses that will <strong>receive</strong> the alerts. Separate multiple with commas.</div>
       </div>
     </div>
   </div>
 
-  <h3><i class="bi bi-bell-fill"></i> Alert Configuration</h3>
-  <div class="mock">
-    <div class="mock-label">Email &amp; SMS alert setup</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-      <div class="mock-card">
-        <div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-envelope-fill" style="color:#2d1b69;"></i> Email Alerts</div>
-        <ul style="font-size:0.7rem;padding-left:1rem;margin:0.3rem 0;">
-          <li><strong>SMTP Email</strong> &mdash; Your Gmail address</li>
-          <li><strong>App Password</strong> &mdash; A special password from Google (not your regular password!)</li>
-          <li><strong>Recipients</strong> &mdash; Email addresses to notify, separated by commas</li>
-        </ul>
+  <div class="help-warning"><i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;"></i> <strong>What is an App Password?</strong> Gmail blocks apps from using your regular password. You must create a special "App Password" from Google:
+    <div class="help-steps" style="margin:0.3rem 0 0;">
+      <div class="help-step"><div class="help-step-content">Go to <strong>myaccount.google.com</strong> &rarr; Security</div></div>
+      <div class="help-step"><div class="help-step-content">Enable <strong>2-Step Verification</strong> first (required)</div></div>
+      <div class="help-step"><div class="help-step-content">Search for <strong>"App passwords"</strong> in the search bar</div></div>
+      <div class="help-step"><div class="help-step-content">Create a new app password, name it "DCGL Alerts"</div></div>
+      <div class="help-step"><div class="help-step-content">Copy the 16-character password and paste it in the <strong>App Password</strong> field</div></div>
+    </div>
+  </div>
+
+  <!-- SMS alerts -->
+  <div class="mock" style="border:2px solid #d97706;">
+    <div class="mock-label" style="color:#d97706;"><i class="bi bi-phone-fill"></i> SMS Alerts (right side)</div>
+    <div class="mock-card">
+      <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.4rem;">
+        <input type="checkbox" checked disabled style="accent-color:#d97706;">
+        <span style="font-weight:700;font-size:0.78rem;">Enable SMS Alerts</span>
       </div>
-      <div class="mock-card">
-        <div style="font-weight:700;font-size:0.75rem;"><i class="bi bi-phone-fill" style="color:#d97706;"></i> SMS Alerts</div>
-        <ul style="font-size:0.7rem;padding-left:1rem;margin:0.3rem 0;">
-          <li><strong>Provider</strong> &mdash; Choose UniSMS or TextBee</li>
-          <li><strong>API Key</strong> &mdash; Your provider's API key</li>
-          <li><strong>Recipients</strong> &mdash; Phone numbers to notify</li>
-        </ul>
+      <div style="margin-bottom:0.3rem;">
+        <div style="font-size:0.7rem;font-weight:600;color:#555;">SMS Provider</div>
+        <div class="mock-select" style="width:100%;">UniSMS &#9662;</div>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.1rem;">Choose your SMS service: <strong>UniSMS</strong> (recommended) or <strong>TextBee</strong></div>
+      </div>
+      <div style="margin-bottom:0.3rem;">
+        <div style="font-size:0.7rem;font-weight:600;color:#555;">UniSMS API Key</div>
+        <div class="mock-input" style="width:100%;">sk_df5338f6-e788-4396-88b8-20b91b2aa26e</div>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.1rem;">Your API key from the SMS provider's dashboard</div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem;font-weight:600;color:#555;">SMS Recipients (comma separated)</div>
+        <div class="mock-input" style="width:100%;">+639106908664</div>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.1rem;">Phone numbers with country code (e.g., +63 for Philippines)</div>
       </div>
     </div>
   </div>
-  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> Use the <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-send"></i> Test SMTP</span> button to verify your email works before relying on it.</div>
-  <div class="help-warning"><i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;"></i> <strong>Important:</strong> The "App Password" is NOT your Gmail login password. You must generate one from <strong>Google Account &gt; Security &gt; App passwords</strong>.</div>
 
-  <h3><i class="bi bi-camera-video-fill"></i> Camera Management</h3>
+  <!-- Cooldown -->
   <div class="mock">
-    <div class="mock-label">Camera list</div>
+    <div class="mock-label">Alert Cooldown</div>
+    <div class="mock-card">
+      <div style="font-weight:700;font-size:0.78rem;">Alert Cooldown (seconds)</div>
+      <div class="mock-input" style="width:100%;margin:0.3rem 0;">10</div>
+      <div style="font-size:0.68rem;color:#888;">Minimum time between alerts per camera. Prevents spam when many violations happen rapidly. Example: at <strong>10 seconds</strong>, you won't get more than 1 alert every 10 seconds per camera.</div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="mock">
+    <div class="mock-label">Alert action buttons</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;">
+      <div class="mock-card" style="text-align:center;">
+        <span class="mock-btn success" style="font-size:0.75rem;"><i class="bi bi-check-lg"></i> Save Alert Settings</span>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.3rem;">Save all email and SMS configuration changes</div>
+      </div>
+      <div class="mock-card" style="text-align:center;">
+        <span class="mock-btn warning" style="font-size:0.75rem;"><i class="bi bi-arrow-clockwise"></i> Refresh</span>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.3rem;">Reload alert settings from the database</div>
+      </div>
+      <div class="mock-card" style="text-align:center;">
+        <span class="mock-btn outline" style="font-size:0.75rem;"><i class="bi bi-send"></i> Test SMTP</span>
+        <div style="font-size:0.62rem;color:#888;margin-top:0.3rem;">Send a test email to verify your configuration works</div>
+      </div>
+    </div>
+  </div>
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Always</strong> click "Test SMTP" after setting up email alerts. If you receive the test email, your configuration is correct. If not, double-check your App Password.</div>
+
+  <!-- Alert History -->
+  <h3><i class="bi bi-clock-history"></i> 3. Alert History</h3>
+  <p>Below the alert configuration, you'll find the <strong>Alert History</strong> table. This logs every alert the system has sent, so you can verify notifications are being delivered.</p>
+
+  <div class="mock">
+    <div class="mock-label"><i class="bi bi-clock-history"></i> Alert History table</div>
     <table class="mock-table">
-      <tr><th>ID</th><th>Name</th><th>Location</th><th>Status</th><th>Actions</th></tr>
-      <tr><td>Camera_1</td><td>Zavalla East Road</td><td>Brgy. Kanluran</td><td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">active</span></td><td><span class="mock-btn outline" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-pencil"></i></span> <span class="mock-btn danger" style="font-size:0.6rem;padding:0.15rem 0.35rem;"><i class="bi bi-trash"></i></span></td></tr>
+      <tr><th>Time</th><th>Type</th><th>Camera</th><th>Vehicle</th><th>Status</th></tr>
+      <tr><td>Tue, 30 Jun 2026 16:01 PM</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">sms</span></td><td>Zavalla West Road</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">CAR</span></td><td><span style="color:#059669;font-weight:700;">Sent</span></td></tr>
+      <tr><td>Tue, 30 Jun 2026 15:02 PM</td><td><span class="mock-badge" style="background:#fef3c7;color:#92400e;">email</span></td><td>Zavalla East Road</td><td><span class="mock-badge" style="background:#fce7f3;color:#9d174d;">TRICYCLE</span></td><td><span style="color:#059669;font-weight:700;">Sent</span></td></tr>
+      <tr><td>Mon, 29 Jun 2026 17:17 PM</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">sms</span></td><td>Zavalla East Road</td><td><span class="mock-badge" style="background:#dbeafe;color:#1e40af;">CAR</span></td><td><span style="color:#059669;font-weight:700;">Sent</span></td></tr>
+      <tr><td>Mon, 29 Jun 2026 14:07 PM</td><td><span class="mock-badge" style="background:#fef3c7;color:#92400e;">email</span></td><td>Zavalla East Road</td><td><span class="mock-badge" style="background:#e8e3f5;color:#2d1b69;">VENDOR</span></td><td><span style="color:#059669;font-weight:700;">Sent</span></td></tr>
     </table>
-    <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;"><i class="bi bi-pencil"></i> = Edit camera details &nbsp; <i class="bi bi-trash" style="color:#ef4444;"></i> = Delete camera</div>
   </div>
 
-  <h3><i class="bi bi-cpu-fill"></i> AI Detection Controls</h3>
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:0.3rem 0.7rem;font-size:0.82rem;margin:0.4rem 0;">
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-clock"></i></span>
+    <span><strong>Time</strong> &mdash; When the alert was sent (Philippine Standard Time)</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-send"></i></span>
+    <span><strong>Type</strong> &mdash; Whether it was an <span class="mock-badge" style="background:#dbeafe;color:#1e40af;">sms</span> or <span class="mock-badge" style="background:#fef3c7;color:#92400e;">email</span> alert</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-camera-video"></i></span>
+    <span><strong>Camera</strong> &mdash; Which camera detected the violation</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-car-front"></i></span>
+    <span><strong>Vehicle</strong> &mdash; Type of vehicle that triggered the alert</span>
+    <span style="font-weight:700;color:#2d1b69;"><i class="bi bi-check-circle"></i></span>
+    <span><strong>Status</strong> &mdash; <span style="color:#059669;font-weight:700;">Sent</span> = successfully delivered. If you see errors here, check your alert configuration.</span>
+  </div>
+
+  <!-- ---- CAMERA MANAGEMENT ---- -->
+  <h3><i class="bi bi-camera-video-fill"></i> 4. Camera Management</h3>
+  <p>View, add, edit, or remove CCTV cameras. Each camera has a unique ID, a display name (shown everywhere in the system), location, RTSP stream URL, and status.</p>
+
+  <!-- Camera table mockup -->
   <div class="mock">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
-      <div class="mock-card" style="text-align:center;">
-        <i class="bi bi-toggle-on" style="font-size:1.2rem;color:#059669;"></i>
-        <div style="font-weight:700;font-size:0.72rem;">Detection Engine</div>
-        <div style="font-size:0.65rem;color:#888;">Turn AI detection ON or OFF</div>
-      </div>
-      <div class="mock-card" style="text-align:center;">
-        <i class="bi bi-cloud-arrow-up" style="font-size:1.2rem;color:#2d1b69;"></i>
-        <div style="font-weight:700;font-size:0.72rem;">Cloud Uploads</div>
-        <div style="font-size:0.65rem;color:#888;">Pause/resume to save storage credits</div>
-      </div>
-      <div class="mock-card" style="text-align:center;">
-        <i class="bi bi-speedometer2" style="font-size:1.2rem;color:#d97706;"></i>
-        <div style="font-weight:700;font-size:0.72rem;">Confidence Threshold</div>
-        <div style="font-size:0.65rem;color:#888;">Higher = fewer but more accurate detections</div>
-      </div>
+    <div class="mock-label">Camera list table</div>
+    <table class="mock-table">
+      <tr><th>ID</th><th>Name</th><th>Location</th><th>RTSP URL</th><th>Status</th><th>Actions</th></tr>
+      <tr>
+        <td><strong>Camera_1</strong></td>
+        <td>Zavalla East Road</td>
+        <td>Brgy. Kanluran</td>
+        <td style="font-size:0.62rem;color:#888;">rtsp://admin:%40Dm...554/stre...</td>
+        <td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">active</span></td>
+        <td>
+          <span class="mock-btn outline" style="font-size:0.58rem;padding:0.15rem 0.3rem;"><i class="bi bi-pencil"></i></span>
+          <span class="mock-btn danger" style="font-size:0.58rem;padding:0.15rem 0.3rem;"><i class="bi bi-trash"></i></span>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Camera_2</strong></td>
+        <td>Zavalla West Road</td>
+        <td>Brgy. Kanluran</td>
+        <td style="font-size:0.62rem;color:#888;">rtsp://192.168.8.2:554/stream</td>
+        <td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">active</span></td>
+        <td>
+          <span class="mock-btn outline" style="font-size:0.58rem;padding:0.15rem 0.3rem;"><i class="bi bi-pencil"></i></span>
+          <span class="mock-btn danger" style="font-size:0.58rem;padding:0.15rem 0.3rem;"><i class="bi bi-trash"></i></span>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Camera_3</strong></td>
+        <td>Anonuevo North Road</td>
+        <td>Brgy. Kanluran</td>
+        <td style="font-size:0.62rem;color:#888;">rtsp://192.168.8.199:554/stream</td>
+        <td><span class="mock-badge" style="background:#d1fae5;color:#065f46;">active</span></td>
+        <td>
+          <span class="mock-btn outline" style="font-size:0.58rem;padding:0.15rem 0.3rem;"><i class="bi bi-pencil"></i></span>
+          <span class="mock-btn danger" style="font-size:0.58rem;padding:0.15rem 0.3rem;"><i class="bi bi-trash"></i></span>
+        </td>
+      </tr>
+    </table>
+    <div style="font-size:0.68rem;color:#666;margin-top:0.3rem;">
+      <span class="mock-btn outline" style="font-size:0.6rem;padding:0.12rem 0.3rem;"><i class="bi bi-pencil"></i></span> = Edit camera name, location, URL, or status &nbsp;&nbsp;
+      <span class="mock-btn danger" style="font-size:0.6rem;padding:0.12rem 0.3rem;"><i class="bi bi-trash"></i></span> = Delete this camera from the system
     </div>
   </div>
 
-  <h3><i class="bi bi-cloud-fill"></i> Cloud Media Management</h3>
-  <p>Browse and selectively delete uploaded violation images and videos from cloud storage. Filter by age (7/14/30 days) and delete in bulk to free up space.</p>
+  <!-- Add camera mockup -->
+  <div class="mock" style="border:2px solid #059669;">
+    <div class="mock-label" style="color:#059669;"><i class="bi bi-plus-circle-fill"></i> Add New Camera form (below the table)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.4rem;">
+      <div>
+        <div style="font-size:0.68rem;font-weight:600;color:#555;">Camera ID</div>
+        <div class="mock-input" style="width:100%;">Camera_4</div>
+        <div style="font-size:0.58rem;color:#888;">Unique identifier (e.g., Camera_4)</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;font-weight:600;color:#555;">Name / Label</div>
+        <div class="mock-input" style="width:100%;">Front Gate Camera</div>
+        <div style="font-size:0.58rem;color:#888;">Friendly name shown in the system</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;font-weight:600;color:#555;">Location</div>
+        <div class="mock-input" style="width:100%;">Brgy. Kanluran Main Rd.</div>
+        <div style="font-size:0.58rem;color:#888;">Physical location of the camera</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:0.4rem;align-items:end;">
+      <div>
+        <div style="font-size:0.68rem;font-weight:600;color:#555;">RTSP URL (optional)</div>
+        <div class="mock-input" style="width:100%;">rtsp://192.168.8.x:554/stream</div>
+        <div style="font-size:0.58rem;color:#888;">The camera's video stream address</div>
+      </div>
+      <div>
+        <div style="font-size:0.68rem;font-weight:600;color:#555;">Status</div>
+        <div class="mock-select" style="width:100%;">Active &#9662;</div>
+      </div>
+      <span class="mock-btn primary" style="font-size:0.75rem;"><i class="bi bi-plus-lg"></i> Add Camera</span>
+    </div>
+  </div>
+
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content"><strong>To add a camera:</strong> Fill in the Camera ID, Name, Location, RTSP URL, and Status in the form below the camera list. Click <span class="mock-btn primary" style="font-size:0.65rem;"><i class="bi bi-plus-lg"></i> Add Camera</span>.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>To edit a camera:</strong> Click the <span class="mock-btn outline" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-pencil"></i></span> button on the camera's row. A popup will appear where you can change the name, location, URL, or status.</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>To delete a camera:</strong> Click the <span class="mock-btn danger" style="font-size:0.6rem;padding:0.1rem 0.25rem;"><i class="bi bi-trash"></i></span> button. You'll be asked to confirm before it's removed.</div></div>
+  </div>
+
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> The <strong>Name</strong> you set here is what appears everywhere in the system (violations table, calendar, admin panel, reports). Choose a clear, recognizable name like the street or location.</div>
+
+  <!-- ---- AI DETECTION CONTROLS ---- -->
+  <h3><i class="bi bi-cpu-fill"></i> 5. AI Detection Controls</h3>
+  <p>Control the AI detection engine, cloud storage uploads, and how sensitive the detection is.</p>
+
+  <!-- Detection Engine -->
+  <div class="mock">
+    <div class="mock-label">AI Detection Controls panel</div>
+
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700;font-size:0.82rem;">Detection Engine</div>
+          <div style="font-size:0.68rem;color:#888;">Pause or resume AI violation detection</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.3rem;">
+          <span style="font-size:0.7rem;color:#059669;font-weight:600;">ON</span>
+          <i class="bi bi-toggle-on" style="font-size:1.5rem;color:#059669;"></i>
+        </div>
+      </div>
+      <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;border-top:1px dashed #e0dce8;padding-top:0.3rem;"><i class="bi bi-info-circle"></i> When <strong>OFF</strong>, the system stops detecting violations. Camera feeds still work but no new incidents are recorded. Useful during maintenance.</div>
+    </div>
+
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700;font-size:0.82rem;">Cloud Media Uploads</div>
+          <div style="font-size:0.68rem;color:#888;">Pause image/video uploads to Cloudinary to save credits</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.3rem;">
+          <span style="font-size:0.7rem;color:#059669;font-weight:600;">ON</span>
+          <i class="bi bi-toggle-on" style="font-size:1.5rem;color:#059669;"></i>
+        </div>
+      </div>
+      <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;border-top:1px dashed #e0dce8;padding-top:0.3rem;"><i class="bi bi-info-circle"></i> When <strong>OFF</strong>, violations are still detected and saved to the database, but images/videos are NOT uploaded to the cloud. Turn off to save cloud storage credits when not needed.</div>
+    </div>
+
+    <!-- Confidence Threshold -->
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:700;font-size:0.82rem;">Confidence Threshold</div>
+          <div style="font-size:0.68rem;color:#888;">Higher = fewer detections but more accurate</div>
+        </div>
+        <div style="font-size:1.1rem;font-weight:700;color:#2d1b69;">0.50</div>
+      </div>
+      <!-- Slider mockup -->
+      <div style="position:relative;height:20px;margin:0.5rem 0 0.2rem;">
+        <div style="position:absolute;top:8px;left:0;right:0;height:4px;background:linear-gradient(to right,#059669,#f59e0b,#ef4444);border-radius:2px;"></div>
+        <div style="position:absolute;top:3px;left:50%;transform:translateX(-50%);width:14px;height:14px;background:#2d1b69;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.62rem;color:#888;">
+        <span>0.10 (sensitive)</span>
+        <span>0.50 (balanced)</span>
+        <span>0.90 (strict)</span>
+      </div>
+      <div style="font-size:0.65rem;color:#888;margin-top:0.3rem;border-top:1px dashed #e0dce8;padding-top:0.3rem;">
+        <i class="bi bi-info-circle"></i> <strong>Low (0.10-0.30):</strong> Catches more violations but may include false detections.<br>
+        <i class="bi bi-info-circle"></i> <strong>Medium (0.40-0.60):</strong> Balanced &mdash; recommended for most situations.<br>
+        <i class="bi bi-info-circle"></i> <strong>High (0.70-0.90):</strong> Only records very confident detections. May miss some real violations.
+      </div>
+    </div>
+
+    <!-- Snapshot -->
+    <div class="mock-card" style="margin-bottom:0.4rem;">
+      <div style="font-weight:700;font-size:0.82rem;">Live Detection Snapshot</div>
+      <div style="font-size:0.68rem;color:#888;">Grab a single frame showing what the AI currently sees with bounding boxes.</div>
+      <span class="mock-btn outline" style="font-size:0.72rem;margin-top:0.3rem;"><i class="bi bi-camera"></i> Capture Snapshot</span>
+      <div style="font-size:0.62rem;color:#888;margin-top:0.2rem;"><i class="bi bi-info-circle"></i> Useful for verifying the AI is detecting vehicles correctly. The snapshot shows colored boxes around detected objects.</div>
+    </div>
+
+    <!-- Save/Restart buttons -->
+    <div style="display:flex;gap:0.4rem;margin-top:0.3rem;">
+      <span class="mock-btn outline" style="color:#059669;border-color:#059669;"><i class="bi bi-check-lg"></i> Save Settings</span>
+      <span class="mock-btn outline" style="color:#ef4444;border-color:#ef4444;"><i class="bi bi-arrow-clockwise"></i> Restart Detection</span>
+    </div>
+    <div style="font-size:0.65rem;color:#888;margin-top:0.2rem;">
+      <strong>Save Settings</strong> saves your threshold changes. <strong>Restart Detection</strong> restarts the AI engine on the Pi (use if detection seems stuck).
+    </div>
+  </div>
+
+  <!-- ---- CLOUD MEDIA MANAGEMENT ---- -->
+  <h3><i class="bi bi-cloud-fill"></i> 6. Cloud Media Management</h3>
+  <p>Browse and selectively delete uploaded violation images and videos from Cloudinary cloud storage. The system automatically deletes media older than 14 days, but you can also manually clean up to free storage credits faster.</p>
+
+  <div class="mock">
+    <div class="mock-label">Cloud Media Management panel</div>
+    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-bottom:0.4rem;">
+      <div class="mock-select">All with media &#9662;</div>
+      <span class="mock-btn outline" style="color:#2d1b69;border-color:#2d1b69;"><i class="bi bi-arrow-clockwise"></i> Load</span>
+      <span class="mock-btn outline" style="color:#ef4444;border-color:#ef4444;"><i class="bi bi-trash"></i> Delete Selected</span>
+      <span class="mock-btn outline">Select All</span>
+    </div>
+    <div style="font-size:0.68rem;color:#888;">Filter options: <strong>All with media</strong>, <strong>Older than 7 days</strong>, <strong>Older than 14 days</strong>, <strong>Older than 30 days</strong></div>
+  </div>
+
+  <div class="help-steps">
+    <div class="help-step"><div class="help-step-content"><strong>Choose a filter</strong> from the dropdown (e.g., "Older than 7 days" to see old media)</div></div>
+    <div class="help-step"><div class="help-step-content">Click <span class="mock-btn outline" style="font-size:0.65rem;"><i class="bi bi-arrow-clockwise"></i> Load</span> to fetch matching media from the cloud</div></div>
+    <div class="help-step"><div class="help-step-content"><strong>Select items</strong> you want to delete by clicking their checkboxes (or use <strong>Select All</strong>)</div></div>
+    <div class="help-step"><div class="help-step-content">Click <span class="mock-btn outline" style="font-size:0.65rem;color:#ef4444;border-color:#ef4444;"><i class="bi bi-trash"></i> Delete Selected</span> to remove them from cloud storage and free up credits</div></div>
+  </div>
+
+  <div class="help-tip"><i class="bi bi-lightbulb-fill" style="color:#f59e0b;"></i> <strong>Auto-cleanup:</strong> The system automatically deletes cloud media older than 14 days every 6 hours. You only need manual cleanup if you want to free space sooner.</div>
+  <div class="help-warning"><i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;"></i> <strong>Warning:</strong> Deleting cloud media is permanent. The violation record stays in the database, but the image and video links will no longer work.</div>
 </div>
 {% endif %}
 
