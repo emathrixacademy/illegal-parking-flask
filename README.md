@@ -281,7 +281,7 @@ CAM3_URL = "rtsp://192.168.8.199:554/stream"   # ONVIF cam (no auth)
 **Camera details:**
 | Camera | Type | IP | Subnet | Auth |
 |--------|------|-----|--------|------|
-| CAM1 (MAIN) | TP-Link VIGI | 192.168.1.3 (DHCP) | 192.168.1.x | admin / @Dm1n001 |
+| CAM1 (MAIN) | TP-Link VIGI | 192.168.1.3 (DHCP) | 192.168.1.x | admin / @Dm1n2026 |
 | CAM2 | ONVIF (Boa) | 192.168.8.2 | 192.168.8.x | None for RTSP |
 | CAM3 | ONVIF (Boa) | 192.168.8.199 | 192.168.8.x | None for RTSP |
 
@@ -407,7 +407,7 @@ Port:     22
 CAM1 (MAIN — TP-Link VIGI, 192.168.1.x subnet, DHCP):
   IP:   192.168.1.3  (may change after power loss — was 192.168.1.14 before)
   User: admin
-  Pass: @Dm1n001
+  Pass: @Dm1n2026
   RTSP: rtsp://admin:%40Dm1n001@192.168.1.3:554/stream1
   Web:  https://192.168.1.3
 

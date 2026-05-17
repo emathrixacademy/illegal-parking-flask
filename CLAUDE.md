@@ -33,7 +33,7 @@ Pass: admin123
 CAM1 (MAIN — TP-Link VIGI, 192.168.1.x subnet):
   IP:   192.168.1.3  (DHCP — may change after power loss, was 192.168.1.14 before)
   User: admin
-  Pass: @Dm1n001
+  Pass: @Dm1n2026
   RTSP: rtsp://admin:%40Dm1n001@192.168.1.3:554/stream1
   Web:  https://192.168.1.3
 
