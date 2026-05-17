@@ -560,6 +560,12 @@ if('serviceWorker' in navigator){
 }
 </script>
 <script>
+const PHT = 'Asia/Manila';
+function phtDate(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleDateString('en-PH', {timeZone:PHT}); } catch(e) { return ts; } }
+function phtTime(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleTimeString('en-PH', {timeZone:PHT, hour:'2-digit', minute:'2-digit'}); } catch(e) { return ''; } }
+function phtDateTime(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleString('en-PH', {timeZone:PHT}); } catch(e) { return ts; } }
+</script>
+<script>
 // ===== NOTIFICATION BELL SYSTEM =====
 let _notifications = JSON.parse(localStorage.getItem('dcgl_notifications') || '[]');
 let _notifCount = 0;
@@ -657,8 +663,8 @@ async function loadNotificationIncidents() {
       const label = inc.label || 'Vehicle';
       const plate = inc.plate_number ? ` - ${inc.plate_number}` : '';
       const ts = inc.timestamp ? new Date(inc.timestamp) : null;
-      const timeStr = ts ? ts.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-      const dateStr = ts ? ts.toLocaleDateString() : '';
+      const timeStr = ts ? phtTime(ts) : '';
+      const dateStr = ts ? phtDate(ts) : '';
       const ago = ts ? timeAgo(ts.toISOString()) : '';
 
       return `<div class="notif-item" style="cursor:pointer;" onclick="window.location='/8f3c9a2d71b4e6c0f9d2a8b7c4e1'">

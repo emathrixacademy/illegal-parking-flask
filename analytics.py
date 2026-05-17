@@ -762,7 +762,9 @@ def api_generate_report():
         
         c.setFont("Helvetica", 8)
         c.setFillColor(HexColor('#666666'))
-        c.drawString(72, y, f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+        from zoneinfo import ZoneInfo
+        manila_now = datetime.now(ZoneInfo('Asia/Manila'))
+        c.drawString(72, y, f"Generated: {manila_now.strftime('%B %d, %Y at %I:%M %p')} PHT")
         y -= 30
         
         # Summary box
@@ -948,7 +950,13 @@ def api_generate_report():
 
             for dr in detail_rows:
                 v_id, v_cam, v_label, v_ts, v_conf, v_dur, v_status, v_img, v_vid, v_plate = dr
-                ts_str = v_ts.strftime('%m/%d %I:%M %p') if v_ts else ''
+                if v_ts:
+                    from zoneinfo import ZoneInfo
+                    utc_ts = v_ts.replace(tzinfo=ZoneInfo('UTC'))
+                    manila_ts = utc_ts.astimezone(ZoneInfo('Asia/Manila'))
+                    ts_str = manila_ts.strftime('%m/%d %I:%M %p')
+                else:
+                    ts_str = ''
                 conf_str = f"{float(v_conf or 0)*100:.0f}%"
                 dur_str = f"{float(v_dur or 0):.1f}m"
                 status_map = {'for_review': 'Review', 'approved': 'Approved', 'rejected': 'Rejected', 'needs_investigation': 'Investigate'}

@@ -533,7 +533,7 @@ function checkCameraStatus() {
 
 // ===== Clock =====
 function startClock() {
-    function u() { const el = document.getElementById('clock'); if(el) el.textContent = new Date().toLocaleString(undefined, {hour12:false}); }
+    function u() { const el = document.getElementById('clock'); if(el) el.textContent = new Date().toLocaleString('en-PH', {timeZone:'Asia/Manila', hour12:false}); }
     u(); setInterval(u, 1000);
 }
 
@@ -722,7 +722,7 @@ async function checkTamperAlerts() {
                 'DEFOCUS': 'Camera image is blurry — lens may be dirty or sprayed'
             };
             const friendly = typeMap[ev[0].tamper_type] || ev[0].tamper_type;
-            const ts = ev[0].timestamp ? new Date(ev[0].timestamp).toLocaleString() : '';
+            const ts = ev[0].timestamp ? phtDateTime(ev[0].timestamp) : '';
             ms.textContent = ` ${camName} — ${friendly} (${ts})`;
             ad.style.display='block';
         }

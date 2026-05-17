@@ -322,7 +322,7 @@ async function fetchActivityLog() {
         const logs = await r.json();
         logs.slice(0, 50).forEach(l => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${l.timestamp||''}</td><td>${l.username||''}</td><td>${l.action||''}</td><td class="d-none d-md-table-cell">${l.details||''}</td><td class="d-none d-sm-table-cell">${l.ip_address||''}</td>`;
+            tr.innerHTML = `<td>${phtDateTime(l.timestamp)}</td><td>${l.username||''}</td><td>${l.action||''}</td><td class="d-none d-md-table-cell">${l.details||''}</td><td class="d-none d-sm-table-cell">${l.ip_address||''}</td>`;
             tbody.appendChild(tr);
         });
     } catch(e) {}

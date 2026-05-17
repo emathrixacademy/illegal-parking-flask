@@ -796,7 +796,7 @@
         mediaData.forEach((v, i) => {
             const hasImg = v.image_url ? '<i class="bi bi-image text-success"></i>' : '';
             const hasVid = v.video_url ? '<i class="bi bi-camera-video text-primary"></i>' : '';
-            const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '';
+            const ts = v.timestamp ? phtDateTime(v.timestamp) : '';
             const thumb = v.image_url ? '<img src="' + v.image_url + '" style="width:60px;height:40px;object-fit:cover;border-radius:4px;">' : '';
             html += '<tr style="border-bottom:1px solid var(--border);">' +
                 '<td style="padding:6px;"><input type="checkbox" class="media-check" data-idx="' + i + '"></td>' +

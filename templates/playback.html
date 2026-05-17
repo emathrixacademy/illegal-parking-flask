@@ -192,7 +192,7 @@ document.getElementById('plateSearchBtn').addEventListener('click', async () => 
         data.forEach(r => {
             html += `<tr><td><strong>${r.plate_number}</strong></td><td>${r.camera||''}</td>` +
                 `<td>${r.label||''}</td><td>${r.duration_minutes ? r.duration_minutes.toFixed(1)+'m' : ''}</td>` +
-                `<td>${r.timestamp||''}</td></tr>`;
+                `<td>${phtDateTime(r.timestamp)}</td></tr>`;
         });
         html += '</tbody></table></div>';
         container.innerHTML = html;

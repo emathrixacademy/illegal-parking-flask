@@ -260,8 +260,8 @@ fetch('/api/cameras').then(r => r.json()).then(cams => {
 
 function camName(id) { return cameraNameMap[id] || (id || '').replace('_', ' '); }
 
-function formatDate(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleDateString(); } catch(e) { return ts; } }
-function formatTime(ts) { if (!ts) return ''; try { return new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; } }
+function formatDate(ts) { return phtDate(ts); }
+function formatTime(ts) { return phtTime(ts); }
 
 function statusBadge(s) {
   const map = {

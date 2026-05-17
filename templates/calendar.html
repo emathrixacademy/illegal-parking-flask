@@ -302,7 +302,7 @@ async function selectDate(dateStr) {
 
     let html = '';
     data.incidents.forEach((inc, idx) => {
-      const timeStr = inc.timestamp ? new Date(inc.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+      const timeStr = inc.timestamp ? phtTime(inc.timestamp) : '';
       const duration = inc.duration_minutes ? inc.duration_minutes.toFixed(1) + ' min' : '';
       const plate = inc.plate_number || '';
 

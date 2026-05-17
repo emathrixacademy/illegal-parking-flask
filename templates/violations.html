@@ -635,7 +635,7 @@ async function loadViolations() {
     window._violationItems = data.items;
     body.innerHTML = data.items.map((v, i) => {
       const idx = (data.page - 1) * data.per_page + i + 1;
-      const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '—';
+      const ts = v.timestamp ? phtDateTime(v.timestamp) : '—';
       const labelClass = (v.label || '').toUpperCase() === 'CAR' ? 'car' : (v.label || '').toUpperCase() === 'MOTORCYCLE' ? 'motorcycle' : 'other';
       const dur = v.duration_minutes != null ? v.duration_minutes.toFixed(1) + ' min' : '—';
       const conf = v.confidence_score != null ? (v.confidence_score * 100).toFixed(1) + '%' : '—';
@@ -704,7 +704,7 @@ function goToPage(p) {
 }
 
 function showDetail(v) {
-  const ts = v.timestamp ? new Date(v.timestamp).toLocaleString() : '—';
+  const ts = v.timestamp ? phtDateTime(v.timestamp) : '—';
   const dur = v.duration_minutes != null ? v.duration_minutes.toFixed(1) + ' min' : '—';
   const conf = v.confidence_score != null ? (v.confidence_score * 100).toFixed(1) + '%' : '—';
   const statusLookup = {
