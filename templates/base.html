@@ -418,6 +418,9 @@
     .help-fab{position:fixed;bottom:80px;right:20px;z-index:1050;background:var(--primary,#2d1b69);color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.2s;}
     .help-fab:hover{transform:scale(1.1);}
     body.show-help .help-fab{background:#059669;}
+    .scroll-top-fab{position:fixed;bottom:130px;right:20px;z-index:1050;background:var(--primary,#2d1b69);color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:0.95rem;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.25);transition:all 0.25s;display:none;align-items:center;justify-content:center;opacity:0;}
+    .scroll-top-fab.visible{display:flex;opacity:0.7;}
+    .scroll-top-fab:hover{opacity:1;transform:translateY(-3px);box-shadow:0 5px 14px rgba(0,0,0,0.35);}
     .tooltip-inner{background:#fff8e1!important;color:#333!important;font-size:0.78rem!important;border:1px solid #f9a825!important;box-shadow:0 2px 8px rgba(0,0,0,0.15)!important;max-width:240px!important;text-align:left!important;padding:0.5rem 0.7rem!important;border-radius:8px!important;}
     .tooltip .tooltip-arrow::before{border-top-color:#f9a825!important;}
     .bs-tooltip-bottom .tooltip-arrow::before{border-bottom-color:#f9a825!important;}
@@ -718,6 +721,7 @@ loadNotificationIncidents();
 pollNewViolations();
 setInterval(() => { pollNewViolations(); }, 5000);
 </script>
+<button class="scroll-top-fab" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top"><i class="bi bi-arrow-up"></i></button>
 <button class="help-fab" onclick="toggleHelpMode()" title="Toggle help tooltips"><i class="bi bi-question-lg"></i></button>
 <script>
 function toggleHelpMode(){
@@ -729,6 +733,8 @@ document.addEventListener('DOMContentLoaded', function(){
   var tl = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tl.forEach(function(el){ new bootstrap.Tooltip(el); });
 });
+var _stb=document.getElementById('scrollTopBtn');
+window.addEventListener('scroll',function(){if(window.scrollY>300)_stb.classList.add('visible');else _stb.classList.remove('visible');});
 </script>
 {% block scripts %}{% endblock %}
 </body>
