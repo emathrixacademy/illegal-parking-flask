@@ -880,6 +880,7 @@ monitor = ParkingMonitor()
 tamper_detectors = {
     "Camera_1": TamperDetector("Camera_1"),
     "Camera_2": TamperDetector("Camera_2"),
+    "Camera_3": TamperDetector("Camera_3"),
 }
 
 # Feature 16: Health monitoring
