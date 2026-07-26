@@ -207,6 +207,11 @@ def periodic_settings_sync():
         except Exception:
             pass
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    """Lightweight liveness check used by parking-watchdog.sh (returns 200)."""
+    return "ok", 200
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """Feature 16: Full system health endpoint."""
