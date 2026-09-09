@@ -1423,6 +1423,20 @@ def static_files(filename):
 # --------------------------------------------------
 # Camera Status
 # --------------------------------------------------
+def _configured_camera_ids():
+    """Camera IDs to report on when the Pi cannot be reached."""
+    cameras = get_config_value("CAMERAS", [])
+    ids = []
+    if isinstance(cameras, list):
+        ids = [c.get("id") for c in cameras if isinstance(c, dict) and c.get("id")]
+    # The dashboard renders three camera tiles, so always cover all three even if
+    # the CAMERAS config was seeded with fewer.
+    for default_id in ("Camera_1", "Camera_2", "Camera_3"):
+        if default_id not in ids:
+            ids.append(default_id)
+    return ids
+
+
 @app.route('/api/camera_status', methods=['GET','OPTIONS'])
 @login_required
 def api_camera_status():
@@ -1433,16 +1447,24 @@ def api_camera_status():
         url = f"{pi_base}/api/camera_status"
         resp = requests.get(url, timeout=10)
         data = resp.json()
+        if not isinstance(data, dict):
+            raise ValueError("unexpected camera_status payload from Pi")
+        # Pass through every camera the Pi reports instead of hardcoding two.
+        # server.py reports Camera_3 as well, but it used to be dropped here, and
+        # the dashboard treats a missing key as offline — so Camera_3 was stuck
+        # showing "Reconnecting" forever no matter how healthy the camera was.
         return jsonify({
-            "Camera_1": {"reconnecting": data.get("Camera_1", {}).get("reconnecting", False),
-                         "online": data.get("Camera_1", {}).get("online", False)},
-            "Camera_2": {"reconnecting": data.get("Camera_2", {}).get("reconnecting", False),
-                         "online": data.get("Camera_2", {}).get("online", False)}
+            cam_id: {
+                "reconnecting": bool(info.get("reconnecting", False)),
+                "online": bool(info.get("online", False)),
+            }
+            for cam_id, info in data.items()
+            if isinstance(info, dict)
         })
     except Exception:
         return jsonify({
-            "Camera_1": {"reconnecting": True, "online": False},
-            "Camera_2": {"reconnecting": True, "online": False}
+            cam_id: {"reconnecting": True, "online": False}
+            for cam_id in _configured_camera_ids()
         })
 
 # --------------------------------------------------

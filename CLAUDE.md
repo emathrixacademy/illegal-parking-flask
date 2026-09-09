@@ -22,11 +22,53 @@ git reset --hard 054ac42
 - `/8f3c9a2d71b4e6c0f9d2a8b7c4e1` — Admin panel
 
 ## Pi Access
+
+> ⚠️ **Pi was re-imaged Sept 9, 2026.** Everything below the OS is gone and must be
+> rebuilt — see "Post-Reset Rebuild" section.
+
+**Image:** Raspberry Pi OS, pi-gen build `2026-06-18`. This is new enough that it uses
+**NetworkManager + cloud-init**, NOT `dhcpcd`. The `pi-deploy/` scripts were written for
+`dhcpcd` and are stale — use `pi-deploy/rebuild-after-reset.sh`, which detects both.
+
+**Boot config as written by Imager** (`bootfs` partition: `user-data`, `network-config`):
 ```
-Host: 192.168.1.15 (DHCP — scan subnet if unreachable)
-User: admin
-Pass: admin123
+hostname:   ADMIN          → mDNS name is ADMIN.local (NOT raspberrypi.local)
+user:       admin / admin
+SSH:        enabled (enable_ssh: true, ssh_pwauth: true)
+wlan0:      SSID "Emathrix24", regulatory-domain PH
+eth0:       dhcp4 true  ← the working path on the site LAN
 ```
+
+⚠️ **The Pi has no WiFi it can actually reach.** `Emathrix24` is not the site network,
+and it was never joined to any other AP. **Ethernet is mandatory** — plug it into the
+site router (192.168.1.1) and it will pull a DHCP lease. To add a WiFi network later,
+edit `network-config` on the `bootfs` partition with the SD card in a PC.
+
+**Finding the Pi on the site LAN:** try `ADMIN.local` first (avahi-daemon is installed
+via cloud-init `packages:`). Otherwise ping-sweep the subnet and look for Raspberry Pi
+MAC OUIs: `b8:27:eb`, `dc:a6:32`, `e4:5f:01`, `28:cd:c1`, `d8:3a:dd`, `2c:cf:67`.
+
+**Old pre-reset values (for reference only, no longer valid):** `192.168.1.15`, `admin` / `admin123`
+The static IP is gone with the rest of the `pi-deploy/` config — the Pi takes a DHCP
+lease until `rebuild-after-reset.sh site` is run.
+
+## Post-Reset Rebuild — what the re-image wiped
+Nothing below survived; all of it needs reinstalling before detection works again:
+- Python venv + `requirements.txt` packages
+- Hailo runtime (`hailort_4.23.0_arm64.deb`, in repo root)
+- `parking-detect.service` and `cloudflared`
+- `pi-deploy/` services: `camera-subnet`, `network-watchdog`, static-IP `dhcpcd.conf` block
+- Autopull cron job (`~/autopull.sh`, every 5 min)
+- `~/.dcgl_env` (vision key file)
+
+Run `pi-deploy/rebuild-after-reset.sh` — it covers all of the above and supersedes
+`setup_pi.sh` + `pi-deploy/DEPLOY.md`, which assume `dhcpcd`:
+- `bash rebuild-after-reset.sh base` — anywhere with internet (apt, venv, Hailo, systemd, cron)
+- `bash rebuild-after-reset.sh site` — only on the 192.168.1.x camera LAN (static IP, camera subnet, watchdog)
+- `bash rebuild-after-reset.sh verify` — check what is installed
+
+The `base` phase tolerates the code already being present (SCP/USB), so a private
+repo with no token on the Pi is not a blocker.
 
 ## Camera Credentials & RTSP URLs
 ```
@@ -107,7 +149,17 @@ With pi-deploy services installed, recovery is automatic. Manual steps only need
 - Deploys automatically on push to `main`
 
 ## Common Issues
-- **"Cloud Link Disconnected"**: Cloudflare tunnel URL changed — restart `parking-detect` service
+- **"Cloud Link Disconnected"**: Cloudflare tunnel URL changed. As of Sept 9, 2026 the Pi
+  heals this itself — `ensure_tunnel_alive()` in `server.py` restarts a dead cloudflared and
+  re-posts the new URL within 30s. A manual `systemctl restart parking-detect` is only needed
+  if it stays disconnected for several minutes. (`cloudlink.py` also drains cloudflared's
+  stdout now; leaving that pipe unread was filling the OS buffer and silently killing tunnels.)
+- **A camera stuck on "Reconnecting" while the others are fine**: was a bug, fixed Sept 9, 2026.
+  Railway's `/api/camera_status` hardcoded `Camera_1`/`Camera_2` and dropped `Camera_3`, which
+  the dashboard read as offline forever. It now passes through whatever the Pi reports.
+- **Cameras drop after heavy rain and never come back on the dashboard**: the RTSP reader in
+  `server.py` retries forever, so the cameras themselves recover. What breaks is the internet →
+  tunnel → Railway path. See the two entries above.
 - **Disk full**: Check `/tmp/violation_*.mp4` and `static/tamper/` — auto-cleanup runs every 30 min
 - **Slow detection (~1s/frame)**: Hailo not working, fell back to CPU — check `/dev/hailo0` exists and `hailort.service` is stopped
 - **config.py merge conflicts**: Never manually edit config.py on Pi — it's overwritten by settings sync

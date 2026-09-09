@@ -187,6 +187,30 @@ def send_heartbeat():
     except Exception as e:
         logger.warning(f"Heartbeat failed: {e}")
 
+def ensure_tunnel_alive():
+    """Restart cloudflared if it died, and publish the new URL to Railway.
+
+    trycloudflare issues a fresh random hostname on every start, so a tunnel that
+    dies — an internet outage, or network-watchdog restarting the service — leaves
+    Railway holding a URL that no longer resolves. The dashboard then shows
+    "Cloud Link Disconnected" until parking-detect is restarted by hand, even
+    though the Pi and the cameras are fine. Re-posting the *stale* URL every 30s
+    (which is all this loop used to do) never recovered from that.
+    """
+    proc = app.config.get("CF_PROC")
+    if proc is not None and proc.poll() is None:
+        return  # still running
+    logger.warning("cloudflared is not running — restarting tunnel")
+    port = int(os.environ.get("PORT", 5000))
+    new_proc, new_url = start_cloudflared(port)
+    app.config["CF_PROC"] = new_proc
+    app.config["PUBLIC_URL"] = new_url
+    logger.info(f"Tunnel back up at {new_url}")
+    RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
+    requests.post(f"{RAILWAY_API_URL}/api/set_pi_url",
+                  json={"public_url": new_url}, headers=RAILWAY_HEADERS, timeout=5)
+
+
 def periodic_settings_sync():
     """Periodically sync settings from Railway database, re-post tunnel URL, and send heartbeat"""
     while True:
@@ -199,6 +223,10 @@ def periodic_settings_sync():
             fetch_settings_from_railway()
         except Exception as e:
             logger.warning(f"Periodic sync failed: {e}")
+        try:
+            ensure_tunnel_alive()
+        except Exception as e:
+            logger.warning(f"Tunnel restart failed: {e}")
         try:
             public_url = app.config.get("PUBLIC_URL", "")
             if public_url:
@@ -1144,6 +1172,8 @@ if __name__ == '__main__':
     try:
         cf_proc, public_url = start_cloudflared(port)
         app.config["PUBLIC_URL"] = public_url
+        # Kept so periodic_settings_sync can notice the tunnel dying and rebuild it.
+        app.config["CF_PROC"] = cf_proc
 
         # Notify Railway app of the public URL
         RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
