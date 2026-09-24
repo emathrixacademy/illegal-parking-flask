@@ -97,14 +97,29 @@ class CameraRecovery:
 
     # -------------------------------------------------------------- internals
 
+    def _capture(self, url):
+        """Open a capture with bounded timeouts.
+
+        The timeouts must be passed to the constructor: calling cap.set() afterwards
+        is too late, the open has already blocked for FFmpeg's 30s default. With a
+        whole subnet of candidates to try, that difference is the gap between a sweep
+        that finishes in seconds and one that takes minutes.
+        """
+        params = []
+        for prop in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
+            prop_id = getattr(self.cv2, prop, None)
+            if prop_id is not None:
+                params += [int(prop_id), OPEN_TIMEOUT_MS]
+        if params:
+            try:
+                return self.cv2.VideoCapture(url, self.cv2.CAP_FFMPEG, params)
+            except Exception:
+                pass  # OpenCV builds before 4.5.3 have no params overload
+        return self.cv2.VideoCapture(url, self.cv2.CAP_FFMPEG)
+
     def _frame_arrives(self, url):
-        cap = self.cv2.VideoCapture(url, self.cv2.CAP_FFMPEG)
+        cap = self._capture(url)
         try:
-            for prop in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
-                try:
-                    cap.set(getattr(self.cv2, prop), OPEN_TIMEOUT_MS)
-                except Exception:
-                    pass
             if not cap.isOpened():
                 return False
             ok, frame = cap.read()

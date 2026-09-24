@@ -921,21 +921,29 @@ class Stream:
         self._fail_streak = 0
         threading.Thread(target=self._io_thread, daemon=True).start()
 
+    OPEN_TIMEOUT_MS = 5000
+
     @staticmethod
     def _open(url):
         """Open an RTSP URL with bounded timeouts.
 
-        Without these, dialling a host that no longer answers blocks for the FFmpeg
-        default of tens of seconds, so one dead camera stalls its own recovery long
-        past the point where the camera is actually back.
+        The timeouts go through the constructor's params list, not cap.set(): by the
+        time you can call set() the open has already happened and already blocked for
+        FFmpeg's 30s default, which is measurably what it did — 30032ms on the Pi.
+        A dead camera would hold its own reconnect thread for half a minute per try,
+        long past the point where the camera was actually back.
         """
-        cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+        params = []
         for prop in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
+            prop_id = getattr(cv2, prop, None)
+            if prop_id is not None:
+                params += [int(prop_id), Stream.OPEN_TIMEOUT_MS]
+        if params:
             try:
-                cap.set(getattr(cv2, prop), 5000)
+                return cv2.VideoCapture(url, cv2.CAP_FFMPEG, params)
             except Exception:
-                pass  # older OpenCV builds do not expose these
-        return cap
+                pass  # OpenCV builds before 4.5.3 have no params overload
+        return cv2.VideoCapture(url, cv2.CAP_FFMPEG)
 
     def current_url(self):
         with self._url_lock:
