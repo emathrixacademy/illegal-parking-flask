@@ -130,7 +130,11 @@ if [ "\$LOCAL" != "\$REMOTE" ]; then
 fi
 SCRIPT
     chmod +x "$HOME/autopull.sh"
-    (crontab -l 2>/dev/null | grep -v autopull; echo "*/5 * * * * $HOME/autopull.sh") | crontab -
+    # "|| true" is load-bearing on a Pi that has no crontab yet: grep exits 1 on the
+    # empty input, and under set -e + pipefail that killed the subshell before the
+    # echo ran. The result was an EMPTY crontab piped in, autopull silently never
+    # installed, and the script aborting before the sudoers step below.
+    (crontab -l 2>/dev/null | grep -v autopull || true; echo "*/5 * * * * $HOME/autopull.sh") | crontab -
 
     sudo tee /etc/sudoers.d/parking-detect > /dev/null <<SUDOERS
 $USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart parking-detect
