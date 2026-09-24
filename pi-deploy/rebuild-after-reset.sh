@@ -127,6 +127,11 @@ git fetch origin main 2>/dev/null
 # logged five minutes apart, each one throwing away the violation tracking state.
 BEHIND=\$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
 if [ "\${BEHIND:-0}" -gt 0 ]; then
+    # The settings sync rewrites config.py every 30s, so the working tree is always
+    # dirty and "git pull" refuses the moment an incoming commit touches that file —
+    # autopull would then stop delivering updates with nothing to show for it.
+    # Discarding it is safe: the next sync regenerates it from Railway within 30s.
+    git checkout -- config.py 2>/dev/null || true
     git pull --ff-only origin main || exit 0
     source "$APP_DIR/venv/bin/activate"
     pip install -r requirements.txt --quiet

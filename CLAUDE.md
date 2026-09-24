@@ -1,9 +1,29 @@
 # CLAUDE.md - Project Context for AI Assistants
 
 ## Known Stable Commit
-**`054ac42`** (May 17, 2026) — last verified fully working state. Includes everything from f45d5c1 plus: Cloudinary 14-day auto-cleanup, Cloud Media Uploads pause toggle, Cloud Media Management panel (manual selective delete), Philippine plate format validation, pi-deploy network reliability files. Revert here if things break:
+**`4142a04`** (Sept 24, 2026) — deployed to the Pi and verified live: the app runs, the
+Hailo does 37ms/frame, the tunnel builds itself, Railway shows the Pi online, and a real
+LAN cable produces a DHCP lease alongside the camera subnet. Six failure modes fixed
+that day, each of which had the system looking healthy while doing nothing useful:
+
+1. The whole recovery loop sat inside the try block that starts cloudflared, so after a
+   brownout — Pi boots before the ISP returns — the heartbeat, settings sync and tunnel
+   retry never started at all, and the Pi stayed invisible until someone restarted it.
+2. `ensure_tunnel_alive()` trusted `proc.poll()`, but cloudflared routinely outlives its
+   own tunnel, so "Cloud Link Disconnected" was permanent. It probes the public URL now.
+3. `Stream` froze its URL at construction, so a camera that changed DHCP lease was
+   dialled at its old dead address forever no matter what the settings sync wrote.
+4. Camera_3 was missing from `update_local_config`, so `CAM3_URL` never reached config.py
+   and `c3` was None at boot with no later sync able to revive it.
+5. The autopull cron compared `HEAD != origin/main`, which is also true when the Pi is
+   *ahead*, so it restarted parking-detect every five minutes and dropped every vehicle's
+   dwell timer with it.
+6. The network watchdog re-added the camera subnet with `ip addr add`, which made
+   NetworkManager stop running DHCP on eth0. See the eth0 warning further down.
+
+Older fallback: `054ac42` (May 17, 2026). Revert only if the above turns out worse:
 ```bash
-git reset --hard 054ac42
+git reset --hard 4142a04     # or 054ac42
 ```
 
 ## Architecture
@@ -92,20 +112,55 @@ ONVIF login (CAM2 & CAM3 admin panels only, NOT for RTSP):
   Pass: admin123
 ```
 
-## Pi Network Reliability (pi-deploy/) — DEPLOYED May 17, 2026
-Services are **active and enabled** on the Pi. Files in `pi-deploy/` are the source of truth:
-- `camera-subnet.service` — oneshot systemd unit, adds 192.168.8.100/24 on boot ✓
-- `network-watchdog.sh` + `.service` — pings every 60s, restarts networking after 3 failures ✓
-- `dhcpcd-static.conf` — static IP 192.168.1.15 for Pi ✓
-- See `pi-deploy/DEPLOY.md` for full SSH deploy instructions (already done)
+## Pi Network Reliability — REBUILT Sept 24, 2026
+
+⚠️ **NEVER run `ip addr add` on eth0. Not from a service, not from a watchdog, not by
+hand.** NetworkManager reacts by declaring the interface externally managed
+(`connection-assumed, managed-type: external`) and from that moment **stops running
+DHCP on eth0 entirely**. Plugging in a LAN cable then gives a link with the camera
+alias and nothing else — no lease, no default route, no path to CAM1 or the internet.
+At the site that is indistinguishable from a dead port, and it cost three cable tests
+to find. `camera-subnet.service` is **disabled** for exactly this reason.
+
+The camera subnet lives in the NetworkManager profile instead, alongside DHCP:
+
+```
+Wired connection 1   interface-name eth0
+  ipv4.method      auto                ← DHCP lease from the site router
+  ipv4.addresses   192.168.8.100/24    ← CAM2/CAM3, applied at the same time
+  autoconnect      yes, priority 100   ← beats wifi for the default route
+```
+
+Verified with a real cable: lease `192.168.254.163` **and** `192.168.8.100/24` both on
+eth0, default route via eth0 at metric 100 against wlan0's 600, NM state
+`connected:Wired connection 1` with `managed-type: 'full'`.
+
+Services enabled and proven to come up on their own across four reboots:
+- `parking-detect` — the app; `Restart=always`
+- `network-watchdog.sh` + `.service` — pings every 60s, restarts networking after 3 failures
+- `parking-watchdog.sh` + `.service` — restarts parking-detect when `/ping` stops answering
+  3 times; `Restart=always` cannot help a process that is wedged rather than exited
+- `camera-subnet.service` — **disabled on purpose**, see the warning above
+- `hailort.service` — **disabled on purpose**, it claims the Hailo device exclusively
+- `dhcpcd-static.conf` — stale, this image is NetworkManager; kept for reference only
+
+WiFi profiles saved: `Emathrix24` (priority 0), `CLIENT-GERKENT2.4G` and
+`CLIENTGERKENT2.4G` (priority 10, both added because the leading hyphen in the client's
+SSID could not be confirmed from a screenshot — only one will ever match). **WiFi cannot
+reach CAM2/CAM3**: the 192.168.8.x alias is on eth0 and cannot be put on wlan0. The LAN
+cable is mandatory for all three cameras.
 
 ## After Pi Reboot Checklist
-With pi-deploy services installed, recovery is automatic. Manual steps only needed if services fail:
-1. Camera subnet is lost — re-add: `sudo ip addr add 192.168.8.100/24 dev eth0`
-2. Verify cameras: `ping -c1 192.168.8.2 && ping -c1 192.168.8.199`
-3. Verify VIGI cam: `ping -c1 192.168.1.3` (if unreachable, IP may have changed — scan: `for i in $(seq 1 254); do ping -c1 -W1 192.168.1.$i &>/dev/null && echo "192.168.1.$i UP"; done`)
-4. Restart service: `sudo systemctl restart parking-detect`
-5. `hailort.service` must stay **disabled** — the Python app manages the Hailo device directly
+Recovery is automatic — verified four times. Manual steps only if something is wrong:
+1. Verify cameras: `ping -c1 192.168.8.2 && ping -c1 192.168.8.199 && ping -c1 192.168.1.3`
+2. If CAM1 is unreachable its DHCP lease may have moved (it went .14 → .3 once already).
+   `camera_recovery.py` sweeps the /24 in ~2.4s, proves a candidate by pulling a real
+   frame, and publishes the new URL to Railway — so wait a few minutes before scanning
+   by hand.
+3. Check eth0 got both addresses: `ip -4 addr show eth0` — expect a DHCP lease **and**
+   192.168.8.100/24. If the lease is missing, something ran `ip addr add`; see above.
+4. `hailort.service` must stay **disabled** — the Python app manages the Hailo device
+   directly. With it enabled, detection falls back to CPU at ~1s/frame (Hailo does 37ms).
 
 ## Detection Models
 - **yolov8s.hef** — Vehicle detection (COCO classes: person, bike, car, motorcycle, bus, truck)
@@ -164,3 +219,22 @@ With pi-deploy services installed, recovery is automatic. Manual steps only need
 - **Slow detection (~1s/frame)**: Hailo not working, fell back to CPU — check `/dev/hailo0` exists and `hailort.service` is stopped
 - **config.py merge conflicts**: Never manually edit config.py on Pi — it's overwritten by settings sync
 - **False tamper alerts**: SSIM reference frame goes stale — auto-refresh every 30 min handles this; threshold at 0.25 avoids false positives from lighting changes
+- **No SMS arriving while everything else looks fine**: check the UniSMS balance before
+  suspecting anything in this repo. Alerting runs entirely on Railway (`app.py` →
+  `alerts.py`), never on the Pi, so a Pi restart or settings sync changes nothing.
+  ```bash
+  curl -s -u "$UNISMS_API_KEY:" https://unismsapi.com/api/account
+  ```
+  `/api/account` is the only endpoint that distinguishes a good key (200) from a bad one
+  (401) — `/api/sms` answers 404 to GET either way. On Sept 24 2026 the account was
+  `active` with a valid key and `sms_credits: 0`, which fails silently: `_send_via_unisms`
+  logs an error, returns False, and nothing surfaces on the dashboard. Also check
+  `ALERT_CONFIG.sms_enabled` — it gates the send before the API is ever called.
+- **Violations take 5 minutes to appear**: by design. `VIOLATION_TIME_THRESHOLD` is 300s,
+  so a vehicle must block the zone that long before anything is recorded or texted. For a
+  live demo, lower it through `/api/db_settings` and put it back afterwards.
+- **Camera feed shows video but no red zone outline**: the zone is drawn onto the
+  *processed* frame, so `gen_single()` falls back to the raw frame until detection has
+  produced one. A few seconds at startup is normal; longer means detection is not running.
+  Note `monitor.process()` returns early when a camera has no zone — no outline **and**
+  no detection for that camera.
