@@ -197,6 +197,12 @@ static domain_name_servers=192.168.1.1 8.8.8.8' | sudo tee -a /etc/dhcpcd.conf
                 ipv4.gateway 192.168.1.1 \
                 ipv4.dns "192.168.1.1 8.8.8.8" \
                 ipv4.method manual
+            # Ship default is autoconnect-priority -999 on ethernet against 0 on the
+            # wifi profile, so NetworkManager hands the default route to wifi whenever
+            # both are up. The cameras only exist on the wired side, so wired wins.
+            sudo nmcli con mod "$ETH_CON" \
+                connection.autoconnect yes \
+                connection.autoconnect-priority 100
             echo "static IP staged — applies on reboot. Applying it now instead with"
             echo "'nmcli con up \"$ETH_CON\"' will drop your SSH session, because the"
             echo "Pi's address changes to 192.168.1.15 the moment it takes effect."
