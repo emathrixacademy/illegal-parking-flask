@@ -119,14 +119,19 @@ EOF
 #!/bin/bash
 cd "$APP_DIR" || exit 0
 git fetch origin main 2>/dev/null
-LOCAL=\$(git rev-parse HEAD)
-REMOTE=\$(git rev-parse origin/main)
-if [ "\$LOCAL" != "\$REMOTE" ]; then
-    git pull origin main
+
+# Only act when origin actually has commits we do not. Comparing HEAD != origin/main
+# also fires when the Pi is AHEAD — code delivered straight to it and not yet pushed —
+# and then the pull is a no-op, the hashes still differ, and this restarts
+# parking-detect every five minutes forever. That was live on the Pi: two restarts
+# logged five minutes apart, each one throwing away the violation tracking state.
+BEHIND=\$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+if [ "\${BEHIND:-0}" -gt 0 ]; then
+    git pull --ff-only origin main || exit 0
     source "$APP_DIR/venv/bin/activate"
     pip install -r requirements.txt --quiet
     sudo systemctl restart parking-detect
-    echo "\$(date): Updated and restarted parking-detect" >> "$HOME/autopull.log"
+    echo "\$(date): Pulled \$BEHIND commit(s) and restarted parking-detect" >> "$HOME/autopull.log"
 fi
 SCRIPT
     chmod +x "$HOME/autopull.sh"
