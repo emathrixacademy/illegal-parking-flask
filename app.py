@@ -1080,6 +1080,14 @@ def proxy_video_feed_c1():
 def proxy_video_feed_c2():
     return proxy_video_feed("video_feed_c2")
 
+# The Pi has served /video_feed_c3 all along and the dashboard asks for it, but this
+# proxy stopped at c2 — so Camera 3's tile was a broken image on every page load,
+# regardless of whether the camera itself was healthy.
+@app.route('/video_feed_c3')
+@login_required
+def proxy_video_feed_c3():
+    return proxy_video_feed("video_feed_c3")
+
 def proxy_video_feed(feed_path):
     try:
         pi_base = get_pi_base()
@@ -1663,9 +1671,16 @@ def api_cameras():
     if not isinstance(cameras, list):
         cameras = []
     if not cameras:
+        # Seeded with two cameras, and with Camera_1 pointed at an ONVIF unit — but
+        # Camera_1 is the VIGI on the 192.168.1.x subnet, and there are three cameras.
+        # An empty CAMERAS config therefore came back wrong on all three counts.
         cameras = [
-            {"id": "Camera_1", "name": "Camera 1", "location": "Brgy. Kanluran", "url": "rtsp://192.168.8.2:554/stream", "status": "active"},
-            {"id": "Camera_2", "name": "Camera 2", "location": "Brgy. Kanluran", "url": "rtsp://192.168.8.199:554/stream", "status": "active"},
+            {"id": "Camera_1", "name": "Zavalla East Road", "location": "Brgy. Kanluran",
+             "url": "rtsp://admin:%40Dm1n2026@192.168.1.3:554/stream1", "status": "active"},
+            {"id": "Camera_2", "name": "Zavalla West Road", "location": "Brgy. Kanluran",
+             "url": "rtsp://192.168.8.2:554/stream", "status": "active"},
+            {"id": "Camera_3", "name": "Anonuevo North Road", "location": "Brgy. Kanluran",
+             "url": "rtsp://192.168.8.199:554/stream", "status": "active"},
         ]
         set_config_value("CAMERAS", cameras)
     return jsonify(cameras)

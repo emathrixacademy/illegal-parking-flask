@@ -309,9 +309,14 @@ def ping():
 @app.route('/api/health', methods=['GET'])
 def health():
     """Feature 16: Full system health endpoint."""
+    # Camera_3 was absent here, so the health endpoint reported on two of three
+    # cameras and a failure on the third never showed up in the daily summary.
     cameras = {
-        "Camera_1": getattr(config, "CAM1_URL", ""),
-        "Camera_2": getattr(config, "CAM2_URL", ""),
+        name: getattr(config, attr, "")
+        for name, attr in (("Camera_1", "CAM1_URL"),
+                           ("Camera_2", "CAM2_URL"),
+                           ("Camera_3", "CAM3_URL"))
+        if getattr(config, attr, "")
     }
     return jsonify(health_mon.get_full_health(cameras))
 
@@ -360,12 +365,19 @@ def api_detection_control():
 
 @app.route('/api/detection_snapshot')
 def api_detection_snapshot():
-    """Grab a single annotated frame showing what the AI currently sees."""
+    """Grab a single annotated frame showing what the AI currently sees.
+
+    Takes ?camera=Camera_N. It was hardcoded to Camera_1, so there was no way to see
+    what the detector made of the other two.
+    """
     try:
+        camera = request.args.get("camera", "Camera_1")
+        if camera not in latest_processed:
+            return jsonify({"error": f"Unknown camera: {camera}"}), 404
         with proc_lock:
-            frame = latest_processed.get("Camera_1")
+            frame = latest_processed.get(camera)
         if frame is None:
-            return jsonify({"error": "No frame available"}), 404
+            return jsonify({"error": f"No frame available for {camera}"}), 404
         _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
         return Response(buf.tobytes(), mimetype='image/jpeg')
     except Exception as e:
@@ -483,6 +495,7 @@ def api_settings():
     response_data = {
         "CAM1_URL": getattr(config, "CAM1_URL", ""),
         "CAM2_URL": getattr(config, "CAM2_URL", ""),
+        "CAM3_URL": getattr(config, "CAM3_URL", ""),
         "MODEL_PATH": getattr(config, "MODEL_PATH", ""),
         "SAVE_DIR": getattr(config, "SAVE_DIR", ""),
         "DETECTION_THRESHOLD": getattr(config, "DETECTION_THRESHOLD", 0.3),
@@ -1057,6 +1070,7 @@ CAM2_URL = getattr(config, "CAM2_URL", None)
 CAM3_URL = getattr(config, "CAM3_URL", None)
 CAM1_HIRES_URL = getattr(config, "CAM1_HIRES_URL", None)
 CAM2_HIRES_URL = getattr(config, "CAM2_HIRES_URL", None)
+CAM3_HIRES_URL = getattr(config, "CAM3_HIRES_URL", None)
 
 if CAM1_URL and "/stream1" in CAM1_URL:
     logger.info(f"Camera_1 using main stream for full resolution: {CAM1_URL}")
@@ -1071,12 +1085,15 @@ latest_processed = {"Camera_1": None, "Camera_2": None, "Camera_3": None}
 proc_lock = threading.Lock()
 
 # Hi-res capture for plate OCR (on-demand, not continuous)
+# Camera_3 had no hi-res entry, so plate OCR on it could only ever work off the
+# low-res detection frame.
 hires_captures = {}
-if CAM1_HIRES_URL:
-    hires_captures["Camera_1"] = HiResCapture(CAM1_HIRES_URL)
-    logger.info(f"HiRes capture ready for Camera_1: {CAM1_HIRES_URL}")
-if CAM2_HIRES_URL:
-    hires_captures["Camera_2"] = HiResCapture(CAM2_HIRES_URL)
+for _cam, _hires_url in (("Camera_1", CAM1_HIRES_URL),
+                         ("Camera_2", CAM2_HIRES_URL),
+                         ("Camera_3", CAM3_HIRES_URL)):
+    if _hires_url:
+        hires_captures[_cam] = HiResCapture(_hires_url)
+        logger.info(f"HiRes capture ready for {_cam}: {_hires_url}")
 
 
 
@@ -1084,9 +1101,11 @@ if CAM2_HIRES_URL:
 # Feature 14: Set reference frames after a short delay
 def _set_reference_frames():
     time.sleep(5)
-    cam_streams = [("Camera_1", c1), ("Camera_2", c2)]
-    if c3: cam_streams.append(("Camera_3", c3))
-    for cam_name, stream in cam_streams:
+    # Named distinctly from the module-level cam_streams dict, which this used to
+    # shadow with a list of tuples.
+    startup_streams = [("Camera_1", c1), ("Camera_2", c2)]
+    if c3: startup_streams.append(("Camera_3", c3))
+    for cam_name, stream in startup_streams:
         frame = stream.get_frame()
         if frame is not None:
             tamper_detectors[cam_name].set_reference(frame)
@@ -1295,13 +1314,21 @@ def api_get_image():
 def capture_frame(camera):
     """Capture a single frame from the specified camera for zone selection."""
     try:
-        stream = c1 if camera == "Camera_1" else c2
+        # Was "c1 if camera == 'Camera_1' else c2", so asking for Camera_3 quietly
+        # handed back Camera_2's frame and any zone drawn for Camera_3 was traced over
+        # the wrong scene — with nothing anywhere to say so.
+        stream = cam_streams.get(camera)
+        if stream is None:
+            return jsonify({"success": False,
+                            "error": f"Unknown or unconfigured camera: {camera}"}), 404
         frame = stream.get_frame()
         if frame is None:
             return jsonify({"success": False, "error": "No frame available"}), 500
-        
-        # Resize to actual camera resolution (1280x720)
-        frame = cv2.resize(frame, (ACTUAL_WIDTH, ACTUAL_HEIGHT))
+
+        # Per-camera resolution: Camera_1 is 1920x1080 while the others are 1280x720,
+        # and this used to report 1280x720 for all of them.
+        width, height = STREAM_RESOLUTION.get(camera, (ACTUAL_WIDTH, ACTUAL_HEIGHT))
+        frame = cv2.resize(frame, (width, height))
         
         # Encode as JPEG with high quality for accurate selection
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 95]
