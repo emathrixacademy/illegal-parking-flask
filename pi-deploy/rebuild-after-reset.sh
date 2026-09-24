@@ -214,7 +214,13 @@ static domain_name_servers=192.168.1.1 8.8.8.8' | sudo tee -a /etc/dhcpcd.conf
 phase_verify() {
     say "Services"
     for s in parking-detect cloudflared camera-subnet network-watchdog parking-watchdog hailort; do
-        printf "%-20s %s\n" "$s" "$(systemctl is-enabled "$s" 2>/dev/null || echo 'not installed')"
+        # is-enabled prints "not-found" on stdout *and* exits non-zero, so the old
+        # "|| echo" printed both and every missing unit took two confusing lines.
+        state="$(systemctl is-enabled "$s" 2>/dev/null || true)"
+        if [ -z "$state" ] || [ "$state" = "not-found" ]; then
+            state="not installed"
+        fi
+        printf "%-20s %s\n" "$s" "$state"
     done
     say "Hailo device"
     [ -e /dev/hailo0 ] && echo "/dev/hailo0 present" || echo "/dev/hailo0 MISSING"
