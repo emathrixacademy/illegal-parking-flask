@@ -8,25 +8,27 @@
 PING_TARGET="8.8.8.8"
 MAX_FAILS=3
 FAIL_COUNT=0
-CAMERA_SUBNET="192.168.8.100/24"
-CAMERA_IFACE="eth0"
 
 unit_exists() {
     systemctl list-unit-files --no-legend "$1" 2>/dev/null | grep -q .
 }
 
-ensure_camera_subnet() {
-    # The 192.168.8.x alias is not owned by the network manager, so anything that
-    # reconfigures eth0 silently drops it: a DHCP renew, or the link flapping when
-    # the PoE switch power-cycles during a storm. Re-adding it only after an
-    # *internet* outage (which is all this script used to do) missed that case
-    # completely — the internet stays up, and CAM2/CAM3 just quietly stop answering
-    # with nothing in any log to say why. So check it every pass, unconditionally.
-    if ! ip -4 addr show dev "$CAMERA_IFACE" 2>/dev/null | grep -q "${CAMERA_SUBNET%/*}"; then
-        logger -t network-watchdog "Camera subnet $CAMERA_SUBNET missing on $CAMERA_IFACE — re-adding"
-        ip addr add "$CAMERA_SUBNET" dev "$CAMERA_IFACE" 2>/dev/null || true
-    fi
-}
+# NOTHING here adds the 192.168.8.x alias by hand any more, and nothing should.
+#
+# A raw "ip addr add" on eth0 makes NetworkManager decide the interface is managed
+# by somebody else: it logs 'connection-assumed, managed-type: external' and from
+# that moment stops running DHCP on eth0 at all. Measured on the Pi — the watchdog
+# re-added the alias at 14:42:53 and NM assumed the interface in the same second.
+# Plugging in a LAN cable afterwards produced a link with no lease, no default
+# route, and no way to reach CAM1 or the internet over the wire, which at the site
+# looks exactly like a dead port.
+#
+# The alias now lives in the NetworkManager profile itself:
+#
+#   nmcli con mod "Wired connection 1" ipv4.method auto ipv4.addresses 192.168.8.100/24
+#
+# so NM hands out the DHCP lease AND the camera-subnet address together every time
+# eth0 comes up, including after the restarts this script performs below.
 
 restart_network() {
     for unit in dhcpcd.service NetworkManager.service systemd-networkd.service; do
@@ -41,7 +43,6 @@ restart_network() {
 }
 
 while true; do
-    ensure_camera_subnet
     if ! ping -c 1 -W 5 "$PING_TARGET" > /dev/null 2>&1; then
         FAIL_COUNT=$((FAIL_COUNT + 1))
         logger -t network-watchdog "Network check failed ($FAIL_COUNT/$MAX_FAILS)"
@@ -50,9 +51,9 @@ while true; do
             restart_network
             sleep 10
 
-            # The secondary camera subnet is not persisted by the network manager,
-            # so it has to be re-added after every restart.
-            ip addr add "$CAMERA_SUBNET" dev "$CAMERA_IFACE" 2>/dev/null
+            # The camera subnet comes back with the NetworkManager profile when the
+            # service restarts — see the note at the top of this file for why adding
+            # it by hand here would stop DHCP on eth0 outright.
 
             # The Cloudflare tunnel is owned by parking-detect (server.py spawns it
             # as a subprocess and re-publishes the URL when it dies), so it is only
