@@ -28,6 +28,7 @@ except ImportError:
     detect_garbage = None
 from tamper_detect import TamperDetector
 from health_monitor import HealthMonitor
+from camera_recovery import CameraRecovery
 # Continuous recorder removed — recordings only happen per-violation (60s clips)
 import sys
 
@@ -131,13 +132,20 @@ def update_local_config(data):
                 else:
                     lines.append(f"{key} = {value}\n")
 
+        # Camera_3 was missing from both branches below, so CAM3_URL never made it
+        # into config.py. The third camera then came up as None at boot and no later
+        # sync could revive it — the dashboard showed it offline forever.
+        cam_keys = {"Camera_1": "CAM1_URL", "Camera_2": "CAM2_URL", "Camera_3": "CAM3_URL"}
         if "CAMERAS" in data and data["CAMERAS"]:
-            cams = data["CAMERAS"]
-            for cam in cams:
-                if cam.get("id") == "Camera_1" and cam.get("url"):
-                    replace_line("CAM1_URL", f'"{cam["url"]}"')
-                elif cam.get("id") == "Camera_2" and cam.get("url"):
-                    replace_line("CAM2_URL", f'"{cam["url"]}"')
+            for cam in data["CAMERAS"]:
+                key = cam_keys.get(cam.get("id"))
+                if key and cam.get("url"):
+                    replace_line(key, f'"{cam["url"]}"')
+        # Railway also serves the URLs as flat keys; honour them so a camera that is
+        # re-addressed there recovers even if the CAMERAS list is stale.
+        for key in cam_keys.values():
+            if data.get(key):
+                replace_line(key, f'"{data[key]}"')
         if "VIOLATION_TIME_THRESHOLD" in data:
             replace_line("VIOLATION_TIME_THRESHOLD", int(data["VIOLATION_TIME_THRESHOLD"]))
         if "REPEAT_CAPTURE_INTERVAL" in data:
@@ -156,7 +164,15 @@ def update_local_config(data):
         # Update monitor zones if it exists
         if 'monitor' in globals() and hasattr(monitor, 'raw_zones'):
             monitor.raw_zones = getattr(config, "PARKING_ZONES", {})
-        
+
+        # Reloading the config module is not enough on its own — the running streams
+        # hold their own copy of the URL, so they have to be re-pointed explicitly.
+        if 'apply_camera_urls' in globals():
+            try:
+                apply_camera_urls()
+            except Exception as e:
+                logger.warning(f"Could not re-point camera streams: {e}")
+
         logger.info(f"Local config updated: VIOLATION_TIME_THRESHOLD={getattr(config, 'VIOLATION_TIME_THRESHOLD', 100)}, REPEAT_CAPTURE_INTERVAL={getattr(config, 'REPEAT_CAPTURE_INTERVAL', 60)}")
         return True
     except Exception as e:
@@ -187,6 +203,9 @@ def send_heartbeat():
     except Exception as e:
         logger.warning(f"Heartbeat failed: {e}")
 
+_tunnel_probe_failures = 0
+
+
 def ensure_tunnel_alive():
     """Restart cloudflared if it died, and publish the new URL to Railway.
 
@@ -197,14 +216,61 @@ def ensure_tunnel_alive():
     though the Pi and the cameras are fine. Re-posting the *stale* URL every 30s
     (which is all this loop used to do) never recovered from that.
     """
+    global _tunnel_probe_failures
+
     proc = app.config.get("CF_PROC")
-    if proc is not None and proc.poll() is None:
-        return  # still running
-    logger.warning("cloudflared is not running — restarting tunnel")
+    public_url = app.config.get("PUBLIC_URL", "")
+
+    if proc is None or proc.poll() is not None:
+        logger.warning("cloudflared is not running — rebuilding tunnel")
+        _rebuild_tunnel()
+        return
+
+    if not public_url:
+        logger.warning("cloudflared is running but we have no public URL — rebuilding")
+        _rebuild_tunnel()
+        return
+
+    # The process being alive is not proof the tunnel is: after an internet outage
+    # cloudflared frequently survives as a process whose tunnel is long dead, so
+    # poll() sees "fine" and the dashboard shows "Cloud Link Disconnected" forever.
+    # Actually reach the Pi through its own public URL to tell the difference.
+    try:
+        reachable = requests.get(f"{public_url}/ping", timeout=8).ok
+    except Exception:
+        reachable = False
+
+    if reachable:
+        _tunnel_probe_failures = 0
+        return
+
+    _tunnel_probe_failures += 1
+    # Tolerate a couple of misses so a brief blip does not tear down a good tunnel;
+    # three in a row (~90s) means it is genuinely gone.
+    if _tunnel_probe_failures < 3:
+        logger.warning(f"Tunnel probe failed ({_tunnel_probe_failures}/3) — not rebuilding yet")
+        return
+
+    logger.warning("Tunnel unreachable three times running — rebuilding")
+    _rebuild_tunnel()
+
+
+def _rebuild_tunnel():
+    """Kill any existing cloudflared and publish a freshly issued URL to Railway."""
+    global _tunnel_probe_failures
+
+    old = app.config.get("CF_PROC")
+    if old is not None and old.poll() is None:
+        try:
+            old.kill()
+        except Exception:
+            pass
+
     port = int(os.environ.get("PORT", 5000))
     new_proc, new_url = start_cloudflared(port)
     app.config["CF_PROC"] = new_proc
     app.config["PUBLIC_URL"] = new_url
+    _tunnel_probe_failures = 0
     logger.info(f"Tunnel back up at {new_url}")
     RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
     requests.post(f"{RAILWAY_API_URL}/api/set_pi_url",
@@ -837,37 +903,95 @@ class ParkingMonitor:
 
 # --- Stream handler ---
 class Stream:
+    # A camera that is genuinely gone — PoE switch down, rain-soaked cable — used to
+    # be retried every single second forever. That pinned a core per dead camera and
+    # made the surviving cameras stutter, so the backoff stretches out instead.
+    RECONNECT_BACKOFF = (1, 2, 5, 10, 15, 30)
+
     def __init__(self, url):
         self.url = url
-        self.cap = cv2.VideoCapture(url)
+        self._url_lock = threading.Lock()
+        self.cap = self._open(url)
         self.frame_buffer = None
         self.last_update = time.time()
         self.reconnecting = True
         self.read_lock = threading.Lock()
         self.reconnect_event = threading.Event()
         self.running = True
+        self._fail_streak = 0
         threading.Thread(target=self._io_thread, daemon=True).start()
+
+    @staticmethod
+    def _open(url):
+        """Open an RTSP URL with bounded timeouts.
+
+        Without these, dialling a host that no longer answers blocks for the FFmpeg
+        default of tens of seconds, so one dead camera stalls its own recovery long
+        past the point where the camera is actually back.
+        """
+        cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+        for prop in ("CAP_PROP_OPEN_TIMEOUT_MSEC", "CAP_PROP_READ_TIMEOUT_MSEC"):
+            try:
+                cap.set(getattr(cv2, prop), 5000)
+            except Exception:
+                pass  # older OpenCV builds do not expose these
+        return cap
+
+    def current_url(self):
+        with self._url_lock:
+            return self.url
+
+    def set_url(self, url):
+        """Re-point this stream at a new URL and force an immediate reconnect.
+
+        The URL used to be frozen at construction. When a camera's DHCP lease
+        changed after a power cut, the settings sync rewrote config.py and nothing
+        else — this thread kept dialling the old dead address until somebody
+        restarted parking-detect by hand. That is the "camera never comes back"
+        symptom, and it outlives any number of reboots on its own.
+        """
+        with self._url_lock:
+            if not url or url == self.url:
+                return False
+            logger.info(f"Stream URL changed: {self.url} -> {url}")
+            self.url = url
+        self._fail_streak = 0
+        self.reconnect_event.set()
+        return True
 
     def _io_thread(self):
         while self.running:
             if self.reconnect_event.is_set():
-                self.cap.release()
-                self.cap = cv2.VideoCapture(self.url)
                 self.reconnect_event.clear()
+                self.cap.release()
+                self.cap = self._open(self.current_url())
             ret, f = self.cap.read()
             if ret:
                 with self.read_lock:
                     self.frame_buffer = f
                     self.last_update = time.time()
                 self.reconnecting = False
-            else:
-                self.reconnecting = True
-                time.sleep(1)
-                self.cap.release()
-                self.cap = cv2.VideoCapture(self.url)
+                self._fail_streak = 0
+                continue
+            self.reconnecting = True
+            delay = self.RECONNECT_BACKOFF[min(self._fail_streak, len(self.RECONNECT_BACKOFF) - 1)]
+            self._fail_streak += 1
+            # Log the first couple of failures and then only occasionally: an
+            # overnight outage otherwise writes tens of thousands of identical lines.
+            if self._fail_streak in (1, 5) or self._fail_streak % 20 == 0:
+                logger.warning(
+                    f"Stream read failed ({self._fail_streak}x) for {self.current_url()} "
+                    f"— retrying in {delay}s"
+                )
+            time.sleep(delay)
+            self.cap.release()
+            self.cap = self._open(self.current_url())
 
     def is_online(self):
         return (time.time() - self.last_update) < 3.0
+
+    def offline_seconds(self):
+        return time.time() - self.last_update
 
     def get_frame(self):
         with self.read_lock:
@@ -1008,6 +1132,53 @@ threading.Thread(target=processing_worker, args=("Camera_2", c2), daemon=True).s
 if c3:
     threading.Thread(target=processing_worker, args=("Camera_3", c3), daemon=True).start()
     logger.info("Camera_3 processing thread started.")
+
+
+def apply_camera_urls():
+    """Push freshly-synced RTSP URLs into the running Stream objects.
+
+    Runs after every settings sync. Camera_3 can also be *created* here, not just
+    re-pointed: it is defined in Railway but absent from the shipped config.py, so a
+    Pi that booted before its first sync had c3 = None and never started a third
+    worker at all.
+    """
+    global c3
+    for name, attr in (("Camera_1", "CAM1_URL"), ("Camera_2", "CAM2_URL"), ("Camera_3", "CAM3_URL")):
+        url = getattr(config, attr, None)
+        if not url:
+            continue
+        stream = cam_streams.get(name)
+        if stream is None:
+            if name == "Camera_3":
+                c3 = Stream(url)
+                cam_streams["Camera_3"] = c3
+                tamper_detectors.setdefault("Camera_3", TamperDetector("Camera_3"))
+                threading.Thread(target=processing_worker, args=("Camera_3", c3), daemon=True).start()
+                logger.info(f"Camera_3 appeared in settings ({url}) — stream and worker started")
+            continue
+        stream.set_url(url)
+
+
+# Shared with CameraRecovery, which needs to see Camera_3 even when it is created
+# later by the first settings sync rather than at boot.
+cam_streams = {"Camera_1": c1, "Camera_2": c2, "Camera_3": c3}
+
+
+def _publish_recovered_url(cam_name, new_url):
+    """Persist a rediscovered camera address to Railway.
+
+    Without this the repair would live only in this process: the next restart would
+    read the stale URL back out of config.py and the camera would be "lost" again.
+    """
+    key = {"Camera_1": "CAM1_URL", "Camera_2": "CAM2_URL", "Camera_3": "CAM3_URL"}.get(cam_name)
+    if not key:
+        return
+    resp = requests.post(f"{RAILWAY_API_URL}/api/db_settings", json={key: new_url},
+                         headers=RAILWAY_HEADERS, timeout=10)
+    logger.info(f"Published recovered {cam_name} URL to Railway: {resp.status_code}")
+
+
+CameraRecovery(cam_streams, cv2, on_recovered=_publish_recovered_url).start()
 
 def cleanup_local_files():
     """Periodically remove old local tamper images and leftover /tmp violation videos."""
@@ -1168,7 +1339,17 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Flask on 0.0.0.0:{port}")
 
-    # Start cloudflared first
+    RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
+
+    # Bring the tunnel up if the network is ready — but a failure here must never stop
+    # the recovery loop below from starting.
+    #
+    # After a brownout the Pi finishes booting long before the ISP link is back, so
+    # start_cloudflared() throws. Everything that used to live inside this try block
+    # — the heartbeat, the settings sync, AND the tunnel retry itself — therefore
+    # never started at all, and the Pi sat there invisible on the dashboard until
+    # somebody drove out and restarted parking-detect by hand. The cameras were fine
+    # the whole time. That is the "it never comes back on its own" failure.
     try:
         cf_proc, public_url = start_cloudflared(port)
         app.config["PUBLIC_URL"] = public_url
@@ -1176,9 +1357,7 @@ if __name__ == '__main__':
         app.config["CF_PROC"] = cf_proc
 
         # Notify Railway app of the public URL
-        RAILWAY_API_URL = os.environ.get("RAILWAY_API_URL", "https://web-production-dbb23.up.railway.app")
-        max_retries = 10
-        for attempt in range(max_retries):
+        for attempt in range(10):
             try:
                 resp = requests.post(
                     f"{RAILWAY_API_URL}/api/set_pi_url",
@@ -1194,16 +1373,20 @@ if __name__ == '__main__':
             time.sleep(2)
         else:
             print("Failed to notify Railway app after retries.")
+    except Exception as e:
+        print("Could not start the Cloudflare Tunnel yet — will keep retrying:", e)
+        app.config["PUBLIC_URL"] = ""
+        app.config["CF_PROC"] = None
 
-        # Fetch initial settings from Railway database
+    # Outside the try above on purpose. ensure_tunnel_alive() inside this loop builds
+    # the tunnel as soon as the internet returns, and the heartbeat then tells the
+    # dashboard the Pi is healthy without anyone touching it.
+    try:
         print("Fetching initial settings from Railway database...")
         fetch_settings_from_railway()
-        
-        # Start periodic sync thread
-        threading.Thread(target=periodic_settings_sync, daemon=True).start()
-
     except Exception as e:
-        print("Failed to start Cloudflare Tunnel:", e)
-        app.config["PUBLIC_URL"] = ""
+        print("Initial settings fetch failed — the periodic sync will retry:", e)
+
+    threading.Thread(target=periodic_settings_sync, daemon=True).start()
 
     app.run(host='0.0.0.0', port=port, threaded=True)

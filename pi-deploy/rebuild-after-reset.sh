@@ -13,7 +13,17 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/emathrixacademy/illegal-parking-flask.git"
-APP_DIR="$HOME/illegal-parking"
+
+# Where the code lives. Default is ~/illegal-parking, but if this script is being run
+# from inside an existing copy of the project (SCP'd or USB-copied into a folder with
+# a different name), use that copy. The site phase reads unit files out of
+# $APP_DIR/pi-deploy, and a mismatched folder name made it die on the first cp.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../server.py" ]; then
+    APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    APP_DIR="$HOME/illegal-parking"
+fi
 PHASE="${1:-}"
 
 say() { echo ""; echo "=== $* ==="; }
@@ -141,14 +151,21 @@ phase_site() {
     sudo systemctl daemon-reload
     sudo systemctl enable --now camera-subnet
 
-    say "[2/4] Network watchdog"
+    say "[2/5] Network watchdog"
     cp "$APP_DIR/pi-deploy/network-watchdog.sh" "$HOME/network_watchdog.sh"
     chmod +x "$HOME/network_watchdog.sh"
     sudo cp "$APP_DIR/pi-deploy/network-watchdog.service" /etc/systemd/system/
     sudo systemctl daemon-reload
     sudo systemctl enable --now network-watchdog
 
-    say "[3/4] Static IP 192.168.1.15"
+    say "[3/5] App watchdog (restarts parking-detect when it wedges)"
+    cp "$APP_DIR/pi-deploy/parking-watchdog.sh" "$HOME/parking_watchdog.sh"
+    chmod +x "$HOME/parking_watchdog.sh"
+    sudo cp "$APP_DIR/pi-deploy/parking-watchdog.service" /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now parking-watchdog
+
+    say "[4/5] Static IP 192.168.1.15"
     if [ -f /etc/dhcpcd.conf ]; then
         sudo cp /etc/dhcpcd.conf /etc/dhcpcd.conf.bak
         if ! grep -q "192.168.1.15/24" /etc/dhcpcd.conf; then
@@ -162,16 +179,31 @@ static domain_name_servers=192.168.1.1 8.8.8.8' | sudo tee -a /etc/dhcpcd.conf
     else
         # Raspberry Pi OS Bookworm and newer use NetworkManager, not dhcpcd.
         echo "no /etc/dhcpcd.conf — this image uses NetworkManager. Applying via nmcli:"
-        sudo nmcli con mod "Wired connection 1" \
-            ipv4.addresses 192.168.1.15/24 \
-            ipv4.gateway 192.168.1.1 \
-            ipv4.dns "192.168.1.1 8.8.8.8" \
-            ipv4.method manual
-        echo "NOTE: network-watchdog.sh restarts dhcpcd, which does not exist here."
-        echo "      Edit it to use 'systemctl restart NetworkManager' instead."
+        # The profile is NOT always called "Wired connection 1" — a cloud-init image
+        # names it after the netplan profile it generated. Guessing the name meant
+        # nmcli failed, set -e killed the script at step 3, and step 4 (which starts
+        # parking-detect) never ran. Look up whatever profile actually owns eth0.
+        ETH_CON="$(nmcli -t -f NAME,DEVICE con show 2>/dev/null | awk -F: '$2=="eth0"{print $1; exit}')"
+        if [ -z "$ETH_CON" ]; then
+            ETH_CON="$(nmcli -t -f NAME,TYPE con show 2>/dev/null | awk -F: '$2=="802-3-ethernet"{print $1; exit}')"
+        fi
+        if [ -z "$ETH_CON" ]; then
+            echo "WARNING: no NetworkManager ethernet profile found — static IP skipped."
+            echo "         Inspect with 'nmcli con show' and set it by hand."
+        else
+            echo "using NetworkManager profile: $ETH_CON"
+            sudo nmcli con mod "$ETH_CON" \
+                ipv4.addresses 192.168.1.15/24 \
+                ipv4.gateway 192.168.1.1 \
+                ipv4.dns "192.168.1.1 8.8.8.8" \
+                ipv4.method manual
+            echo "static IP staged — applies on reboot. Applying it now instead with"
+            echo "'nmcli con up \"$ETH_CON\"' will drop your SSH session, because the"
+            echo "Pi's address changes to 192.168.1.15 the moment it takes effect."
+        fi
     fi
 
-    say "[4/4] Enable and start services"
+    say "[5/5] Enable and start services"
     sudo systemctl enable cloudflared 2>/dev/null || true
     sudo systemctl start parking-detect
     echo "Reboot recommended: sudo reboot"
@@ -181,13 +213,35 @@ static domain_name_servers=192.168.1.1 8.8.8.8' | sudo tee -a /etc/dhcpcd.conf
 
 phase_verify() {
     say "Services"
-    for s in parking-detect cloudflared camera-subnet network-watchdog hailort; do
+    for s in parking-detect cloudflared camera-subnet network-watchdog parking-watchdog hailort; do
         printf "%-20s %s\n" "$s" "$(systemctl is-enabled "$s" 2>/dev/null || echo 'not installed')"
     done
     say "Hailo device"
     [ -e /dev/hailo0 ] && echo "/dev/hailo0 present" || echo "/dev/hailo0 MISSING"
+
+    say "Application"
+    echo "APP_DIR: $APP_DIR"
+    [ -f "$APP_DIR/server.py" ] && echo "server.py present" || echo "server.py MISSING"
+    if [ -x "$APP_DIR/venv/bin/python" ]; then
+        echo "venv present ($("$APP_DIR/venv/bin/python" --version 2>&1))"
+        # These four are what the detector actually needs at import time; a venv that
+        # exists but cannot import them still fails at boot with nothing in verify.
+        for m in cv2 flask hailo_platform torch; do
+            printf "  %-16s %s\n" "$m" \
+                "$("$APP_DIR/venv/bin/python" -c "import $m" 2>/dev/null && echo OK || echo 'IMPORT FAILED')"
+        done
+    else
+        echo "venv MISSING — run the base phase"
+    fi
+    command -v cloudflared >/dev/null && echo "cloudflared: $(cloudflared --version 2>&1 | head -1)" \
+        || echo "cloudflared MISSING"
+
     say "Network"
     hostname -I
+    printf "%-16s %s\n" "internet" \
+        "$(ping -c1 -W2 8.8.8.8 >/dev/null 2>&1 && echo OK || echo 'no route')"
+    printf "%-16s %s\n" "railway" \
+        "$(curl -s -o /dev/null -m 10 -w '%{http_code}' https://web-production-dbb23.up.railway.app/ping 2>/dev/null || echo unreachable)"
     say "Cameras"
     for ip in 192.168.1.3 192.168.8.2 192.168.8.199; do
         printf "%-16s %s\n" "$ip" "$(ping -c1 -W1 "$ip" >/dev/null 2>&1 && echo REACHABLE || echo 'no reply')"

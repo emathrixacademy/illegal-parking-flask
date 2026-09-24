@@ -1,0 +1,12 @@
+[Unit]
+Description=Parking detect watchdog - restarts the app when it stops answering /ping
+After=parking-detect.service
+Wants=parking-detect.service
+
+[Service]
+ExecStart=/home/admin/parking_watchdog.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

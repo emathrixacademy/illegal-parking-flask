@@ -6,7 +6,10 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/sbin/ip addr add 192.168.8.100/24 dev eth0
+# "|| true" keeps a re-run idempotent: plain 'ip addr add' exits non-zero with
+# "File exists" when the address is already on eth0, which put this oneshot into
+# a failed state and made 'verify' look broken on a Pi that was actually fine.
+ExecStart=/bin/sh -c '/sbin/ip addr add 192.168.8.100/24 dev eth0 || true'
 
 [Install]
 WantedBy=multi-user.target
